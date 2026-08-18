@@ -1582,7 +1582,7 @@ html {
 .portal-dashboard-card { background:linear-gradient(145deg,var(--bg-panel),var(--bg-base)); border:1px solid var(--line); border-radius:16px; padding:18px; min-width:0; box-shadow:0 12px 28px rgba(0,0,0,.18); }
 .portal-dashboard-card:hover { border-color:var(--line-hover); }
 .portal-profile-line { display:flex; align-items:center; gap:14px; }
-.portal-dashboard-avatar { width:58px; height:58px; flex:0 0 58px; display:grid; place-items:center; border-radius:15px; background:var(--bg-panel-alt); border:1px solid var(--line); overflow:hidden; }
+.portal-dashboard-avatar { position:relative; width:58px; height:58px; flex:0 0 58px; display:grid; place-items:center; border-radius:15px; background:var(--bg-panel-alt); border:1px solid var(--line); overflow:hidden; }
 .portal-dashboard-avatar img,.portal-dashboard-avatar .avatar-compuesto { width:100%; height:100%; object-fit:cover; }
 .portal-dashboard-card h3 { margin:0; font-family:var(--font-display); font-size:18px; color:var(--text-main); }
 .portal-dashboard-card p { margin:2px 0 0; color:var(--text-muted); font-size:12px; }
@@ -1601,7 +1601,7 @@ html {
 .portal-amigos-mini-list { display:grid; gap:8px; }
 .portal-amigo-mini { display:flex; align-items:center; gap:10px; padding:9px; border:1px solid var(--line); border-radius:11px; background:var(--bg-base); }
 .portal-amigo-mini:hover { border-color:var(--gold); transform:translateY(-1px); }
-.portal-amigo-avatar { width:35px; height:35px; flex:0 0 35px; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:var(--bg-panel-alt); border:1px solid var(--line); }
+.portal-amigo-avatar { position:relative; width:35px; height:35px; flex:0 0 35px; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:var(--bg-panel-alt); border:1px solid var(--line); }
 .portal-amigo-avatar img,.portal-amigo-avatar .avatar-compuesto { width:100%; height:100%; object-fit:cover; }
 .portal-amigo-mini b { display:block; color:var(--text-main); font-size:11px; }
 .portal-amigo-mini small { display:block; color:var(--text-muted); font-size:9px; margin-top:1px; }
