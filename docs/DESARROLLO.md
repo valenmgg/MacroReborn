@@ -180,18 +180,6 @@ un avatar se valida automáticamente contra el handler real en
 staging que tenga `/api/content` habilitado y no debe hacerse contra
 producción durante esta fase.
 
-### 3.9 Recuperación de sesiones antiguas
-
-Las escrituras de la API usan un token firmado guardado en
-`localStorage.macroSessionToken`, junto con el usuario de interfaz en
-`localStorage.usuarioActivo`. `js/core.js` comprueba que ambas claves existan
-juntas. Si encuentra el estado antiguo (usuario sin token), limpia las dos
-claves y redirige a `login.html?sesion=incompleta` para que la persona vuelva a
-autenticarse. Si una API responde `401` durante una sesión existente, aplica la
-misma recuperación con `sesion=expirada`. No se regeneran tokens en el cliente:
-uno nuevo solo se emite después de validar nuevamente las credenciales en
-`/api/auth?action=login`.
-
 ## 4. Despliegue de estos cambios
 
 Orden estricto (la migración SIEMPRE antes que el código que la usa):

@@ -79,113 +79,6 @@ function tiempoRelativo(fechaOTimestamp, porDefecto) {
 
 
 // ==============================
-// SESIÓN LOCAL — recuperación segura
-// ==============================
-// La migración a sesiones firmadas dejó algunos navegadores con el
-// usuario antiguo guardado en "usuarioActivo", pero sin el token que la
-// API necesita. Ese estado parece una sesión iniciada en la interfaz,
-// aunque todas las escrituras reciben 401. Se corrige obligando a iniciar
-// sesión de nuevo cuando las dos piezas no están presentes juntas.
-const CLAVE_USUARIO_SESION = "usuarioActivo";
-const CLAVE_TOKEN_SESION = "macroSessionToken";
-let _redireccionSesionEnCurso = false;
-
-function limpiarSesionLocal() {
-  try {
-    localStorage.removeItem(CLAVE_USUARIO_SESION);
-    localStorage.removeItem(CLAVE_TOKEN_SESION);
-  } catch (error) {
-    console.warn("MacroReborn: no se pudo limpiar la sesión local.", error);
-  }
-}
-
-function guardarSesionLocal(usuario, token) {
-  if (!usuario || !token || !tokenTieneFormatoBasico(token)) {
-    limpiarSesionLocal();
-    return false;
-  }
-
-  try {
-    localStorage.setItem(CLAVE_TOKEN_SESION, token);
-    localStorage.setItem(CLAVE_USUARIO_SESION, JSON.stringify(usuario));
-    return true;
-  } catch (error) {
-    limpiarSesionLocal();
-    console.warn("MacroReborn: no se pudo guardar la sesión local.", error);
-    return false;
-  }
-}
-
-function tokenTieneFormatoBasico(token) {
-  if (typeof token !== "string") return false;
-  const partes = token.split(".");
-  return partes.length === 2 && partes.every(Boolean);
-}
-
-function paginaDeAutenticacion() {
-  const ruta = window.location.pathname || "";
-  return ruta.endsWith("/login.html") || ruta.endsWith("/registro.html");
-}
-
-function redirigirASesion(razon) {
-  limpiarSesionLocal();
-
-  // En login/registro se limpian los restos, pero no se vuelve a cargar la
-  // misma página en bucle.
-  if (paginaDeAutenticacion()) return false;
-  if (_redireccionSesionEnCurso) return true;
-
-  _redireccionSesionEnCurso = true;
-
-  const destino = new URL("/login.html", window.location.origin);
-  destino.searchParams.set("sesion", razon || "invalida");
-
-  if (window.location && typeof window.location.replace === "function") {
-    window.location.replace(destino.pathname + destino.search);
-  }
-
-  return true;
-}
-
-function validarSesionLocal() {
-  let token = null;
-  let usuario = null;
-
-  try {
-    token = localStorage.getItem(CLAVE_TOKEN_SESION);
-    usuario = leerJSON(localStorage.getItem(CLAVE_USUARIO_SESION) || "null");
-  } catch (error) {
-    console.warn("MacroReborn: no se pudo leer la sesión local.", error);
-    return true;
-  }
-
-  const hayToken = Boolean(token);
-  const hayUsuario = Boolean(usuario && (usuario.username || usuario.nombre));
-
-  // No hay sesión local: la página puede seguir funcionando como invitado.
-  if (!hayToken && !hayUsuario) return true;
-
-  if (!hayToken || !hayUsuario || !tokenTieneFormatoBasico(token)) {
-    redirigirASesion("incompleta");
-    return false;
-  }
-
-  return true;
-}
-
-function haySesionLocal() {
-  try {
-    return Boolean(
-      localStorage.getItem(CLAVE_TOKEN_SESION) ||
-      localStorage.getItem(CLAVE_USUARIO_SESION)
-    );
-  } catch (error) {
-    return false;
-  }
-}
-
-
-// ==============================
 // SESIÓN API — token firmado
 // ==============================
 // El navegador sigue usando localStorage para la interfaz, pero las
@@ -193,23 +86,17 @@ function haySesionLocal() {
 // que devuelve /api/auth. Así el backend puede comprobar quién está
 // haciendo realmente una modificación y no confiar en un username
 // enviado por el cliente.
-validarSesionLocal();
-
 (function instalarInterceptorApi() {
   if (window.__macroRebornFetchProtegido) return;
   window.__macroRebornFetchProtegido = true;
 
   const fetchOriginal = window.fetch.bind(window);
-  window.fetch = async function(url, options = {}) {
-    let destino = null;
-    let esApi = false;
-
+  window.fetch = function(url, options = {}) {
     try {
-      destino = new URL(url, window.location.href);
-      esApi = destino.origin === window.location.origin && destino.pathname.startsWith('/api/');
-
+      const destino = new URL(url, window.location.href);
+      const esApi = destino.origin === window.location.origin && destino.pathname.startsWith('/api/');
       if (esApi) {
-        const token = localStorage.getItem(CLAVE_TOKEN_SESION);
+        const token = localStorage.getItem('macroSessionToken');
         if (token) {
           const headers = new Headers(options.headers || {});
           if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token);
@@ -217,21 +104,7 @@ validarSesionLocal();
         }
       }
     } catch (_) {}
-
-    const respuesta = await fetchOriginal(url, options);
-
-    // Un token vencido, firmado con otro secreto o revocado ya no puede
-    // recuperarse desde el navegador. Se borra el estado local y se pide
-    // autenticación nueva, en vez de dejar la página en un falso estado
-    // "logueado" con errores 401 repetidos.
-    const esLogin = destino && destino.pathname === "/api/auth" &&
-      destino.searchParams.get("action") === "login";
-
-    if (respuesta && respuesta.status === 401 && esApi && !esLogin) {
-      if (haySesionLocal()) redirigirASesion("expirada");
-    }
-
-    return respuesta;
+    return fetchOriginal(url, options);
   };
 })();
 

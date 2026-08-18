@@ -324,7 +324,8 @@ if(nav){
 
                 e.preventDefault();
 
-                limpiarSesionLocal();
+                localStorage.removeItem("usuarioActivo");
+                localStorage.removeItem("macroSessionToken");
 
                 window.location.href="index.html";
 
@@ -468,11 +469,8 @@ if(nav){
                             nivel: datos.user.level
                         };
 
-                        if (!guardarSesionLocal(usuarioNormalizado, datos.token)) {
-                            mostrarMensajeLoginNav("No se pudo establecer la sesión. Intentá nuevamente.", "error");
-                            if(botonSubmit) botonSubmit.disabled = false;
-                            return;
-                        }
+                        if (datos.token) localStorage.setItem("macroSessionToken", datos.token);
+                        localStorage.setItem("usuarioActivo", JSON.stringify(usuarioNormalizado));
 
                         mostrarMensajeLoginNav("Bienvenido " + datos.user.username, "exito");
 

@@ -33,14 +33,6 @@ function mostrarMensajeLogin(texto, tipo){
     }
 }
 
-const motivoSesion = new URLSearchParams(window.location.search).get("sesion");
-if (motivoSesion === "incompleta" || motivoSesion === "expirada") {
-    mostrarMensajeLogin(
-        "Tu sesión ya no es válida. Volvé a iniciar sesión.",
-        "error"
-    );
-}
-
 
 
 formulario.addEventListener("submit", async function(e){
@@ -110,13 +102,11 @@ formulario.addEventListener("submit", async function(e){
                 nivel: datos.user.level
             };
 
-            if (!guardarSesionLocal(usuarioNormalizado, datos.token)) {
-                mostrarMensajeLogin(
-                    "No se pudo establecer la sesión. Intentá nuevamente.",
-                    "error"
-                );
-                return;
-            }
+            if (datos.token) localStorage.setItem("macroSessionToken", datos.token);
+            localStorage.setItem(
+                "usuarioActivo",
+                JSON.stringify(usuarioNormalizado)
+            );
 
 
 

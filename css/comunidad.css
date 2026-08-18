@@ -381,7 +381,15 @@
 }
 
 /* Botón ver perfil */
-.btn-ver-perfil {
+/* Selector duplicado con .mr-root delante a propósito: sin esto,
+   ".mr-root a { color: inherit }" de inicio.css (mismo puntaje de
+   especificidad: una clase + una etiqueta) termina ganando por orden
+   de carga y deja el botón dorado casi ilegible. Con ".mr-root
+   .btn-ver-perfil" (dos clases) el color #241804 gana siempre,
+   sin necesidad de !important. Corrige el bug de contraste para
+   todas las páginas que usan esta clase (comunidad-ranking, admin, etc). */
+.btn-ver-perfil,
+.mr-root .btn-ver-perfil {
   display: block;
   width: 100%;
   text-align: center;

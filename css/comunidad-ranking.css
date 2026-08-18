@@ -210,7 +210,7 @@ html[data-tema="claro"] {
   max-width: 1180px;
   margin: 0 auto 30px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -405,7 +405,12 @@ html[data-tema="claro"] {
   flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  /* minmax(0, 1fr) en vez de 1fr a secas: sin el "0", cada columna se
+     niega a achicarse por debajo del contenido (avatar + texto de la
+     tarjeta) y con 10 columnas eso no entra en el ancho disponible al
+     lado de la barra lateral -> el grid se desborda por encima de
+     ".rk-columna-lateral" (bug visto en PC/laptop, ~980px-1400px). */
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -491,6 +496,8 @@ html[data-tema="claro"] {
   color: var(--rk-texto-muted);
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0 0 2px;
 }
 
@@ -775,7 +782,7 @@ html[data-tema="claro"] {
 
 .cr-grid-conectados {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   max-height: 260px;
   overflow-y: auto;
@@ -1027,23 +1034,6 @@ html[data-tema="claro"] {
   color: var(--text-placeholder);
 }
 
-/* ==========================================================================
-   AJUSTE DE CONTRASTE (bug pre-existente, no de esta página)
-   ========================================================================== */
-/* css/comunidad.css define ".btn-ver-perfil { color: #241804 }" con un
-   solo selector de clase, y ".mr-root a { color: inherit }" de
-   inicio.css termina ganando por especificidad más alta (le agrega el
-   selector de tipo "a"), heredando el color de texto claro del fondo
-   y dejando el botón dorado casi ilegible. Es un problema que ya
-   existía antes de este cambio y que también afecta a admin.html (que
-   usa la misma clase) — game acá solo se corrige DENTRO de esta
-   página, sin tocar css/comunidad.css, para no modificar nada fuera
-   de lo pedido. Si querés, en otro momento lo arreglamos también en
-   el archivo original para que quede resuelto en todos lados. */
-.tarjeta-usuario .btn-ver-perfil {
-  color: #241804;
-}
-
 .nav-links a.activo,
 .nav-links a.activa-nav {
   color: var(--gold-bright);
@@ -1056,7 +1046,7 @@ html[data-tema="claro"] {
 
 @media (max-width: 980px) {
   .rk-podio6 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .rk-cuerpo {
@@ -1068,7 +1058,7 @@ html[data-tema="claro"] {
   }
 
   .rk-lista-resto {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .cr-seccion-media {
@@ -1086,7 +1076,7 @@ html[data-tema="claro"] {
   }
 
   .rk-podio6 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
@@ -1110,7 +1100,7 @@ html[data-tema="claro"] {
   }
 
   .cr-grid-conectados {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .cr-feed-actividad {
