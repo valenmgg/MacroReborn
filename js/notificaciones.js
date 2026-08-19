@@ -22,7 +22,7 @@ const _notificacionesCache = new Map();
 const _notificacionesInflight = new Map();
 const NOTIFICACIONES_CACHE_TTL = 2500;
 
-const NOTIFICACIONES_POLL_MS = 20000;
+const NOTIFICACIONES_POLL_MS = 8000;
 let _notificacionesPollTimer = null;
 
 function programarPollingNotificaciones(){
@@ -64,9 +64,26 @@ async function obtenerNotificaciones(nombre){
 
     const solicitud = (async ()=>{
         try{
-            const resp = await fetch("/api/content?action=notifications&username=" + encodeURIComponent(nombre));
+            const resp = await fetch(
+                "/api/content?action=notifications&username=" + encodeURIComponent(nombre),
+                { credentials: "same-origin", cache: "no-store" }
+            );
+
+            if(!resp.ok){
+                let detalle = "";
+                try {
+                    const err = await resp.json();
+                    detalle = err && (err.error || err.message) ? " — " + (err.error || err.message) : "";
+                } catch (_) {}
+                console.warn("MacroReborn: GET de notificaciones devolvió HTTP " + resp.status + detalle);
+                return [];
+            }
+
             const datos = await resp.json();
-            if(!datos || !datos.success) return [];
+            if(!datos || !datos.success){
+                console.warn("MacroReborn: GET de notificaciones no confirmó success.", datos);
+                return [];
+            }
 
             const lista = datos.notificaciones.map(n => ({
                 id: n.id,
@@ -108,18 +125,34 @@ function crearNotificacion(nombre, titulo, mensaje, origenNombre){
 
     fetch("/api/content?action=notifications", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: nombre, titulo, mensaje, origenNombre })
-    }).then(()=>{
-        invalidarNotificaciones(nombre);
-        // Si la notificación es para quien está mirando esta página
-        // ahora mismo, refrescamos el contador y la lista.
-        if(obtenerUsuarioNotificaciones() && obtenerUsuarioNotificaciones().nombre === nombre){
-            actualizarContador();
-            renderNotificaciones();
+    }).then(async resp => {
+        let datos = null;
+        try { datos = await resp.json(); } catch (_) {}
+
+        if(!resp.ok || !datos || !datos.success){
+            console.warn(
+                "MacroReborn: no se pudo crear la notificación.",
+                { status: resp.status, respuesta: datos }
+            );
+            return;
         }
+
+        invalidarNotificaciones(nombre);
+
+        if(obtenerUsuarioNotificaciones() && obtenerUsuarioNotificaciones().nombre === nombre){
+            await actualizarContador();
+            await renderNotificaciones();
+            await renderNotificacionesDropdown();
+        }
+
+        window.dispatchEvent(new CustomEvent("macro:notification-created", {
+            detail: { usuario: nombre, notificacion: datos.notificacion || null }
+        }));
     }).catch(error=>{
-        console.warn("MacroReborn: no se pudo crear la notificación.", error);
+        console.warn("MacroReborn: error de red al crear la notificación.", error);
     });
 
 }

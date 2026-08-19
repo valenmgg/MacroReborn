@@ -38,6 +38,9 @@
 </main>
 <script defer src="js/core.js"></script>
 <script defer src="js/api-client.js"></script>
-<script defer src="js/session.js"></script><script defer src="js/datos-juegos.js"></script><script defer src="js/descubrimiento.js"></script><script defer src="js/navbar.js"></script><script defer src="js/nav-toggle.js"></script>
+<script defer src="js/session.js"></script><script defer src="js/datos-juegos.js"></script><script defer src="js/descubrimiento.js"></script><script defer src="js/notificaciones.js"></script>
+        <script defer src="https://js.pusher.com/8.4/pusher.min.js"></script>
+        <script defer src="js/realtime.js"></script>
+        <script defer src="js/navbar.js"></script><script defer src="js/nav-toggle.js"></script>
 <script>document.addEventListener("DOMContentLoaded",()=>{const p=new URLSearchParams(location.search);const cat=p.get("categoria");const data=window.MRDescubrimiento;const cats=data.obtenerCategorias();const chips=document.getElementById("listaCategorias");chips.innerHTML=cats.map(([c,n])=>`<a class="mr-chip" href="categoria.html?categoria=${encodeURIComponent(c)}">🎮 ${c} <span>${n}</span></a>`).join("");const grid=document.getElementById("juegosCategoria");if(cat){document.getElementById("tituloCategoria").textContent=`Juegos de ${cat}`;document.getElementById("subtituloCategoria").textContent=`${cat} · juegos disponibles`;const lista=juegos.filter(j=>String(j.categoria||"").toLowerCase()===String(cat).toLowerCase());data.renderLista(grid,lista);}else{const lista=juegos.slice().sort((a,b)=>String(a.categoria).localeCompare(String(b.categoria))).slice(0,12);data.renderLista(grid,lista);}});</script>
 </body></html>
