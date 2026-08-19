@@ -520,14 +520,6 @@ if (avatar && caja) {
           return;
         }
 
-        if(typeof crearNotificacion === "function"){
-          crearNotificacion(
-            usuario.nombre,
-            "🤝 Nueva amistad",
-            activo.nombre + " aceptó tu solicitud de amistad."
-          );
-        }
-
         // LOGROS DE AMIGOS
         if(typeof desbloquearLogro === "function"){
           desbloquearLogro(activo.nombre, "primerAmigo");
@@ -564,16 +556,6 @@ if (avatar && caja) {
         console.warn("MacroReborn: no se pudo enviar la solicitud.", error);
         actualizarBotonAmigo();
         return;
-      }
-
-      // NOTIFICACION A QUIEN RECIBE LA SOLICITUD
-      if(typeof crearNotificacion==="function"){
-        crearNotificacion(
-          usuario.nombre,
-          "📩 Nueva solicitud de amistad",
-          activo.nombre + " te envió una solicitud de amistad.",
-          activo.nombre
-        );
       }
 
       await cargarMisSolicitudes();
@@ -883,33 +865,6 @@ function escaparHTML(texto) {
       inputComentario.value = "";
 
       await renderComentarios();
-
-      // ==============================
-      // NOTIFICACIÓN DE MENCIÓN
-      // ==============================
-
-      if(typeof notificarMenciones === "function"){
-        notificarMenciones(texto, quien, "en un comentario en el perfil de " + usuario.nombre + ".");
-      }
-
-      // ==============================
-      // NOTIFICACIÓN NUEVO COMENTARIO
-      // ==============================
-
-      if(
-        activo &&
-        activo.nombre !== usuario.nombre &&
-        typeof crearNotificacion === "function"
-      ){
-
-        crearNotificacion(
-          usuario.nombre,
-          "💬 Nuevo comentario",
-          activo.nombre + " comentó en tu perfil.",
-          activo.nombre
-        );
-
-      }
 
       // ==============================
       // LOGRO PRIMER COMENTARIO

@@ -407,23 +407,6 @@ async function aceptarSolicitud(requestId, para){
 
 
 
-  // NOTIFICACION
-
-  if(typeof crearNotificacion==="function"){
-
-
-    crearNotificacion(
-
-    de,
-
-    "🤝 Solicitud aceptada",
-
-    para+" aceptó tu solicitud de amistad."
-
-    );
-
-
-  }
 
 
 
@@ -459,21 +442,6 @@ async function enviarSolicitud(de,para){
   }
 
 
-  if(typeof crearNotificacion==="function"){
-
-
-    crearNotificacion(
-
-    para,
-
-    "📩 Nueva solicitud de amistad",
-
-    de+" te envió una solicitud de amistad."
-
-    );
-
-
-  }
 
 
 

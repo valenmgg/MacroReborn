@@ -4,6 +4,7 @@ const { obtenerSql } = require("./_db");
 const { PasswordService } = require("./_password");
 const { requerirAuth } = require("./_auth");
 const { MonedasService } = require("./_monedas");
+const { crearNotificacionServidor } = require("./_notifications");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -355,6 +356,14 @@ async function sumarXp(req, res) {
     monedas = await monedasService.otorgarPorTiempoJugado(id);
   } catch (error) {
     console.warn("MacroReborn: no se pudieron otorgar las monedas por tiempo jugado.", error);
+  }
+
+  if (subioNivel) {
+    await crearNotificacionServidor(
+      username,
+      "⭐ Nuevo nivel",
+      `Subiste al nivel ${level}.`
+    );
   }
 
   return res.status(200).json({

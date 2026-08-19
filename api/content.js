@@ -1,6 +1,7 @@
 const { setCors, hayBloqueoEntreUsuarios } = require("./_utils");
 const { getPusher, canalNotificaciones } = require("./_pusher");
 const { requerirAuth } = require("./_auth");
+const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
 
@@ -184,6 +185,20 @@ async function comments(req, res) {
       VALUES (${profileId}, ${authorId}, ${nombreAutor}, ${texto.trim()})
       RETURNING id, author_username AS usuario, texto, created_at;
     `;
+
+    if (!esPropioPerfil) {
+      await crearNotificacionServidor(
+        profileUsername,
+        "💬 Nuevo comentario",
+        `${nombreAutor} comentó en tu perfil.`,
+        nombreAutor
+      );
+    }
+    await notificarMencionesServidor(
+      texto.trim(),
+      nombreAutor,
+      `en un comentario en el perfil de ${profileUsername}.`
+    );
 
     // Push en tiempo real: avisa a quien tenga el perfil abierto (el
     // suyo o el de otra persona) para que la lista de comentarios se
@@ -472,43 +487,8 @@ async function notifications(req, res) {
       return res.status(400).json({ success: false, error: "Datos incompletos" });
     }
 
-    const userId = await getUserId(username);
-    if (!userId) {
-      return res.status(200).json({ success: false, error: "Usuario no encontrado" });
-    }
-
-    if (origenNombre && await hayBloqueoEntreUsuarios(sql, origenNombre, username)) {
-      return res.status(403).json({
-        success: false,
-        bloqueado: true,
-        error: "La notificación no fue enviada porque existe un bloqueo entre ambos usuarios"
-      });
-    }
-
-    const filas = await sql`
-      INSERT INTO notifications (user_id, titulo, mensaje)
-      VALUES (${userId}, ${titulo}, ${mensaje || ""})
-      RETURNING id, titulo, mensaje, leida, created_at;
-    `;
-
-    const notif = filas[0];
-
-    // Push en tiempo real. Va en un try/catch propio: si Pusher falla
-    // (credenciales mal puestas, corte del servicio, etc.) la
-    // notificación ya quedó guardada en la base igual, así que no
-    // rompemos la respuesta por esto — el usuario la va a ver de
-    // todas formas la próxima vez que actualice la lista.
-    try {
-      await getPusher().trigger(
-        canalNotificaciones(username),
-        "nueva-notificacion",
-        notif
-      );
-    } catch (error) {
-      console.warn("Pusher: no se pudo enviar el push en tiempo real.", error);
-    }
-
-    return res.status(200).json({ success: true, notificacion: notif });
+    const resultado = await crearNotificacionServidor(username, titulo, mensaje, origenNombre);
+    return res.status(resultado.success ? 200 : (resultado.bloqueado ? 403 : 200)).json(resultado);
   }
 
   if (req.method === "DELETE") {
@@ -1616,10 +1596,20 @@ module.exports = async function handler(req, res) {
       if (!auth) return;
       req.auth = auth;
       const body = req.body || {};
-      // La mayoría de las escrituras ya llevan "username" como actor.
-      // Lo fijamos al usuario autenticado para impedir suplantaciones.
-      if (body.username && String(body.username).toLowerCase() !== String(auth.username).toLowerCase()) {
+      // Las notificaciones pueden dirigirse a otro usuario solo cuando
+      // el remitente declarado (origenNombre) coincide con la sesión.
+      // Para el resto de escrituras, username sigue siendo el actor.
+      if (action !== "notifications" && body.username && String(body.username).toLowerCase() !== String(auth.username).toLowerCase()) {
         return res.status(403).json({ success:false,error:"Sesión no corresponde al usuario" });
+      }
+      if (action === "notifications") {
+        if (body.origenNombre) {
+          if (String(body.origenNombre).toLowerCase() !== String(auth.username).toLowerCase()) {
+            return res.status(403).json({ success:false,error:"Sesión no corresponde al origen de la notificación" });
+          }
+        } else if (body.username && String(body.username).toLowerCase() !== String(auth.username).toLowerCase()) {
+          return res.status(403).json({ success:false,error:"Una notificación a otro usuario requiere origenNombre" });
+        }
       }
       if (body.reportedBy && String(body.reportedBy).toLowerCase() !== String(auth.username).toLowerCase()) {
         return res.status(403).json({ success:false,error:"Sesión no corresponde al reportante" });

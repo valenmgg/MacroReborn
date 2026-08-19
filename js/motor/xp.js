@@ -122,25 +122,6 @@ async function ganarXP(cantidad){
         );
 
         // ==============================
-// NOTIFICACION DE NIVEL
-// ==============================
-
-if(typeof crearNotificacion === "function"){
-
-    crearNotificacion(
-
-        usuario.nombre,
-
-        "⭐ Nuevo nivel",
-
-        "Subiste al nivel " + usuario.nivel + "."
-
-    );
-    
-
-}
-
-        // ==============================
         // ACTIVIDAD RECIENTE - NIVEL
         // ==============================
 

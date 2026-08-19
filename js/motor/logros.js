@@ -412,18 +412,6 @@ async function desbloquearLogro(nombre,id){
     registrarActividad(nombre, "logro", LOGROS[id].nombre);
   }
 
-  // ==============================
-  // NOTIFICACION DE LOGRO
-  // ==============================
-
-  if(typeof crearNotificacion === "function"){
-    crearNotificacion(
-      nombre,
-      "🏅 Nuevo logro desbloqueado",
-      "Conseguiste: " + LOGROS[id].nombre
-    );
-  }
-
 }
 
 

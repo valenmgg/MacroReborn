@@ -2,6 +2,7 @@ const { neon } = require("@neondatabase/serverless");
 const { setCors, hayBloqueoEntreUsuarios, usuarioBloqueaA } = require("./_utils");
 const { getPusher, canalNotificaciones } = require("./_pusher");
 const { requerirAuth } = require("./_auth");
+const { crearNotificacionServidor } = require("./_notifications");
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -136,6 +137,12 @@ async function friends(req, res) {
 
       if (inversa.length) {
         await aceptarSolicitud(inversa[0].id, toId, fromId);
+        await crearNotificacionServidor(
+          to,
+          "🤝 Nueva amistad",
+          `${from} aceptó tu solicitud de amistad.`,
+          from
+        );
         return res.status(200).json({ success: true, aceptadaAutomaticamente: true });
       }
 
@@ -144,6 +151,13 @@ async function friends(req, res) {
         VALUES (${fromId}, ${toId}, 'pendiente')
         ON CONFLICT (from_user_id, to_user_id) WHERE status = 'pendiente' DO NOTHING;
       `;
+
+      await crearNotificacionServidor(
+        to,
+        "📩 Nueva solicitud de amistad",
+        `${from} te envió una solicitud de amistad.`,
+        from
+      );
 
       return res.status(200).json({ success: true });
     }
@@ -168,6 +182,15 @@ async function friends(req, res) {
       }
 
       await aceptarSolicitud(requestId, solicitud.from_user_id, solicitud.to_user_id);
+      const nombres = await sql`SELECT id, username FROM users WHERE id IN (${solicitud.from_user_id}, ${solicitud.to_user_id});`;
+      const nombreDe = nombres.find(u => Number(u.id) === Number(solicitud.from_user_id))?.username || "Alguien";
+      const nombrePara = nombres.find(u => Number(u.id) === Number(solicitud.to_user_id))?.username || req.auth.username;
+      await crearNotificacionServidor(
+        nombreDe,
+        "🤝 Nueva amistad",
+        `${nombrePara} aceptó tu solicitud de amistad.`,
+        nombrePara
+      );
       return res.status(200).json({ success: true });
     }
 
@@ -368,6 +391,12 @@ async function achievements(req, res) {
       VALUES (${usuarios[0].id}, ${achievementId})
       ON CONFLICT (user_id, achievement_id) DO NOTHING;
     `;
+
+    await crearNotificacionServidor(
+      username,
+      "🏅 Nuevo logro desbloqueado",
+      `Conseguiste: ${achievementId}`
+    );
 
     // Push en tiempo real: refresca la pestaña "Logros" sin recargar.
     try {
