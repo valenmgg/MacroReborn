@@ -2421,461 +2421,440 @@ a.actividad-cita:hover {
 .mr-paleta-toggle:hover{border-color:var(--line-hover)}
 @media(max-width:700px){.mr-paleta-grid{grid-template-columns:1fr}.mr-tema-inline{align-items:flex-start;flex-direction:column}}
 
-/* =====================================================================
-   MACROJUEGOS CLÁSICO — SOLO MODO CLARO
-   ---------------------------------------------------------------------
-   Capa visual. No modifica IDs, datos, APIs, sesión, realtime ni lógica.
-   El modo oscuro conserva íntegramente la apariencia actual.
-   ===================================================================== */
-html[data-tema="claro"] .perfil {
-  --clasico-fuente: Verdana, Geneva, Tahoma, sans-serif;
-  --clasico-borde: #167ac6;
-  --clasico-plate: linear-gradient(180deg, #4aa3df 0%, #167ac6 100%);
-  --clasico-header: linear-gradient(180deg, #4aa3df 0%, #167ac6 100%);
-  --clasico-avatar-fondo: linear-gradient(180deg, #eaf7ff 0%, #dff3ff 100%);
-  --bg-page: #dff3ff;
-}
+
+/* ==========================================================================
+   MACROJUEGOS CLÁSICO — PERFIL / SOLO MODO CLARO
+   --------------------------------------------------------------------------
+   Este bloque sustituye la apariencia "dashboard/gamer" del perfil por una
+   recreación más fiel del portal clásico de MacroJuegos.
+   No cambia IDs, HTML, datos, sesión, API ni lógica JavaScript.
+   El modo oscuro no se toca.
+   ========================================================================== */
 
 html[data-tema="claro"] .perfil {
-  max-width: 1080px;
-  padding: 24px 18px 56px;
-  color: #24384a;
+  --mj-blue: #167ac6;
+  --mj-blue-dark: #0d5da8;
+  --mj-blue-light: #4aa3df;
+  --mj-blue-pale: #eaf7ff;
+  --mj-blue-soft: #dff3ff;
+  --mj-border: #9cc8e8;
+  --mj-yellow: #ffcc00;
+  --mj-yellow-dark: #e6a800;
+  --mj-orange: #ff9900;
+  --mj-text: #2d2d2d;
+
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 16px 14px 42px;
+  color: var(--mj-text);
+  font-family: Verdana, Geneva, Tahoma, Arial, sans-serif;
+}
+
+/* Fondo plano tipo portal antiguo */
+html[data-tema="claro"] .perfil::selection {
+  background: #167ac6;
+  color: #fff;
 }
 
 html[data-tema="claro"] .perfil-migas {
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 400;
-  color: #607d94;
+  margin: 0 0 8px;
+  gap: 5px;
+  font: 11px Arial, Helvetica, sans-serif;
+  font-weight: normal;
+  color: #6b6b6b;
+  letter-spacing: 0;
 }
 
 html[data-tema="claro"] .perfil-migas-texto strong {
-  color: #167ac6;
+  color: #3e3e3e;
 }
 
 html[data-tema="claro"] .perfil-volver {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #167ac6;
-  border-radius: 2px;
-  background: #ffffff;
-  color: #167ac6;
-  font-size: 13px;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--mj-blue);
+  font-size: 18px;
+  box-shadow: none;
 }
 
+html[data-tema="claro"] .perfil-volver:hover {
+  background: transparent;
+  transform: translateX(-1px);
+}
+
+/* Layout principal: avatar estrecho a la izquierda + contenido ancho */
 html[data-tema="claro"] .perfil-cuerpo {
-  grid-template-columns: 195px minmax(0, 1fr);
+  grid-template-columns: 178px minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
 }
 
 html[data-tema="claro"] .perfil-sidebar {
-  gap: 10px;
-  top: 78px;
+  position: static;
+  gap: 9px;
 }
 
+/* Avatar: marco azul fino, sin sombras modernas */
 html[data-tema="claro"] .tarjeta-avatar {
-  border: 1px solid #4aa3df;
-  border-radius: 0;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(23, 83, 120, .16);
+  border: 1px solid #7eb5dc;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 1px 1px 0 rgba(0,0,0,.08);
 }
 
 html[data-tema="claro"] .tarjeta-avatar-chapas {
   padding: 5px;
+  gap: 4px;
 }
 
 html[data-tema="claro"] .tarjeta-chapa-nivel.nivel,
 html[data-tema="claro"] .tarjeta-chapa-estado.estado {
+  padding: 3px 5px;
   border-radius: 2px;
+  font: 10px Arial, Helvetica, sans-serif;
   box-shadow: none;
-  backdrop-filter: none;
-  padding: 4px 6px;
-  font-size: 9px;
+  max-width: 48%;
+  background: rgba(255,255,255,.94);
 }
 
 html[data-tema="claro"] .tarjeta-chapa-nivel.nivel {
-  color: #ffffff;
-  border: 1px solid #e6a800;
-  background: #ffcc00;
-  max-width: 56%;
+  color: #795600;
+  border: 1px solid var(--mj-yellow-dark);
+  background: #fff8c9;
 }
 
 html[data-tema="claro"] .tarjeta-chapa-estado.estado {
-  color: #167ac6;
-  border: 1px solid #7fbfe6;
-  background: #eaf7ff;
-  max-width: 56%;
+  color: #27822d;
+  border: 1px solid #9bcf9b;
+  background: #effbea;
 }
 
 html[data-tema="claro"] .tarjeta-avatar .avatar {
-  background: #eaf7ff;
+  aspect-ratio: 327 / 505;
+  background: #fff;
 }
 
 html[data-tema="claro"] .tarjeta-avatar-pie {
-  padding: 7px 8px;
-  background: #167ac6;
-  border-top: 0;
+  padding: 6px 7px;
+  background: var(--mj-blue);
+  border-top: 1px solid var(--mj-blue-dark);
 }
 
 html[data-tema="claro"] .tarjeta-avatar-nombre {
-  font-size: 12px;
+  font: bold 13px Verdana, Geneva, Tahoma, Arial, sans-serif;
+  color: #fff;
   text-shadow: none;
 }
 
+/* Insignias: pequeñas y planas */
+html[data-tema="claro"] .insignias-usuario {
+  margin: 0;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--mj-border);
+  border-radius: 2px;
+}
+
+/* Estadísticas: bloque compacto, no tarjetas */
 html[data-tema="claro"] .tarjeta-stats {
-  border: 1px solid #4aa3df;
-  border-radius: 0;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(23, 83, 120, .12);
+  border: 1px solid #7eb5dc;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 1px 1px 0 rgba(0,0,0,.05);
 }
 
 html[data-tema="claro"] .tarjeta-stats-titulo {
-  padding: 7px 9px;
-  font-size: 11px;
-  background: #167ac6;
+  padding: 7px 8px;
+  background: var(--mj-blue);
+  border-bottom: 1px solid var(--mj-blue-dark);
+  color: #fff;
+  font: bold 12px Verdana, Geneva, Tahoma, Arial, sans-serif;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas {
-  padding: 3px 9px 7px;
+  padding: 4px 8px 7px;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas > div {
-  padding: 7px 0;
-  border-bottom: 1px solid #d5eaf7;
+  min-height: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid #d6e7f4;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas h3 {
-  color: #5b7284;
-  font-size: 10px;
+  color: #555;
+  font: normal 10px Arial, Helvetica, sans-serif;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas > div > p {
-  color: #167ac6;
-  font-size: 11px;
+  color: #333;
+  font: bold 10px Arial, Helvetica, sans-serif;
 }
 
 html[data-tema="claro"] .tarjeta-stats .barra-xp {
-  height: 8px;
-  border: 1px solid #b5d7ea;
-  border-radius: 2px;
-  background: #d6dce1;
+  height: 7px;
+  margin-top: 6px;
+  border: 1px solid #c3d9e8;
+  border-radius: 1px;
+  background: #eef6fb;
 }
 
-html[data-tema="claro"] #progresoXP {
-  background: #167ac6;
+html[data-tema="claro"] .tarjeta-stats #progresoXP {
+  background: var(--mj-blue);
+  border-radius: 0;
 }
 
 html[data-tema="claro"] .tarjeta-stats #textoXP {
-  color: #6b7e8f;
-  font-size: 9px;
+  color: #777;
+  font: 9px Arial, Helvetica, sans-serif;
 }
 
+/* Menú del perfil: barra horizontal azul clásica */
 html[data-tema="claro"] .perfil-principal {
   min-width: 0;
 }
 
+html[data-tema="claro"] .menu-perfil {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #0c569d;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #4aa3df 0%, #167ac6 55%, #0d5da8 100%);
+  box-shadow: none;
+}
+
+html[data-tema="claro"] .menu-perfil .tab {
+  flex: 0 0 auto;
+  min-height: 29px;
+  padding: 7px 10px;
+  margin: 0;
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,.22);
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: bold 10px Arial, Helvetica, sans-serif;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22);
+  box-shadow: none;
+  transform: none !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab:hover {
+  background: rgba(255,255,255,.12);
+}
+
+html[data-tema="claro"] .menu-perfil .tab.activa {
+  color: #fff;
+  background: var(--mj-blue-dark);
+  box-shadow: inset 0 -2px 0 var(--mj-yellow);
+}
+
+/* Quitar los emojis del estilo moderno conservando exactamente los botones */
+html[data-tema="claro"] .menu-perfil .tab {
+  font-size: 0;
+}
+
+html[data-tema="claro"] .menu-perfil .tab::after {
+  font: bold 10px Arial, Helvetica, sans-serif;
+  content: "Sección";
+}
+
+html[data-tema="claro"] .menu-perfil .tab:nth-child(1)::after { content: "Inicio"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(2)::after { content: "Actividad amigos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(3)::after { content: "Actividad reciente"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(4)::after { content: "Comentarios"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(5)::after { content: "Favoritos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(6)::after { content: "Últimos jugados"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(7)::after { content: "Amigos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(8)::after { content: "Avatar"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(9)::after { content: "Logros"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(10)::after { content: "Configurar"; }
+
+/* Cabecera del usuario: no más pastilla púrpura */
 html[data-tema="claro"] .perfil-datos-cabecera {
-  margin: 0 0 7px;
   display: block;
+  margin: 0;
+  padding: 9px 12px 7px;
+  border: 1px solid var(--mj-border);
+  border-top: 0;
+  background: linear-gradient(to bottom, #f8fcff 0%, #e3f2fc 100%);
 }
 
 html[data-tema="claro"] .perfil-datos-cabecera h1 {
-  margin: 0;
-  padding: 8px 10px;
   display: block;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
   border-radius: 0;
-  background: #167ac6;
   box-shadow: none;
-  color: #ffffff;
-  font-size: 16px;
+  color: var(--mj-blue-dark);
+  font: bold 18px Verdana, Geneva, Tahoma, Arial, sans-serif;
   text-shadow: none;
 }
 
-html[data-tema="claro"] .menu-perfil {
-  position: static;
-  margin-top: 0;
-  padding: 0;
-  gap: 0;
-  border: 1px solid #4aa3df;
-  border-radius: 0;
-  background: #ffffff;
-  box-shadow: none;
-}
-
-html[data-tema="claro"] .menu-perfil button {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 6px 9px;
-  border: 0;
-  border-right: 1px solid #86c1e3;
-  border-radius: 0;
-  background: #4aa3df;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-html[data-tema="claro"] .menu-perfil button:last-child {
-  border-right: 0;
-}
-
-html[data-tema="claro"] .menu-perfil button:hover {
-  border-color: #4aa3df;
-  background: #167ac6;
-  color: #ffffff;
-}
-
-html[data-tema="claro"] .menu-perfil .activa,
-html[data-tema="claro"] .menu-perfil .activa:hover {
-  background: #167ac6;
-  color: #ffffff;
-}
-
+/* Contenido tipo panel de foro/portal */
 html[data-tema="claro"] .contenido-tab {
   margin-top: 8px;
   padding: 12px;
-  border: 1px solid #7fbfe6;
-  border-radius: 0;
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(23, 83, 120, .10);
+  border: 1px solid var(--mj-border);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  color: var(--mj-text);
 }
 
 html[data-tema="claro"] .contenido-tab > h2 {
-  margin: -12px -12px 10px;
-  padding: 7px 9px;
-  border-bottom: 1px solid #7fbfe6;
-  background: #eaf7ff;
-  color: #167ac6;
-  font-size: 12px;
+  margin: 0 -12px 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--mj-border);
+  background: var(--mj-blue-soft);
+  color: var(--mj-blue-dark);
+  font: bold 13px Verdana, Geneva, Tahoma, Arial, sans-serif;
 }
 
 html[data-tema="claro"] .contenido-tab > p {
-  color: #546b7d;
-  font-size: 12px;
+  color: #555;
+  font: 11px Arial, Helvetica, sans-serif;
+  line-height: 1.55;
 }
 
+/* Inicio / biografía */
 html[data-tema="claro"] .perfil-caja-info {
+  margin-bottom: 9px;
   padding: 10px 12px;
-  margin-bottom: 8px;
-  border: 1px solid #b9dcec;
-  border-left: 4px solid #167ac6;
-  border-radius: 0;
-  background: #eaf7ff;
+  border: 1px solid var(--mj-border);
+  border-left: 4px solid var(--mj-blue);
+  border-radius: 2px;
+  background: var(--mj-blue-pale);
 }
 
 html[data-tema="claro"] .perfil-caja-info .biografia {
   margin: 0 0 8px;
-  color: #31495c;
-  font-size: 12px;
-  line-height: 1.55;
+  color: #444;
+  font: 11px/1.55 Arial, Helvetica, sans-serif;
 }
 
 html[data-tema="claro"] .perfil-btn-editar {
   padding: 5px 9px;
-  border: 1px solid #167ac6;
+  border: 1px solid var(--mj-blue-dark);
   border-radius: 2px;
-  background: #ffffff;
-  color: #167ac6;
-  font-size: 10px;
+  background: var(--mj-blue);
+  color: #fff;
+  font: bold 10px Arial, Helvetica, sans-serif;
   box-shadow: none;
 }
 
 html[data-tema="claro"] .perfil-btn-editar:hover {
   transform: none;
-  background: #eaf7ff;
+  filter: brightness(1.06);
 }
 
 html[data-tema="claro"] .perfil-barra-comentarios {
-  padding: 7px 9px;
-  border: 1px solid #167ac6;
-  border-radius: 0;
-  background: #167ac6;
+  min-height: 27px;
+  padding: 6px 9px;
+  border: 1px solid #0d5da8;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #65afe4 0%, #167ac6 100%);
+  color: #fff;
+  font: bold 10px Arial, Helvetica, sans-serif;
   box-shadow: none;
-  font-size: 11px;
 }
 
 html[data-tema="claro"] .perfil-preview-comentarios {
-  margin-top: 6px;
+  margin-top: 7px;
 }
 
-html[data-tema="claro"] .actividad,
-html[data-tema="claro"] .tarjeta-usuario,
-html[data-tema="claro"] .tarjeta-amigo,
-html[data-tema="claro"] .tarjeta-logro {
-  border-radius: 0;
+/* Acciones / formularios */
+html[data-tema="claro"] .perfil-acciones {
+  gap: 5px;
+  margin-bottom: 7px;
 }
 
-html[data-tema="claro"] .juego-card {
-  border-radius: 0;
-  border: 1px solid #b9dcec;
-  background: #eaf7ff;
+html[data-tema="claro"] .perfil-acciones button,
+html[data-tema="claro"] .perfil-acciones a {
+  border-radius: 2px !important;
+  font: bold 10px Arial, Helvetica, sans-serif !important;
 }
 
-/* El resumen automático (monedas, juegos, favoritos, amigos) conserva sus
-   datos online, pero se presenta como un bloque compacto del portal clásico. */
-html[data-tema="claro"] .mr-identidad-hub {
-  margin: 8px 0 0;
-  gap: 6px;
+/* Todos los botones e inputs dentro de las secciones: planos y compactos */
+html[data-tema="claro"] .contenido-tab button,
+html[data-tema="claro"] .contenido-tab input,
+html[data-tema="claro"] .contenido-tab textarea,
+html[data-tema="claro"] .contenido-tab select {
+  border-radius: 2px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html[data-tema="claro"] .contenido-tab input,
+html[data-tema="claro"] .contenido-tab textarea,
+html[data-tema="claro"] .contenido-tab select {
+  border: 1px solid #a8c9df;
+  background: #fff;
+  color: #333;
+}
+
+/* Evita que los módulos modernos de identidad vuelvan a teñir el perfil
+   clásico cuando estamos en modo claro. */
+html[data-tema="claro"] .mr-identidad-hero,
+html[data-tema="claro"] .mr-identidad-panel,
+html[data-tema="claro"] .mr-identidad-stat {
+  border-radius: 2px;
+  box-shadow: none;
+  background: #fff;
+  border-color: var(--mj-border);
 }
 
 html[data-tema="claro"] .mr-identidad-hero {
-  padding: 8px 10px;
-  border: 1px solid #4aa3df;
-  border-radius: 0;
-  background: #eaf7ff;
-  box-shadow: none;
+  background: var(--mj-blue-pale);
 }
 
-html[data-tema="claro"] .mr-identidad-kicker {
-  color: #167ac6;
-  font-size: 9px;
-  letter-spacing: .08em;
-}
-
-html[data-tema="claro"] .mr-identidad-hero h2 {
-  color: #167ac6;
-  font-size: 15px;
-}
-
-html[data-tema="claro"] .mr-identidad-hero p {
-  margin: 2px 0 0;
-  color: #5b7284;
-  font-size: 10px;
-}
-
-html[data-tema="claro"] .mr-identidad-quick-actions,
-html[data-tema="claro"] .mr-identidad-footer-actions {
-  gap: 4px;
-}
-
-html[data-tema="claro"] .mr-identidad-action,
-html[data-tema="claro"] .mr-identidad-footer-actions button,
-html[data-tema="claro"] .mr-identidad-footer-actions a,
-html[data-tema="claro"] .mr-identidad-panel-title button {
-  padding: 4px 6px;
-  border: 1px solid #7fbfe6;
-  border-radius: 2px;
-  background: #ffffff;
-  color: #167ac6;
-  font-size: 10px;
-}
-
-html[data-tema="claro"] .mr-identidad-action:hover,
-html[data-tema="claro"] .mr-identidad-footer-actions button:hover,
-html[data-tema="claro"] .mr-identidad-footer-actions a:hover,
-html[data-tema="claro"] .mr-identidad-panel-title button:hover {
-  transform: none;
-  border-color: #167ac6;
-  background: #eaf7ff;
-}
-
-html[data-tema="claro"] .mr-identidad-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-}
-
-html[data-tema="claro"] .mr-identidad-stat {
-  padding: 7px;
-  gap: 6px;
-  border: 1px solid #b9dcec;
-  border-radius: 0;
-  background: #ffffff;
-}
-
-html[data-tema="claro"] .mr-identidad-stat-icon {
-  flex-basis: 28px;
-  width: 28px;
-  height: 28px;
-  border-radius: 2px;
-  background: #eaf7ff;
-  font-size: 14px;
-}
-
-html[data-tema="claro"] .mr-identidad-stat-copy span,
-html[data-tema="claro"] .mr-identidad-stat-copy small {
-  color: #6a7d8d;
-  font-size: 9px;
-}
-
+html[data-tema="claro"] .mr-identidad-kicker,
 html[data-tema="claro"] .mr-identidad-stat-copy strong {
-  color: #167ac6;
-  font-size: 11px;
+  color: var(--mj-blue-dark);
 }
 
-html[data-tema="claro"] .mr-identidad-lower {
-  gap: 6px;
+html[data-tema="claro"] .mr-identidad-hero p,
+html[data-tema="claro"] .mr-identidad-stat-copy span,
+html[data-tema="claro"] .mr-identidad-stat-copy small,
+html[data-tema="claro"] .mr-identidad-panel-title small,
+html[data-tema="claro"] .mr-identidad-empty,
+html[data-tema="claro"] .mr-identidad-loading {
+  color: #666;
 }
 
-html[data-tema="claro"] .mr-identidad-panel {
-  padding: 8px;
-  border: 1px solid #b9dcec;
-  border-radius: 0;
-  background: #eaf7ff;
-}
-
-html[data-tema="claro"] .mr-identidad-panel-title {
-  margin-bottom: 6px;
-}
-
-html[data-tema="claro"] .mr-identidad-panel-title strong {
-  color: #167ac6;
-  font-size: 10px;
-}
-
-html[data-tema="claro"] .mr-identidad-panel-title small {
-  color: #6a7d8d;
-  font-size: 8px;
-}
-
-html[data-tema="claro"] .mr-identidad-game {
-  padding: 4px;
-  border-radius: 0;
-  background: #ffffff;
-}
-
-html[data-tema="claro"] .mr-identidad-game:hover {
-  background: #dff3ff;
-}
-
-html[data-tema="claro"] .mr-identidad-game img {
-  width: 34px;
-  height: 34px;
-  flex-basis: 34px;
-  border-radius: 0;
-}
-
-html[data-tema="claro"] .mr-identidad-game span {
-  color: #31495c;
-  font-size: 10px;
-}
-
+/* Responsive: conservar la estética en pantallas chicas */
 @media (max-width: 900px) {
   html[data-tema="claro"] .perfil-cuerpo {
     grid-template-columns: 1fr;
   }
 
   html[data-tema="claro"] .perfil-sidebar {
-    position: static;
-    width: 195px;
-    max-width: 100%;
+    width: 178px;
+    margin: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  html[data-tema="claro"] .perfil {
+    padding: 8px 7px 25px;
+  }
+
+  html[data-tema="claro"] .perfil-sidebar {
+    width: min(178px, 100%);
     margin: 0 auto;
   }
-}
 
-@media (max-width: 640px) {
-  html[data-tema="claro"] .menu-perfil button {
-    flex: 1 1 auto;
-  }
-
-  html[data-tema="claro"] .mr-identidad-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 430px) {
-  html[data-tema="claro"] .mr-identidad-grid,
-  html[data-tema="claro"] .mr-identidad-lower {
-    grid-template-columns: 1fr;
+  html[data-tema="claro"] .menu-perfil .tab {
+    padding-left: 7px;
+    padding-right: 7px;
   }
 }
