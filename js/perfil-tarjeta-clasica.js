@@ -60,6 +60,37 @@
   // Puramente visual: colapsa/expande la vista previa de comentarios
   // que ya pinta perfil.js en #ultimosComentariosInicio. No reemplaza
   // ni duplica esa lógica, solo la muestra u oculta.
+  function esModoClaro() {
+    return document.documentElement.getAttribute("data-tema") === "claro";
+  }
+
+  function sincronizarPresentacionClasica() {
+    if (!esModoClaro()) return;
+
+    const nombreEl = document.getElementById("nombreUsuario");
+    const migasNombre = document.getElementById("perfilMigasUsuario");
+    if (nombreEl && migasNombre) {
+      const nombre = nombreEl.textContent.trim();
+      if (nombre && nombre !== "Usuario") migasNombre.textContent = nombre.toUpperCase();
+    }
+
+    const estadoEl = document.querySelector(".tarjeta-chapa-estado");
+    if (estadoEl) {
+      const texto = estadoEl.textContent.trim().toLowerCase();
+      const online = texto.includes("en línea") || texto.includes("online") || texto.includes("🟢");
+      estadoEl.textContent = online ? "ONLINE" : "OFFLINE";
+    }
+  }
+
+  function observarModoClaro() {
+    sincronizarPresentacionClasica();
+    if (typeof MutationObserver !== "undefined") {
+      const root = document.documentElement;
+      const obs = new MutationObserver(() => sincronizarPresentacionClasica());
+      obs.observe(root, { attributes: true, attributeFilter: ["data-tema"] });
+    }
+  }
+
   function iniciarBarraComentarios() {
     const barra = document.querySelector(".perfil-barra-comentarios");
     const preview = document.getElementById("ultimosComentariosInicio");
@@ -77,10 +108,12 @@
     document.addEventListener("DOMContentLoaded", () => {
       iniciar();
       iniciarBarraComentarios();
+      observarModoClaro();
     });
   } else {
     iniciar();
     iniciarBarraComentarios();
+    observarModoClaro();
   }
 
 })();

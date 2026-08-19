@@ -46,6 +46,7 @@
     <link rel="stylesheet" href="css/finalizacion.css">
     <link rel="stylesheet" href="css/perfil-identidad.css">
 <link rel="stylesheet" href="css/theme-canonical.css">
+<link rel="stylesheet" href="css/perfil-macrojuegos-light.css">
 </head>
 
 <body class="mr-root">
@@ -69,7 +70,7 @@
   <!-- MIGA DE PAN ESTILO "PORTAL CLÁSICO" -->
   <div class="perfil-migas">
     <a href="comunidad.html" class="perfil-volver" aria-label="Volver a comunidad">←</a>
-    <span class="perfil-migas-texto">Juegos » Comunidad » <strong>Mi perfil</strong></span>
+    <span class="perfil-migas-texto"><span class="perfil-migas-original">Juegos » Comunidad » <strong>Mi perfil</strong></span><span class="perfil-migas-clasico">JUEGOS » COMUNIDAD DE USUARIOS » <strong>PERFIL DE USUARIO <span id="perfilMigasUsuario">USUARIO</span></strong></span></span>
   </div>
 
   <div class="perfil-cuerpo">
@@ -149,7 +150,7 @@
 
   <!-- ACTIVIDAD AMIGOS -->
   <section id="actividad-amigos" class="contenido-tab">
-    <h2>👥 Actividad de amigos</h2>
+    <h2>Actividad de amigos</h2>
     <p>Actividad reciente de tus amigos favoritos (⭐ en la pestaña Amigos).</p>
     <div id="listaActividadAmigos"></div>
   </section>
@@ -162,7 +163,7 @@
 
   <!-- COMENTARIOS -->
   <section id="comentarios" class="contenido-tab">
-    <h2>💬 Comentarios</h2>
+    <h2>Comentarios</h2>
     <div class="acciones-comentarios">
       <button id="botonEliminarTodosComentarios" class="boton-eliminar-todos">🗑️ Eliminar todos mis comentarios</button>
     </div>
@@ -187,7 +188,7 @@
 
   <!-- AMIGOS -->
   <section id="amigos" class="contenido-tab">
-    <h2>🤝 Amigos</h2>
+    <h2>Amigos</h2>
     <p>Tocá la ⭐ de hasta 10 amigos para marcarlos como favoritos: aparecen primero acá y son los que se muestran en "Actividad de amigos".</p>
     <div id="listaAmigosPerfil"></div>
   </section>
@@ -986,7 +987,7 @@
 
   <!-- LOGROS -->
   <section id="logros" class="contenido-tab">
-    <h2>🏅 Logros</h2>
+    <h2>Logros</h2>
     <div id="listaLogros"></div>
   </section>
 
@@ -994,7 +995,7 @@
   <!-- Esta sección es exclusiva de perfil.html (perfil propio). -->
   <!-- No debe replicarse en usuario.html (perfil público de otros usuarios). -->
   <section id="config-cuenta" class="contenido-tab">
-    <h2>⚙️ Configuración de cuenta</h2>
+    <h2>Configuración de cuenta</h2>
     <p class="config-subtitulo">Administrá las opciones privadas de tu cuenta.</p>
 
     <div class="config-bloque config-bloque-personalizacion">
