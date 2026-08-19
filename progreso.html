@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <link rel="stylesheet" href="css/inicio.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tu progreso — MacroReborn</title>
@@ -10,6 +11,25 @@
   <link rel="stylesheet" href="css/macro-progreso.css">
 </head>
 <body class="mr-progress-page">
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <img src="imagenes/logo.png" alt="MacroReborn">
+    MacroReborn
+  </a>
+  <a href="comunidad-ranking.html" class="nav-boton-comunidad">Comunidad</a>
+  <div class="nav-links">
+    <a href="explorar.html">🧭 Explorar</a>
+    <a href="mi-dia.html">🔥 Mi día</a>
+    <a href="progreso.html">🎯 Progreso</a>
+    <a href="liga-global.html">🏆 Ligas</a>
+  </div>
+  <div class="nav-categorias">
+    <a href="chat.html">💬 Chat</a>
+    <a href="amigos.html">👥 Amigos</a>
+    <a href="juegos.html">🎮 Juegos</a>
+    <a href="noticias.html">📰 Noticias</a>
+  </div>
+</nav>
   <nav class="mr-progress-nav">
     <a href="index.html" class="mr-progress-brand"><img src="imagenes/logo.png" alt="MacroReborn"> MacroReborn</a>
     <div class="mr-progress-navlinks">
@@ -84,11 +104,11 @@
       </div>
     </section>
 
-    <p id="progressError" class="mr-error" role="status" aria-live="polite" hidden></p>
+    <p id="progressError" class="mr-error" hidden></p>
   </main>
   <script src="js/macro-progreso.js" defer></script>
-  <noscript>
-    <p class="mr-error">Necesitás activar JavaScript para cargar tu progreso.</p>
-  </noscript>
+<script defer src="js/core.js"></script>
+<script defer src="js/navbar.js"></script>
+<script defer src="js/nav-toggle.js"></script>
 </body>
 </html>
