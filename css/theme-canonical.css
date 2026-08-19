@@ -1,0 +1,178 @@
+/* ==========================================================================
+   MACRO REBORN — TEMA CANÓNICO GLOBAL
+   Esta hoja se carga después de los CSS específicos de cada página.
+   Regla: el modo oscuro/claro y la paleta activa siempre heredan de
+   css/inicio.css, igual que index.html. Los layouts propios se conservan.
+   ========================================================================== */
+
+html,
+body {
+  background: var(--bg-base) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-body) !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Páginas especiales: normalizar el lienzo completo al mismo tema de index. */
+body.mr-social-page,
+body.mr-progress-page,
+body.auth-page,
+.mr-social-page,
+.mr-progress-page,
+.mr-root {
+  background: var(--bg-base) !important;
+  color: var(--text-main) !important;
+}
+
+/* ------------------------------- MI DÍA --------------------------------- */
+.md-shell { color: var(--text-main) !important; }
+.md-brand { color: var(--text-main) !important; }
+.md-brand span { color: var(--accent-color) !important; }
+.md-header nav a { color: var(--text-muted) !important; }
+.md-header nav a:hover { color: var(--text-main) !important; }
+.md-hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 16%, var(--bg-panel)), var(--bg-panel)) !important;
+  border-color: var(--line) !important;
+}
+.md-sub,
+.md-card p,
+.md-item small,
+.md-friend small,
+.md-muted,
+.md-footer { color: var(--text-muted) !important; }
+.md-btn { background: var(--bg-panel-alt) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.md-primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.md-status { background: var(--bg-panel) !important; color: var(--text-secondary) !important; border-color: var(--line) !important; }
+.md-card { background: linear-gradient(180deg, var(--bg-panel), var(--bg-deep)) !important; border-color: var(--line) !important; }
+.md-card-head { color: var(--text-main) !important; }
+.md-card-head a { color: var(--accent-color) !important; }
+.md-progress { background: var(--bg-deep) !important; }
+.md-progress span { background: linear-gradient(90deg, var(--accent-color), var(--green)) !important; }
+.md-item,
+.md-friend { background: var(--control-bg) !important; border-color: var(--line) !important; }
+.md-pill { background: var(--success-bg) !important; color: var(--green) !important; }
+
+/* ------------------------------ PROGRESO --------------------------------- */
+.mr-progress-page { background: var(--bg-base) !important; }
+.mr-progress-nav { background: var(--navbar-bg) !important; border-color: var(--line) !important; }
+.mr-progress-brand,
+.mr-progress-navlinks a { color: var(--text-main) !important; }
+.mr-progress-navlinks a { color: var(--text-muted) !important; }
+.mr-progress-navlinks a:hover { background: var(--control-hover) !important; color: var(--text-main) !important; }
+.mr-progress-hero { background: transparent !important; }
+.mr-level-card,
+.mr-card,
+.mr-global-card,
+.mr-roadmap-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+}
+.mr-streak-card,
+.mr-global-card { background: linear-gradient(145deg, var(--bg-panel-alt), var(--bg-panel)) !important; }
+.mr-progress-bar { background: var(--bg-deep) !important; border-color: var(--line) !important; }
+.mr-progress-bar span { background: linear-gradient(90deg, var(--accent-color), var(--accent-soft)) !important; }
+.mr-roadmap div { background: var(--bg-panel-alt) !important; border-color: var(--line) !important; }
+.mr-roadmap b { background: color-mix(in srgb, var(--accent-color) 20%, transparent) !important; color: var(--accent-soft) !important; }
+
+/* ------------------------------ LIGAS ----------------------------------- */
+.lg-wrap,
+.lg-header,
+.lg-grid-main { color: var(--text-main) !important; }
+.lg-header p,
+.lg-main-rank p,
+.lg-stat span,
+.lg-muted,
+.lg-loading,
+.lg-empty,
+.lg-table th,
+.lg-leagues span { color: var(--text-muted) !important; }
+.lg-nav a { color: var(--text-main) !important; background: var(--control-bg) !important; border-color: var(--line) !important; }
+.lg-nav a:hover { background: var(--control-hover) !important; }
+.lg-hero { background: linear-gradient(135deg, var(--bg-panel-alt), var(--bg-panel)) !important; border-color: var(--line) !important; }
+.lg-card { background: var(--bg-panel) !important; border-color: var(--line) !important; box-shadow: var(--sombra-suave) !important; }
+.lg-stat { background: var(--control-bg) !important; border-color: var(--line) !important; }
+.lg-card-head input,
+.lg-filters button { background: var(--bg-deep) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.lg-filters button.active { color: var(--text-on-accent) !important; background: var(--accent-color) !important; border-color: var(--accent-color) !important; }
+.lg-table th,
+.lg-table td { border-color: var(--line) !important; }
+.lg-avatar { background: var(--bg-panel-alt) !important; border-color: var(--line) !important; }
+.lg-cta { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.lg-leagues div { background: var(--control-bg) !important; }
+
+/* ------------------------ MACRO ORIGINALS ------------------------------- */
+.mr-originals-shell,
+.mr-orig-nav { color: var(--text-main) !important; }
+.mr-orig-nav { background: var(--navbar-bg) !important; border-color: var(--line) !important; }
+.mr-brand { color: var(--text-main) !important; }
+.mr-brand span { color: var(--accent-color) !important; }
+.mr-orig-nav nav a { color: var(--text-muted) !important; }
+.mr-hero { background: linear-gradient(135deg, var(--bg-panel-alt), var(--bg-panel)) !important; border-color: var(--line) !important; }
+.mr-hero p,
+.mr-card small,
+.mission p,
+.mission small,
+.mr-badge { color: var(--text-muted) !important; }
+.mr-card,
+.mr-original-card { background: var(--bg-panel) !important; border-color: var(--line) !important; }
+.mr-btn.primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.mr-btn.ghost { color: var(--text-main) !important; background: var(--control-bg) !important; border-color: var(--line) !important; }
+.mission .progress { background: var(--bg-deep) !important; border-color: var(--line) !important; }
+.mission .progress span { background: linear-gradient(90deg, var(--accent-color), var(--gold)) !important; }
+
+/* ---------------------- ORIGINALES COMPETICIÓN -------------------------- */
+.mr-originals-page { color: var(--text-main) !important; }
+.mr-originals-page .mr-panel { background: var(--bg-panel) !important; border-color: var(--line) !important; }
+.mr-originals-page .mr-btn { color: var(--text-main) !important; background: var(--control-bg) !important; border-color: var(--line) !important; }
+.mr-originals-page .mr-btn.primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.mr-originals-page .mr-originals-subtitle,
+.mr-originals-page .mr-stat span,
+.mr-originals-page .mr-user small,
+.mr-originals-page .mr-empty,
+.mr-originals-page .mr-note { color: var(--text-muted) !important; }
+.mr-originals-page .mr-row { background: var(--control-bg) !important; border-color: var(--line) !important; }
+
+/* ------------------------- ACTIVIDAD COMUNIDAD -------------------------- */
+.mr-social-page { background: var(--bg-base) !important; color: var(--text-main) !important; }
+.social-hero,
+.social-panel { background: var(--bg-panel) !important; border-color: var(--line) !important; box-shadow: var(--sombra-suave) !important; }
+.social-stats article,
+.social-feed-item,
+.friend-card,
+.online-card { background: var(--control-bg) !important; border-color: var(--line) !important; }
+.social-kicker,
+.panel-kicker,
+.social-feed-text a,
+.text-btn,
+.text-link { color: var(--accent-color) !important; }
+.social-hero p,
+.social-feed-detail,
+.social-feed-time,
+.friend-meta,
+.online-meta,
+.social-loading,
+.social-empty { color: var(--text-muted) !important; }
+.social-feed-text,
+.friend-card a,
+.online-card a { color: var(--text-main) !important; }
+.social-btn { color: var(--text-main) !important; background: var(--control-bg) !important; border-color: var(--line) !important; }
+.social-btn:hover { background: var(--control-hover) !important; }
+.social-btn-primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; border-color: transparent !important; }
+.player-search input { background: var(--bg-deep) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.social-login-banner { background: linear-gradient(90deg, color-mix(in srgb, var(--accent-color) 16%, var(--bg-panel)), var(--bg-panel)) !important; border-color: var(--line) !important; }
+.social-login-banner p { color: var(--text-muted) !important; }
+.badge-level { background: var(--warning-bg) !important; color: var(--gold-bright) !important; }
+
+/* ---------------------- COMUNIDAD + RANKING ----------------------------- */
+.rk-hero { background: linear-gradient(160deg, var(--bg-panel-alt), var(--bg-base) 55%, var(--bg-base)) !important; }
+.cr-panel,
+.cr-card,
+.comunidad-main .panel { background: var(--bg-panel) !important; border-color: var(--line) !important; }
+
+/* Seguridad: los root específicos no pueden reintroducir un fondo propio. */
+body.mr-social-page::before,
+body.mr-progress-page::before { background: transparent !important; }
