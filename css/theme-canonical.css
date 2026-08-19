@@ -176,3 +176,869 @@ body.auth-page,
 /* Seguridad: los root específicos no pueden reintroducir un fondo propio. */
 body.mr-social-page::before,
 body.mr-progress-page::before { background: transparent !important; }
+
+/* =======================================================================
+   V66 — CONTRASTE CANÓNICO DEL MODO CLARO
+   Objetivo: cualquier página debe mantener la misma legibilidad que
+   index.html en modo claro. Estas reglas solo afectan data-tema="claro".
+   ======================================================================= */
+html[data-tema="claro"] body,
+html[data-tema="claro"] main,
+html[data-tema="claro"] section,
+html[data-tema="claro"] article,
+html[data-tema="claro"] aside,
+html[data-tema="claro"] header,
+html[data-tema="claro"] footer,
+html[data-tema="claro"] .container,
+html[data-tema="claro"] .panel,
+html[data-tema="claro"] .card,
+html[data-tema="claro"] .box,
+html[data-tema="claro"] .modal,
+html[data-tema="claro"] .dropdown,
+html[data-tema="claro"] .menu {
+  color: var(--text-main) !important;
+}
+
+html[data-tema="claro"] p,
+html[data-tema="claro"] li,
+html[data-tema="claro"] td,
+html[data-tema="claro"] th,
+html[data-tema="claro"] label,
+html[data-tema="claro"] legend,
+html[data-tema="claro"] dt,
+html[data-tema="claro"] dd,
+html[data-tema="claro"] blockquote,
+html[data-tema="claro"] figcaption,
+html[data-tema="claro"] .text,
+html[data-tema="claro"] .description,
+html[data-tema="claro"] .subtitle,
+html[data-tema="claro"] .muted {
+  color: var(--text-main) !important;
+}
+
+html[data-tema="claro"] small,
+html[data-tema="claro"] .muted,
+html[data-tema="claro"] .subtle,
+html[data-tema="claro"] .secondary,
+html[data-tema="claro"] .hint,
+html[data-tema="claro"] .meta,
+html[data-tema="claro"] .helper,
+html[data-tema="claro"] .caption {
+  color: var(--text-muted) !important;
+}
+
+html[data-tema="claro"] h1,
+html[data-tema="claro"] h2,
+html[data-tema="claro"] h3,
+html[data-tema="claro"] h4,
+html[data-tema="claro"] h5,
+html[data-tema="claro"] h6,
+html[data-tema="claro"] strong,
+html[data-tema="claro"] b {
+  color: var(--text-main) !important;
+}
+
+html[data-tema="claro"] input,
+html[data-tema="claro"] textarea,
+html[data-tema="claro"] select,
+html[data-tema="claro"] option,
+html[data-tema="claro"] [contenteditable="true"] {
+  color: var(--text-main) !important;
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  caret-color: var(--accent-color) !important;
+}
+
+html[data-tema="claro"] input::placeholder,
+html[data-tema="claro"] textarea::placeholder {
+  color: var(--text-placeholder) !important;
+  opacity: 1 !important;
+}
+
+html[data-tema="claro"] a:not(.btn):not(.button):not([role="button"]):not(.text-btn):not(.text-link) {
+  color: var(--accent-color);
+}
+
+html[data-tema="claro"] a:not(.btn):not(.button):not([role="button"]):not(.text-btn):not(.text-link):visited {
+  color: var(--accent-color);
+}
+
+html[data-tema="claro"] button,
+html[data-tema="claro"] .btn,
+html[data-tema="claro"] .button,
+html[data-tema="claro"] [role="button"] {
+  color: var(--text-main);
+  border-color: var(--control-border) !important;
+}
+
+html[data-tema="claro"] button:not(.primary):not(.danger):not(.success):not(.accent),
+html[data-tema="claro"] .btn:not(.primary):not(.danger):not(.success):not(.accent),
+html[data-tema="claro"] .button:not(.primary):not(.danger):not(.success):not(.accent) {
+  background: var(--control-bg) !important;
+}
+
+html[data-tema="claro"] button:hover,
+html[data-tema="claro"] .btn:hover,
+html[data-tema="claro"] .button:hover,
+html[data-tema="claro"] [role="button"]:hover {
+  background: var(--control-hover) !important;
+}
+
+html[data-tema="claro"] button.primary,
+html[data-tema="claro"] button.accent,
+html[data-tema="claro"] .btn.primary,
+html[data-tema="claro"] .btn.accent,
+html[data-tema="claro"] .button.primary,
+html[data-tema="claro"] .button.accent {
+  color: var(--text-on-accent) !important;
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+html[data-tema="claro"] button.danger,
+html[data-tema="claro"] .btn.danger,
+html[data-tema="claro"] .button.danger {
+  color: #fff !important;
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+}
+
+html[data-tema="claro"] button.success,
+html[data-tema="claro"] .btn.success,
+html[data-tema="claro"] .button.success {
+  color: #fff !important;
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+}
+
+html[data-tema="claro"] table {
+  color: var(--text-main) !important;
+  background: var(--bg-panel) !important;
+}
+
+html[data-tema="claro"] table td,
+html[data-tema="claro"] table th {
+  border-color: var(--line) !important;
+}
+
+html[data-tema="claro"] hr {
+  border-color: var(--line) !important;
+}
+
+html[data-tema="claro"] .chip,
+html[data-tema="claro"] .tag,
+html[data-tema="claro"] .badge,
+html[data-tema="claro"] .pill {
+  color: var(--text-secondary) !important;
+  background: var(--control-bg) !important;
+  border-color: var(--control-border) !important;
+}
+
+html[data-tema="claro"] .success,
+html[data-tema="claro"] .estado-success {
+  color: var(--green) !important;
+}
+
+html[data-tema="claro"] .warning,
+html[data-tema="claro"] .estado-warning {
+  color: var(--gold-deep) !important;
+}
+
+html[data-tema="claro"] .danger,
+html[data-tema="claro"] .estado-danger,
+html[data-tema="claro"] .error {
+  color: var(--danger) !important;
+}
+
+html[data-tema="claro"] ::selection {
+  color: var(--text-on-accent) !important;
+  background: var(--accent-color) !important;
+}
+
+/* V67 — estados de control: evitar que el hover genérico destruya el contraste
+   del modo claro en botones/acciones que ya usan una variante semántica. */
+html[data-tema="claro"] button.primary:hover,
+html[data-tema="claro"] button.accent:hover,
+html[data-tema="claro"] button.danger:hover,
+html[data-tema="claro"] button.success:hover,
+html[data-tema="claro"] .btn.primary:hover,
+html[data-tema="claro"] .btn.accent:hover,
+html[data-tema="claro"] .btn.danger:hover,
+html[data-tema="claro"] .btn.success:hover,
+html[data-tema="claro"] .button.primary:hover,
+html[data-tema="claro"] .button.accent:hover,
+html[data-tema="claro"] .button.danger:hover,
+html[data-tema="claro"] .button.success:hover,
+html[data-tema="claro"] .btn-primary:hover,
+html[data-tema="claro"] .button-primary:hover,
+html[data-tema="claro"] .primary-btn:hover,
+html[data-tema="claro"] [data-variant="primary"]:hover {
+  color: var(--text-on-accent) !important;
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+html[data-tema="claro"] button.danger:hover,
+html[data-tema="claro"] .btn.danger:hover,
+html[data-tema="claro"] .button.danger:hover,
+html[data-tema="claro"] .btn-danger:hover,
+html[data-tema="claro"] .button-danger:hover,
+html[data-tema="claro"] .danger-btn:hover {
+  color: #fff !important;
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+}
+
+html[data-tema="claro"] button.success:hover,
+html[data-tema="claro"] .btn.success:hover,
+html[data-tema="claro"] .button.success:hover,
+html[data-tema="claro"] .btn-success:hover,
+html[data-tema="claro"] .button-success:hover,
+html[data-tema="claro"] .success-btn:hover {
+  color: #fff !important;
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+}
+
+/* Variantes semánticas frecuentes que no siguen exactamente .btn.primary. */
+html[data-tema="claro"] .btn-primary,
+html[data-tema="claro"] .button-primary,
+html[data-tema="claro"] .primary-btn,
+html[data-tema="claro"] [data-variant="primary"] {
+  color: var(--text-on-accent) !important;
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+html[data-tema="claro"] .btn-danger,
+html[data-tema="claro"] .button-danger,
+html[data-tema="claro"] .danger-btn {
+  color: #fff !important;
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+}
+
+html[data-tema="claro"] .btn-success,
+html[data-tema="claro"] .button-success,
+html[data-tema="claro"] .success-btn {
+  color: #fff !important;
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+}
+
+/* Enlaces/acciones que siguen usando botones visuales pero no la clase .btn. */
+html[data-tema="claro"] a[role="button"].primary,
+html[data-tema="claro"] a[role="button"].accent,
+html[data-tema="claro"] a[role="button"].btn-primary,
+html[data-tema="claro"] a[role="button"].button-primary {
+  color: var(--text-on-accent) !important;
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* =======================================================================
+   V68 — NORMALIZACIÓN VISUAL DE PÁGINAS ESPECIALES
+   La referencia visual es index.html. Las páginas especiales conservan
+   su diseño/estructura, pero todos los colores de superficie y texto
+   pasan por los mismos tokens de MRTheme.
+   ======================================================================= */
+
+/* Mi Día */
+body:has(.md-shell) .md-brand,
+body:has(.md-shell) .md-btn,
+body:has(.md-shell) .md-card-head,
+body:has(.md-shell) .md-status,
+body:has(.md-shell) .md-footer {
+  color: var(--text-main) !important;
+}
+body:has(.md-shell) .md-header nav a { color: var(--text-muted) !important; }
+body:has(.md-shell) .md-header nav a:hover { color: var(--accent-color) !important; }
+body:has(.md-shell) .md-btn {
+  background: var(--control-bg) !important;
+  border-color: var(--line) !important;
+}
+body:has(.md-shell) .md-btn:hover { background: var(--control-hover) !important; filter:none !important; }
+body:has(.md-shell) .md-primary {
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+}
+body:has(.md-shell) .md-status,
+body:has(.md-shell) .md-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+}
+body:has(.md-shell) .md-card-head a,
+body:has(.md-shell) .md-pill { color: var(--green) !important; }
+body:has(.md-shell) .md-progress { background: var(--bg-deep) !important; }
+body:has(.md-shell) .md-item,
+body:has(.md-shell) .md-friend { background: var(--control-bg) !important; border-color: var(--line) !important; }
+body:has(.md-shell) .md-footer { color: var(--text-muted) !important; }
+
+/* Progreso */
+body.mr-progress-page .mr-roadmap b {
+  background: color-mix(in srgb, var(--accent-color) 18%, transparent) !important;
+  color: var(--accent-color) !important;
+}
+body.mr-progress-page .mr-roadmap div,
+body.mr-progress-page .mr-card,
+body.mr-progress-page .mr-level-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+}
+body.mr-progress-page .mr-streak-card,
+body.mr-progress-page .mr-global-card {
+  background: linear-gradient(145deg, var(--bg-panel-alt), var(--bg-panel)) !important;
+}
+body.mr-progress-page .mr-progress-bar { background: var(--bg-deep) !important; }
+body.mr-progress-page .mr-primary {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+}
+
+/* Ligas */
+body:has(.lg-wrap) {
+  --lg-bg: var(--bg-deep);
+}
+body:has(.lg-wrap) .lg-hero {
+  background: linear-gradient(120deg, var(--bg-panel-alt), var(--bg-panel)) !important;
+  border-color: var(--line) !important;
+}
+body:has(.lg-wrap) .lg-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--sombra-suave) !important;
+}
+body:has(.lg-wrap) .lg-nav a,
+body:has(.lg-wrap) .lg-filters button,
+body:has(.lg-wrap) .lg-card-head input {
+  background: var(--control-bg) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.lg-wrap) .lg-nav a:hover,
+body:has(.lg-wrap) .lg-filters button:hover { background: var(--control-hover) !important; }
+body:has(.lg-wrap) .lg-filters button.active,
+body:has(.lg-wrap) .lg-cta {
+  background: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+}
+body:has(.lg-wrap) .lg-avatar { background: var(--bg-panel-alt) !important; border-color: var(--line) !important; }
+body:has(.lg-wrap) .lg-leagues div { background: var(--control-bg) !important; }
+body:has(.lg-wrap) .lg-table th,
+body:has(.lg-wrap) .lg-table td { border-color: var(--line) !important; }
+
+/* Comunidad Ranking — componentes que aún conservaban colores propios. */
+body.mr-root .rk-hero,
+body.mr-root .rk-panel,
+body.mr-root .rk-tarjeta,
+body.mr-root .rk-card,
+body.mr-root .cr-panel,
+body.mr-root .cr-card {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+}
+body.mr-root .rk-boton-principal,
+body.mr-root .rk-evento-cta,
+body.mr-root .rk-btn-principal {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+body.mr-root .rk-modo,
+body.mr-root .rk-filtros button,
+body.mr-root .rk-buscador-caja input,
+body.mr-root .rk-search input,
+body.mr-root .cr-tab,
+body.mr-root .cr-control {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body.mr-root .rk-modo:hover,
+body.mr-root .rk-modo.activo,
+body.mr-root .cr-tab:hover,
+body.mr-root .cr-tab.activo {
+  background: var(--control-hover) !important;
+  color: var(--accent-color) !important;
+  border-color: var(--line-hover) !important;
+}
+body.mr-root .rk-evento,
+body.mr-root .rk-banner-unite {
+  background: linear-gradient(100deg,
+      color-mix(in srgb, var(--accent-color) 14%, var(--bg-panel)),
+      color-mix(in srgb, var(--accent-soft) 10%, var(--bg-panel))) !important;
+  border-color: var(--line) !important;
+}
+body.mr-root .rk-podio-card,
+body.mr-root .rk-lista-item,
+body.mr-root .cr-stat,
+body.mr-root .cr-recien-llegados,
+body.mr-root .cr-lista-staff,
+body.mr-root .cr-lista-rangos,
+body.mr-root .cr-card-item,
+body.mr-root .cr-grid-tienda > *,
+body.mr-root .cr-grid-conectados > * {
+  background: var(--bg-panel-alt) !important;
+  border-color: var(--line) !important;
+}
+body.mr-root .rk-buscador-caja input,
+body.mr-root .rk-search input,
+body.mr-root input,
+body.mr-root select,
+body.mr-root textarea {
+  background: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body.mr-root .rk-modo,
+body.mr-root .rk-kicker,
+body.mr-root .rk-subtitulo-hero,
+body.mr-root .rk-mi-posicion,
+body.mr-root .rk-table th,
+body.mr-root .rk-muted,
+body.mr-root .cr-muted {
+  color: var(--text-muted) !important;
+}
+body.mr-root .rk-hero h1,
+body.mr-root .rk-hero h2,
+body.mr-root .rk-card h2,
+body.mr-root .cr-panel h2,
+body.mr-root .cr-panel h3 { color: var(--text-main) !important; }
+body.mr-root .rk-kicker,
+body.mr-root .cr-badge { color: var(--accent-color) !important; }
+body.mr-root .rk-delta.rk-sube { color: var(--green) !important; }
+body.mr-root .rk-delta.rk-baja { color: var(--danger) !important; }
+body.mr-root .rk-delta.rk-neutro { color: var(--text-muted) !important; }
+
+/* =======================================================================
+   V69 — AUDITORÍA GLOBAL RESTANTE
+   Todas las páginas heredan la misma superficie/texto que index.html.
+   Se normalizan componentes que todavía conservaban tokens visuales
+   propios. No se modifica ninguna lógica ni ningún estado funcional.
+   ======================================================================= */
+
+/* Portal / Ligas / crecimiento */
+body:has(.mr-growth-toolbar) .mr-growth-toolbar,
+body:has(.mr-growth-toolbar) .mr-league-card,
+body:has(.mr-growth-toolbar) .mr-my-league,
+body:has(.mr-growth-toolbar) .mr-economy-line,
+body:has(.mr-growth-toolbar) .mr-social-friend,
+body:has(.mr-growth-toolbar) .mr-growth-controls label,
+body:has(.mr-growth-toolbar) .mr-growth-shortcuts a {
+  background: var(--control-bg) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.mr-growth-toolbar) .mr-growth-toolbar {
+  box-shadow: var(--sombra-suave) !important;
+}
+body:has(.mr-growth-toolbar) .mr-growth-controls input,
+body:has(.mr-growth-toolbar) .mr-growth-controls select {
+  color: var(--text-main) !important;
+}
+body:has(.mr-growth-toolbar) .mr-growth-controls label:focus-within {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+body:has(.mr-growth-toolbar) .mr-league-login {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+}
+body:has(.mr-growth-toolbar) .mr-growth-shortcuts a:hover,
+body:has(.mr-growth-toolbar) .mr-league-card:hover {
+  background: var(--control-hover) !important;
+}
+
+/* Retos diarios */
+body:has(.mr-daily-shell) .mr-daily-main,
+body:has(.mr-daily-shell) .mr-daily-card,
+body:has(.mr-daily-shell) .mr-daily-side,
+body:has(.mr-daily-shell) .mr-daily-status,
+body:has(.mr-daily-shell) .mr-daily-reward {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.mr-daily-shell) .mr-daily-count,
+body:has(.mr-daily-shell) .mr-daily-kicker {
+  color: var(--accent-color) !important;
+}
+body:has(.mr-daily-shell) .mr-daily-progress,
+body:has(.mr-daily-shell) .mr-daily-track {
+  background: var(--bg-deep) !important;
+  border-color: var(--line) !important;
+}
+body:has(.mr-daily-shell) .mr-daily-fill {
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-soft)) !important;
+}
+body:has(.mr-daily-shell) .mr-daily-actions button,
+body:has(.mr-daily-shell) .mr-daily-actions a {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.mr-daily-shell) .mr-daily-actions .primary,
+body:has(.mr-daily-shell) .mr-daily-actions .accent {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Descubrimiento */
+body:has(.mr-discovery) .mr-discovery,
+body:has(.mr-discovery) .mr-discovery-hero,
+body:has(.mr-discovery) .mr-category-card,
+body:has(.mr-discovery) .mr-game-mini,
+body:has(.mr-discovery) .mr-section {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.mr-discovery) .mr-discovery-tools input,
+body:has(.mr-discovery) .mr-discovery-tools select,
+body:has(.mr-discovery) .mr-chip {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.mr-discovery) .mr-chip.active,
+body:has(.mr-discovery) .mr-chip.activo {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+body:has(.mr-discovery) .mr-discovery-sub,
+body:has(.mr-discovery) .mr-game-meta,
+body:has(.mr-discovery) .mr-empty {
+  color: var(--text-muted) !important;
+}
+
+/* Noticias */
+body:has(.noticias) .noticias,
+body:has(.noticias) .contenido-principal,
+body:has(.noticias) .noticia,
+body:has(.noticias) .noticia-destacada,
+body:has(.noticias) .origen-panel,
+body:has(.noticias) .version-lista {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.noticias) .noticia-icono,
+body:has(.noticias) .noticia-tag,
+body:has(.noticias) .version-lista-icono {
+  background: var(--control-bg) !important;
+  color: var(--accent-color) !important;
+  border-color: var(--line) !important;
+}
+body:has(.noticias) .subtitulo-noticias,
+body:has(.noticias) .version-subtitulo,
+body:has(.noticias) .origen-texto,
+body:has(.noticias) .novedades-linea {
+  color: var(--text-muted) !important;
+}
+body:has(.noticias) .noticia-enlace {
+  color: var(--accent-color) !important;
+}
+
+/* Amigos */
+body:has(.amigos-main) .amigos-hero,
+body:has(.amigos-main) .amigo-card,
+body:has(.amigos-main) .solicitud-card,
+body:has(.amigos-main) .enviada-card,
+body:has(.amigos-main) .panel-aviso,
+body:has(.amigos-main) .amigos-tabs,
+body:has(.amigos-main) .lista-vacia {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.amigos-main) .amigos-titulo,
+body:has(.amigos-main) .amigos-eyebrow,
+body:has(.amigos-main) .amigo-nombre {
+  color: var(--text-main) !important;
+}
+body:has(.amigos-main) .amigo-estado-online,
+body:has(.amigos-main) .badge-rojo,
+body:has(.amigos-main) .badge {
+  border-color: var(--line) !important;
+}
+body:has(.amigos-main) .atab,
+body:has(.amigos-main) .amigos-tabs button {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.amigos-main) .atab.active,
+body:has(.amigos-main) .activo-tab,
+body:has(.amigos-main) .activa-tab {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Chat */
+body:has(.chat-container) .chat-header,
+body:has(.chat-container) .mensajes-chat,
+body:has(.chat-container) .escribir-wrap,
+body:has(.chat-container) .aviso-chat {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.chat-container) .mensaje,
+body:has(.chat-container) .cabecera-mensaje,
+body:has(.chat-container) .texto-chat {
+  color: var(--text-main) !important;
+}
+body:has(.chat-container) .mensaje:not(.mensaje-propio) {
+  background: var(--control-bg) !important;
+  border-color: var(--line) !important;
+}
+body:has(.chat-container) .mensaje-propio {
+  background: color-mix(in srgb, var(--accent-color) 20%, var(--bg-panel)) !important;
+  border-color: color-mix(in srgb, var(--accent-color) 40%, var(--line)) !important;
+}
+body:has(.chat-container) textarea,
+body:has(.chat-container) input {
+  background: var(--bg-deep) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.chat-container) .btn-responder,
+body:has(.chat-container) .btn-reportar,
+body:has(.chat-container) .btn-borrar {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+
+/* Catálogo de juegos */
+body:has(.lista-juegos) .catalogo-header,
+body:has(.lista-juegos) .catalogo-filtros,
+body:has(.lista-juegos) .catalogo-stats,
+body:has(.lista-juegos) .juego-card,
+body:has(.lista-juegos) .catalogo-resultados {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.lista-juegos) .catalogo-busqueda input,
+body:has(.lista-juegos) .mr-select-catalogo,
+body:has(.lista-juegos) .mr-chip,
+body:has(.lista-juegos) .badge-categoria,
+body:has(.lista-juegos) .badge-estado {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.lista-juegos) .mr-chip.activo,
+body:has(.lista-juegos) .activo {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+body:has(.lista-juegos) .juego-card-link,
+body:has(.lista-juegos) .juego-card-cta {
+  color: var(--accent-color) !important;
+}
+
+/* Detalle / jugar */
+body:has(.detalle-juego) .detalle-juego,
+body:has(.juego-flujo) .juego-flujo,
+body:has(.zona-juego) .zona-juego,
+body:has(.panel-juego-herramientas) .panel-juego-herramientas,
+body:has(.panel-juegos-relacionados) .panel-juegos-relacionados,
+body:has(.panel-post-juego) .panel-post-juego {
+  background: var(--bg-panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text-main) !important;
+}
+body:has(.detalle-juego) .descripcion-juego,
+body:has(.detalle-juego) .panel-subtitulo,
+body:has(.detalle-juego) .resena-texto,
+body:has(.zona-juego) .metadata-label,
+body:has(.zona-juego) .post-juego-kicker {
+  color: var(--text-muted) !important;
+}
+body:has(.detalle-juego) .boton-jugar,
+body:has(.detalle-juego) .boton-favorito,
+body:has(.zona-juego) .accion-principal,
+body:has(.zona-juego) .boton-destacado {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+body:has(.zona-juego) .boton-herramienta,
+body:has(.zona-juego) .boton-volver,
+body:has(.juego-flujo) .flujo-boton {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+
+/* Panel de administración: conservar los colores semánticos, normalizar
+   solamente superficies y texto general. */
+body:has(.admin-main) .admin-header,
+body:has(.admin-main) .admin-main,
+body:has(.admin-main) .admin-tarjeta-usuario,
+body:has(.admin-main) .admin-tarjeta-stats,
+body:has(.admin-main) .admin-tarjeta-historial,
+body:has(.admin-main) .admin-tarjeta-reporte,
+body:has(.admin-main) .admin-tarjeta-acciones,
+body:has(.admin-main) .admin-top-caja,
+body:has(.admin-main) .admin-estadisticas {
+  color: var(--text-main) !important;
+}
+body:has(.admin-main) .buscador,
+body:has(.admin-main) .admin-historial-filtros input,
+body:has(.admin-main) .admin-historial-filtros select {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body:has(.admin-main) .btn-admin-primario {
+  background: var(--accent-color) !important;
+  color: var(--text-on-accent) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Página de log-in/autenticación: sus superficies se alinean con index. */
+body.auth-page .auth-card,
+body.auth-page .login-card,
+body.auth-page .registro-card,
+body:has(.login-form) .auth-card,
+body:has(.login-form) .login-card {
+  background: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+body.auth-page input,
+body.auth-page select,
+body.auth-page textarea,
+body:has(.login-form) input,
+body:has(.login-form) select,
+body:has(.login-form) textarea {
+  background: var(--control-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--line) !important;
+}
+
+/* =======================================================================
+   V70 — CIERRE DE CONSISTENCIA VISUAL GLOBAL
+   Los layouts especiales siguen usando sus clases/HTML originales, pero
+   sus superficies, textos y controles heredan siempre el tema canónico.
+   ======================================================================= */
+
+/* Actividad comunidad */
+.mr-social-page .social-hero,
+.mr-social-page .social-panel { background: var(--bg-panel) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-social-page .social-stats article,
+.mr-social-page .social-feed-item,
+.mr-social-page .friend-card,
+.mr-social-page .online-card { background: var(--control-bg) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-social-page .social-btn { background: var(--control-bg) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.mr-social-page .social-btn:hover { background: var(--control-hover) !important; }
+.mr-social-page .social-btn-primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.mr-social-page .social-feed-text,
+.mr-social-page .friend-card a,
+.mr-social-page .online-card a { color: var(--text-main) !important; }
+.mr-social-page .social-hero p,
+.mr-social-page .social-feed-detail,
+.mr-social-page .social-feed-time,
+.mr-social-page .friend-meta,
+.mr-social-page .online-meta,
+.mr-social-page .social-loading,
+.mr-social-page .social-empty { color: var(--text-muted) !important; }
+
+/* Admin */
+.mr-root .admin-header,
+.mr-root .admin-lista-usuarios,
+.mr-root .admin-tarjeta-usuario,
+.mr-root .admin-denegado-caja { color: var(--text-main) !important; }
+.mr-root .admin-header,
+.mr-root .admin-tarjeta-usuario,
+.mr-root .admin-denegado-caja { background: var(--bg-panel) !important; border-color: var(--line) !important; }
+.mr-root .admin-header h1 { background: var(--bg-panel-alt) !important; color: var(--text-main) !important; }
+.mr-root .admin-controles input,
+.mr-root .admin-controles select,
+.mr-root .admin-controles button,
+.mr-root .admin-lista-usuarios input,
+.mr-root .admin-lista-usuarios select { background: var(--control-bg) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.mr-root .admin-controles button:hover { background: var(--control-hover) !important; }
+
+/* Exploración / categorías / colección */
+.mr-root .explorar-card,
+.mr-root .mr-game-mini,
+.mr-root .mr-category-card,
+.mr-root .mr-discovery-hero,
+.mr-root .explorar-busqueda { background: var(--bg-panel) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-root .explorar-card-img,
+.mr-root .mr-game-mini img { background: var(--bg-deep) !important; }
+.mr-root .explorar-chip,
+.mr-root .mr-chip { background: var(--control-bg) !important; color: var(--text-secondary) !important; border-color: var(--line) !important; }
+.mr-root .explorar-chip:hover,
+.mr-root .mr-chip:hover { background: var(--control-hover) !important; }
+.mr-root .explorar-boton { background: var(--control-bg) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.mr-root .explorar-boton.principal { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+.mr-root .explorar-card-meta strong,
+.mr-root .mr-game-mini-body h3 { color: var(--text-main) !important; }
+
+/* Retos diarios */
+.mr-daily-card,
+.mr-daily-side { background: var(--bg-panel) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-daily-main p,
+.mr-daily-status { color: var(--text-muted) !important; }
+.mr-daily-track { background: var(--bg-deep) !important; }
+.mr-daily-fill { background: linear-gradient(90deg, var(--accent-color), var(--accent-soft)) !important; }
+.mr-daily-actions a { background: var(--control-bg) !important; color: var(--text-main) !important; border: 1px solid var(--line) !important; }
+.mr-daily-actions a:hover { background: var(--control-hover) !important; }
+
+/* Portal / crecimiento / ligas auxiliares */
+.mr-growth-toolbar,
+.mr-league-card,
+.mr-my-league,
+.mr-economy-line,
+.mr-social-friend { background: var(--bg-panel) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-growth-controls label { background: var(--control-bg) !important; border-color: var(--line) !important; color: var(--text-main) !important; }
+.mr-growth-controls input,
+.mr-growth-controls select { color: var(--text-main) !important; background: transparent !important; }
+.mr-growth-shortcuts a,
+.mr-social-friend { background: var(--control-bg) !important; }
+.mr-growth-shortcuts a:hover,
+.mr-social-friend:hover { background: var(--control-hover) !important; }
+.mr-league-login { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+
+/* Pantalla de jugar: el contenedor exterior sigue el tema; el juego interno no se toca. */
+.mr-root .pantalla-juego { background: var(--bg-panel) !important; border-color: var(--line) !important; }
+.mr-root .boton-volver { background: var(--control-bg) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+.mr-root .boton-volver:hover { background: var(--control-hover) !important; }
+
+/* Autenticación: conservar el contenido, unificar superficies y controles. */
+body.auth-page .auth-card,
+body.auth-page .login-card,
+body.auth-page .register-card,
+body.auth-page .form-card { background: var(--bg-panel) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+body.auth-page input,
+body.auth-page textarea,
+body.auth-page select { background: var(--control-bg) !important; color: var(--text-main) !important; border-color: var(--line) !important; }
+body.auth-page input::placeholder,
+body.auth-page textarea::placeholder { color: var(--text-placeholder) !important; }
+body.auth-page button[type="submit"],
+body.auth-page .btn-primary { background: var(--accent-color) !important; color: var(--text-on-accent) !important; }
+
+/* Universal legibilidad para componentes comunes que aparezcan en cualquier página. */
+html[data-tema="claro"] body .table,
+html[data-tema="claro"] body table,
+html[data-tema="claro"] body thead,
+html[data-tema="claro"] body tbody,
+html[data-tema="claro"] body tr,
+html[data-tema="claro"] body td,
+html[data-tema="claro"] body th { color: var(--text-main); border-color: var(--line); }
+html[data-tema="claro"] body input,
+html[data-tema="claro"] body textarea,
+html[data-tema="claro"] body select { color: var(--text-main); background: var(--control-bg); border-color: var(--control-border); }
+html[data-tema="claro"] body input::placeholder,
+html[data-tema="claro"] body textarea::placeholder { color: var(--text-placeholder) !important; opacity: 1; }
