@@ -84,8 +84,11 @@
       </div>
     </section>
 
-    <p id="progressError" class="mr-error" hidden></p>
+    <p id="progressError" class="mr-error" role="status" aria-live="polite" hidden></p>
   </main>
   <script src="js/macro-progreso.js" defer></script>
+  <noscript>
+    <p class="mr-error">Necesitás activar JavaScript para cargar tu progreso.</p>
+  </noscript>
 </body>
 </html>
