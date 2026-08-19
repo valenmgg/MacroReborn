@@ -81,11 +81,32 @@
     return avatar.modelo ? avatar : null;
   }
 
+  // ---------- IDENTIDAD DEL PERFIL PROPIO ----------
+  // MRProfileContext es la fuente preferida para los módulos de perfil.
+  // MRSession queda como respaldo y datosUsuario conserva compatibilidad
+  // con el editor existente.
+  function usuarioPerfilActual() {
+    if (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function") {
+      return MRProfileContext.getUser();
+    }
+    if (window.MRSession && typeof MRSession.get === "function") {
+      return MRSession.get();
+    }
+    return (typeof datosUsuario !== "undefined" && datosUsuario) ? datosUsuario : null;
+  }
+
+  function nombrePerfilActual() {
+    const usuario = usuarioPerfilActual();
+    return usuario?.nombre || usuario?.username || "";
+  }
+
   // ---------- API ----------
 
   async function obtenerGaleria() {
+    const nombre = nombrePerfilActual();
+    if (!nombre) return null;
     try {
-      const resp = await fetch("/api/content?action=avatar-gallery&username=" + encodeURIComponent(datosUsuario.nombre));
+      const resp = await fetch("/api/content?action=avatar-gallery&username=" + encodeURIComponent(nombre));
       const datos = await resp.json();
       if (datos && datos.success) return datos.slots;
     } catch (error) {
@@ -104,7 +125,7 @@
       await fetch("/api/content?action=avatar-gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: datosUsuario.nombre, slot, avatar })
+        body: JSON.stringify({ username: nombrePerfilActual(), slot, avatar })
       });
     } catch (error) {
       console.warn("MacroReborn: no se pudo guardar el avatar en la galería.", error);

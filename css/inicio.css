@@ -31,6 +31,10 @@
   --gold-deep: #a8710f;
   --cyan: #38bdf8;
   --green: #35d488;
+  --accent: #7c3aed;
+  --accent-color: #8b5cf6;
+  --accent-soft: #c084fc;
+  --text-on-accent: #241804;
 
   /* Texto */
   --text-main: #f4f1fb;
@@ -42,6 +46,15 @@
   --danger: #ff6b6b;
   --danger-light: #fca5a5;
   --success-light: #86efac;
+  --warning-bg: rgba(240, 180, 41, 0.12);
+  --success-bg: rgba(53, 212, 136, 0.12);
+  --danger-bg: rgba(255, 107, 107, 0.12);
+
+  /* Estados interactivos */
+  --control-bg: rgba(255, 255, 255, 0.05);
+  --control-hover: rgba(255, 255, 255, 0.10);
+  --control-border: rgba(255, 255, 255, 0.10);
+  --focus-ring: rgba(56, 189, 248, 0.22);
 
   /* Podio (ranking) */
   --podio-plata: #dbe3ee;
@@ -73,6 +86,78 @@
    gris muy suave, tarjetas blancas, texto oscuro y los mismos acentos
    dorado/celeste/verde de siempre pero ajustados para tener buen
    contraste sobre blanco. */
+
+
+/* ==========================================================================
+   PALETAS DE PERSONALIZACIÓN — inspiradas en el concepto ThemeContext de Morpho
+   No reemplazan el sistema oscuro/claro: solo cambian acentos y líneas.
+   ========================================================================== */
+html[data-paleta="neon"] {
+  --warning-bg:rgba(34,211,238,.12); --success-bg:rgba(52,211,153,.12); --danger-bg:rgba(248,113,113,.12);
+  --control-bg:rgba(255,255,255,.045); --control-hover:rgba(255,255,255,.10); --control-border:rgba(34,211,238,.16); --focus-ring:rgba(34,211,238,.25);
+  --gold: #67e8f9;
+  --gold-bright: #a5f3fc;
+  --gold-deep: #0891b2;
+  --cyan: #22d3ee;
+  --green: #34d399;
+  --line-hover: #0ea5e9;
+}
+html[data-paleta="arcade"] {
+  --warning-bg:rgba(251,113,133,.12); --success-bg:rgba(132,204,22,.12); --danger-bg:rgba(244,63,94,.13);
+  --control-bg:rgba(255,255,255,.045); --control-hover:rgba(255,255,255,.10); --control-border:rgba(251,113,133,.16); --focus-ring:rgba(244,63,94,.25);
+  --gold: #fb7185;
+  --gold-bright: #fda4af;
+  --gold-deep: #be123c;
+  --cyan: #f59e0b;
+  --green: #84cc16;
+  --line-hover: #e11d48;
+}
+html[data-paleta="clasica"] {
+  --warning-bg:rgba(217,169,40,.12); --success-bg:rgba(74,222,128,.12); --danger-bg:rgba(239,68,68,.12);
+  --control-bg:rgba(255,255,255,.045); --control-hover:rgba(255,255,255,.10); --control-border:rgba(217,169,40,.16); --focus-ring:rgba(217,169,40,.22);
+  --gold: #f0b429;
+  --gold-bright: #ffe08a;
+  --gold-deep: #a8710f;
+  --cyan: #60a5fa;
+  --green: #4ade80;
+  --line-hover: #b7791f;
+}
+
+
+
+/* ==========================================================================
+   PRESETS COMPLETOS DE PALETA
+   La paleta ya no cambia únicamente el acento: cada preset define un
+   conjunto coherente de fondo, panel, bordes, navbar y colores de estado.
+   Las variantes claras mantienen el mismo carácter visual sobre fondos
+   luminosos.
+   ========================================================================== */
+html[data-paleta="macro"] {
+  --warning-bg:rgba(240,180,41,.12); --success-bg:rgba(53,212,136,.12); --danger-bg:rgba(255,107,107,.12);
+  --control-bg:rgba(255,255,255,.05); --control-hover:rgba(255,255,255,.10); --control-border:rgba(255,255,255,.10); --focus-ring:rgba(56,189,248,.22);
+  --bg-deep:#0c0616; --bg-base:#150a28; --bg-panel:#241145; --bg-panel-alt:#2f1a5c;
+  --line:#3d2166; --line-hover:#55348f; --navbar-bg:rgba(21,10,40,.92);
+  --gold:#f0b429; --gold-bright:#ffd666; --gold-deep:#a8710f; --cyan:#38bdf8; --green:#35d488;
+  --accent:#7c3aed; --accent-color:#8b5cf6; --accent-soft:#c084fc; --chip-bg:rgba(36,17,69,.6);
+}
+html[data-paleta="neon"] {
+  --bg-deep:#061219; --bg-base:#091b25; --bg-panel:#0d2935; --bg-panel-alt:#123a49;
+  --line:#18566a; --line-hover:#22d3ee; --navbar-bg:rgba(9,27,37,.93);
+  --gold:#22d3ee; --gold-bright:#a5f3fc; --gold-deep:#0891b2; --cyan:#38bdf8; --green:#34d399;
+  --accent:#06b6d4; --accent-color:#22d3ee; --accent-soft:#a5f3fc; --chip-bg:rgba(13,41,53,.72);
+}
+html[data-paleta="arcade"] {
+  --bg-deep:#1a0711; --bg-base:#260b18; --bg-panel:#3a1224; --bg-panel-alt:#4a1a2e;
+  --line:#702344; --line-hover:#e11d48; --navbar-bg:rgba(38,11,24,.93);
+  --gold:#fb7185; --gold-bright:#fda4af; --gold-deep:#be123c; --cyan:#f59e0b; --green:#84cc16;
+  --accent:#f43f5e; --accent-color:#fb7185; --accent-soft:#fda4af; --chip-bg:rgba(58,18,36,.72);
+}
+html[data-paleta="clasica"] {
+  --bg-deep:#0b111d; --bg-base:#121b2b; --bg-panel:#1b2940; --bg-panel-alt:#243653;
+  --line:#365274; --line-hover:#c38a1a; --navbar-bg:rgba(18,27,43,.94);
+  --gold:#d9a928; --gold-bright:#ffe08a; --gold-deep:#9a6b12; --cyan:#60a5fa; --green:#4ade80;
+  --accent:#d9a928; --accent-color:#f0b429; --accent-soft:#ffe08a; --chip-bg:rgba(27,41,64,.72);
+}
 
 html[data-tema="claro"] {
   /* Variante clara de la misma identidad púrpura: fondo lavanda muy
@@ -108,11 +193,52 @@ html[data-tema="claro"] {
 
   --sombra-suave: 0 10px 26px rgba(60, 30, 90, 0.12);
   --chip-bg: rgba(255, 255, 255, 0.75);
+  --control-bg: rgba(36, 17, 69, 0.05); --control-hover: rgba(36, 17, 69, 0.09); --control-border: rgba(36, 17, 69, 0.12); --focus-ring: rgba(2, 132, 199, 0.20);
+  --warning-bg: rgba(240, 180, 41, 0.12); --success-bg: rgba(21, 128, 61, 0.12); --danger-bg: rgba(220, 38, 38, 0.10);
 
   --clasico-borde: #8b5cf6;
   --clasico-plate: linear-gradient(180deg, #8b6fd1 0%, #5b3aa0 100%);
   --clasico-header: linear-gradient(180deg, #f3eefb 0%, #e0d3f7 100%);
   --clasico-avatar-fondo: linear-gradient(180deg, #ede4fa 0%, #c9adf0 100%);
+
+}
+
+/* Variantes claras de cada preset: mantienen contraste y personalidad. */
+html[data-tema="claro"][data-paleta="macro"] {
+  --bg-deep:#ece7f5; --bg-base:#f6f3fb; --bg-panel:#fff; --bg-panel-alt:#f1ecfa;
+  --line:#ddd0f0; --line-hover:#c7b3e8; --navbar-bg:rgba(255,255,255,.92);
+  --gold:#92600a; --gold-bright:#b8790d; --gold-deep:#7a5108; --cyan:#0284c7; --green:#15803d;
+  --text-main:#241145; --text-muted:#6d5a94; --text-secondary:#4a3a72; --text-placeholder:#9484b8;
+  --accent:#7c3aed; --accent-color:#8b5cf6; --accent-soft:#c084fc; --chip-bg:rgba(255,255,255,.75);
+  --control-bg:rgba(36,17,69,.05); --control-hover:rgba(36,17,69,.09); --control-border:rgba(36,17,69,.12); --focus-ring:rgba(2,132,199,.20);
+  --warning-bg:rgba(240,180,41,.12); --success-bg:rgba(21,128,61,.10); --danger-bg:rgba(220,38,38,.10);
+}
+html[data-tema="claro"][data-paleta="neon"] {
+  --bg-deep:#e5f8fc; --bg-base:#f2fbfd; --bg-panel:#fff; --bg-panel-alt:#e8f8fb;
+  --line:#bde8f2; --line-hover:#67d8eb; --navbar-bg:rgba(255,255,255,.94);
+  --gold:#0e7490; --gold-bright:#0369a1; --gold-deep:#155e75; --cyan:#0284c7; --green:#047857;
+  --text-main:#0c2630; --text-muted:#4c7180; --text-secondary:#274856; --text-placeholder:#6f8f9a;
+  --accent:#0891b2; --accent-color:#06b6d4; --accent-soft:#a5f3fc; --chip-bg:rgba(232,248,251,.9);
+  --control-bg:rgba(12,38,48,.04); --control-hover:rgba(12,38,48,.08); --control-border:rgba(8,145,178,.14); --focus-ring:rgba(2,132,199,.20);
+  --warning-bg:rgba(240,180,41,.12); --success-bg:rgba(21,128,61,.10); --danger-bg:rgba(220,38,38,.10);
+}
+html[data-tema="claro"][data-paleta="arcade"] {
+  --bg-deep:#fff0f4; --bg-base:#fff7f9; --bg-panel:#fff; --bg-panel-alt:#fff0f3;
+  --line:#f0c3cf; --line-hover:#f08aa2; --navbar-bg:rgba(255,255,255,.94);
+  --gold:#be123c; --gold-bright:#be123c; --gold-deep:#9f1239; --cyan:#b45309; --green:#4d7c0f;
+  --text-main:#3c1220; --text-muted:#7c4b59; --text-secondary:#5b2a38; --text-placeholder:#9a6976;
+  --accent:#e11d48; --accent-color:#f43f5e; --accent-soft:#fda4af; --chip-bg:rgba(255,240,243,.88);
+  --control-bg:rgba(60,18,32,.04); --control-hover:rgba(60,18,32,.08); --control-border:rgba(225,29,72,.14); --focus-ring:rgba(225,29,72,.20);
+  --warning-bg:rgba(240,180,41,.12); --success-bg:rgba(21,128,61,.10); --danger-bg:rgba(220,38,38,.10);
+}
+html[data-tema="claro"][data-paleta="clasica"] {
+  --bg-deep:#edf2f8; --bg-base:#f6f8fb; --bg-panel:#fff; --bg-panel-alt:#eef3f8;
+  --line:#cfdae7; --line-hover:#b38a30; --navbar-bg:rgba(255,255,255,.94);
+  --gold:#8a650e; --gold-bright:#a87810; --gold-deep:#70510b; --cyan:#2563eb; --green:#15803d;
+  --text-main:#172033; --text-muted:#5e6b7d; --text-secondary:#334155; --text-placeholder:#7b8795;
+  --accent:#a87810; --accent-color:#c08c1d; --chip-bg:rgba(238,243,248,.9);
+  --control-bg:rgba(23,32,51,.04); --control-hover:rgba(23,32,51,.08); --control-border:rgba(23,32,51,.12); --focus-ring:rgba(37,99,235,.20);
+  --warning-bg:rgba(240,180,41,.12); --success-bg:rgba(21,128,61,.10); --danger-bg:rgba(220,38,38,.10);
 }
 
 /* Transición suave al alternar entre modo oscuro y claro */

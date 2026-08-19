@@ -23,23 +23,54 @@
   // No hacen escrituras ni llamadas al backend por sí mismos; solo vuelven
   // a pintar lo que ya confirmó el servidor.
   if (typeof datosUsuario !== "undefined" && datosUsuario && datosUsuario.nombre) {
-    function esMiEvento(payload){
-      return payload && payload.username && String(payload.username).toLowerCase() === String(datosUsuario.nombre).toLowerCase();
+    function usuarioPerfilActual(){
+      if (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function") {
+        return MRProfileContext.getUser();
+      }
+      return datosUsuario;
     }
 
-    window.addEventListener("macro:achievement-unlocked", function (event) {
-      if (!esMiEvento(event && event.detail)) return;
+    function esMiEvento(payload){
+      const usuario = usuarioPerfilActual();
+      return !!(payload && payload.username && usuario && usuario.nombre && String(payload.username).toLowerCase() === String(usuario.nombre).toLowerCase());
+    }
+
+    function registrarEventoMacro(nombre, handler){
+      if (window.MRApp && MRApp.events && typeof MRApp.events.on === "function") {
+        return MRApp.events.on(nombre, handler);
+      }
+      window.addEventListener(nombre, function(event){
+        handler(event && event.detail);
+      });
+      return function(){};
+    }
+
+    async function refrescarLogrosConfirmados(payload){
+      if (!esMiEvento(payload)) return;
+      const usuario = usuarioPerfilActual();
+      try {
+        if (typeof cargarLogros === "function" && usuario && usuario.nombre) {
+          const lista = await cargarLogros(usuario.nombre);
+          if (typeof datosUsuario !== "undefined" && datosUsuario && Array.isArray(lista)) {
+            datosUsuario.logros = lista.length;
+          }
+          if (typeof window.usuario !== "undefined" && window.usuario) {
+            window.usuario.logros = Array.isArray(lista) ? lista.length : window.usuario.logros;
+          }
+        }
+      } catch (_) {}
       if (typeof renderLogros === "function") renderLogros();
       if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
-    });
+    }
+
+    registrarEventoMacro("macro:achievement-unlocked", refrescarLogrosConfirmados);
 
     window.addEventListener("storage", function (event) {
       if (event.key === "macro:last-achievement-unlocked" && event.newValue) {
         try {
           const payload = JSON.parse(event.newValue);
           if (!esMiEvento(payload)) return;
-          if (typeof renderLogros === "function") renderLogros();
-          if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+          refrescarLogrosConfirmados(payload);
         } catch (_) {}
       }
     });
@@ -60,37 +91,69 @@
   if (PUSHER_KEY === "TU_PUSHER_KEY") return;
 
   const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-  const canal = pusher.subscribe("notificaciones-" + datosUsuario.nombre.toLowerCase());
+  let canalActual = null;
+  let nombreCanalActual = null;
 
-  canal.bind("nuevo-comentario", function () {
-    if (typeof renderComentarios === "function") renderComentarios();
-  });
+  function obtenerNombreCanal() {
+    const usuario = usuarioPerfilActual();
+    return usuario && usuario.nombre ? String(usuario.nombre).toLowerCase() : "";
+  }
 
-  canal.bind("comentarios-vaciados", function () {
-    if (typeof renderComentarios === "function") renderComentarios();
-  });
+  function enlazarCanal(nombre) {
+    const normalizado = String(nombre || "").trim().toLowerCase();
+    if (!normalizado || normalizado === nombreCanalActual) return;
 
-  canal.bind("nueva-actividad", function () {
-    if (typeof renderActividadReciente === "function") renderActividadReciente();
-  });
+    if (canalActual && nombreCanalActual) {
+      try { pusher.unsubscribe("notificaciones-" + nombreCanalActual); } catch (_) {}
+    }
 
-  canal.bind("nuevo-historial", function () {
-    if (typeof renderHistorialPerfil === "function") renderHistorialPerfil();
-  });
+    nombreCanalActual = normalizado;
+    canalActual = pusher.subscribe("notificaciones-" + normalizado);
 
-  canal.bind("nuevo-logro", function () {
-    if (typeof renderLogros === "function") renderLogros();
-  });
+    canalActual.bind("nuevo-comentario", function () {
+      if (typeof renderComentarios === "function") renderComentarios();
+    });
 
-  // "Última conexión" en vivo: útil, por ejemplo, si tenías el perfil
-  // abierto en una pestaña y volvés a entrar desde otro dispositivo.
-  canal.bind("latido", function (datos) {
-    if (datos && datos.last_login) datosUsuario.ultimaConexion = datos.last_login;
-    if (typeof pintarUltimaConexion === "function") pintarUltimaConexion();
-  });
+    canalActual.bind("comentarios-vaciados", function () {
+      if (typeof renderComentarios === "function") renderComentarios();
+    });
 
-  // Aunque no llegue ningún latido nuevo, el texto "hace X minutos"
-  // tiene que ir avanzando solo con el correr del tiempo.
+    canalActual.bind("nueva-actividad", function () {
+      if (typeof renderActividadReciente === "function") renderActividadReciente();
+    });
+
+    canalActual.bind("nuevo-historial", function () {
+      if (typeof renderHistorialPerfil === "function") renderHistorialPerfil();
+    });
+
+    canalActual.bind("nuevo-logro", function (payload) {
+      const usuario = usuarioPerfilActual();
+      if (typeof cargarLogros === "function" && usuario && usuario.nombre) {
+        cargarLogros(usuario.nombre).then(function(){
+          if (typeof renderLogros === "function") renderLogros();
+          if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+        }).catch(function(){});
+        return;
+      }
+      if (typeof renderLogros === "function") renderLogros();
+    });
+
+    canalActual.bind("latido", function (datos) {
+      if (datos && datos.last_login) datosUsuario.ultimaConexion = datos.last_login;
+      if (typeof pintarUltimaConexion === "function") pintarUltimaConexion();
+    });
+  }
+
+  enlazarCanal(obtenerNombreCanal());
+
+  // Si la sesión cambia en la misma pestaña, el perfil debe escuchar el
+  // canal del nuevo usuario y dejar de escuchar el anterior.
+  if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(function () {
+      enlazarCanal(obtenerNombreCanal());
+    });
+  }
+
   if (typeof pintarUltimaConexion === "function") {
     setInterval(pintarUltimaConexion, 30 * 1000);
   }

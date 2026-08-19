@@ -249,7 +249,11 @@ try{
                 gameId: idJuego,
                 at: Date.now()
             };
-            window.dispatchEvent(new CustomEvent("macro:game-played", { detail: eventoJuego }));
+            if (window.MRApp && MRApp.events && typeof MRApp.events.emit === "function") {
+              MRApp.events.emit("macro:game-played", eventoJuego);
+            } else {
+              window.dispatchEvent(new CustomEvent("macro:game-played", { detail: eventoJuego }));
+            }
             localStorage.setItem("macro:last-game-played", JSON.stringify(eventoJuego));
         }catch(_){}
     }

@@ -46,7 +46,9 @@ async function renderActividadReciente(){
   const contenedor = document.getElementById("listaActividadReciente");
   if(!contenedor) return;
 
-  const usuarioActual = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  const usuarioActual = (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function")
+    ? MRProfileContext.getUser()
+    : ((window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario);
   if(!usuarioActual || !usuarioActual.nombre) return;
 
   const lista = await obtenerActividades(usuarioActual.nombre);
@@ -81,7 +83,9 @@ async function renderActividadAmigos(){
   const contenedor = document.getElementById("listaActividadAmigos");
   if(!contenedor) return;
 
-  const usuarioActual = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  const usuarioActual = (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function")
+    ? MRProfileContext.getUser()
+    : ((window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario);
   if(!usuarioActual || !usuarioActual.nombre) return;
 
   let misFavoritos = [];
@@ -144,8 +148,18 @@ function refrescarActividadPorJuego(payload){
   renderActividadReciente();
 }
 
-window.addEventListener("macro:game-played", function(event){
-  refrescarActividadPorJuego(event && event.detail);
+function escucharEventoMacro(nombre, handler){
+  if(window.MRApp && MRApp.events && typeof MRApp.events.on === "function") {
+    MRApp.events.on(nombre, handler);
+    return;
+  }
+  window.addEventListener(nombre, function(event){
+    handler(event && event.detail);
+  });
+}
+
+escucharEventoMacro("macro:game-played", function(detail){
+  refrescarActividadPorJuego(detail);
 });
 
 function refrescarActividadPorEvento(payload){
@@ -155,12 +169,12 @@ function refrescarActividadPorEvento(payload){
   renderActividadReciente();
 }
 
-window.addEventListener("macro:achievement-unlocked", function(event){
-  refrescarActividadPorEvento(event && event.detail);
+escucharEventoMacro("macro:achievement-unlocked", function(detail){
+  refrescarActividadPorEvento(detail);
 });
 
-window.addEventListener("macro:activity-recorded", function(event){
-  refrescarActividadPorEvento(event && event.detail);
+escucharEventoMacro("macro:activity-recorded", function(detail){
+  refrescarActividadPorEvento(detail);
 });
 
 window.addEventListener("storage", function(event){

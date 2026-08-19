@@ -31,7 +31,12 @@ async function eliminarCuentaCompleta(nombreUsuario, password) {
     return { ok: false, error: (datos && datos.error) || "No se pudo eliminar la cuenta." };
   }
 
-  localStorage.removeItem("usuarioActivo");
+  if (window.MRSession && typeof MRSession.clear === "function") {
+    MRSession.clear();
+  } else {
+    localStorage.removeItem("usuarioActivo");
+    localStorage.removeItem("macroSessionToken");
+  }
 
   return { ok: true };
 
@@ -55,7 +60,9 @@ async function eliminarCuentaCompleta(nombreUsuario, password) {
 
   boton.addEventListener("click", async () => {
 
-    const activo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    const activo = (window.MRSession && typeof MRSession.get === "function")
+      ? MRSession.get()
+      : leerJSON(localStorage.getItem("usuarioActivo") || "null");
     if (!activo) return;
 
     const confirmar = typeof pedirConfirmacion === "function"

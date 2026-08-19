@@ -33,7 +33,7 @@
 #agregarAmigo {
   margin-top: 18px;
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 11px 24px;
   border-radius: 10px;

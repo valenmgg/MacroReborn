@@ -37,6 +37,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="css/modal.css">
 <link rel="stylesheet" href="css/inicio.css">
 <link rel="stylesheet" href="css/perfil.css">
 <link rel="stylesheet" href="css/portal-growth.css">
@@ -64,9 +65,6 @@
 </nav>
 
 <main class="perfil">
-<section id="mrEconomiaPerfil" aria-label="Economía de MacroReborn"></section>
-
-
   <!-- MIGA DE PAN ESTILO "PORTAL CLÁSICO" -->
   <div class="perfil-migas">
     <a href="comunidad.html" class="perfil-volver" aria-label="Volver a comunidad">←</a>
@@ -998,6 +996,29 @@
     <h2>⚙️ Configuración de cuenta</h2>
     <p class="config-subtitulo">Administrá las opciones privadas de tu cuenta.</p>
 
+    <div class="config-bloque config-bloque-personalizacion">
+      <h3>🎨 Apariencia</h3>
+      <p class="config-subtitulo">Personalizá el estilo de MacroReborn. Estos cambios se guardan en este dispositivo y se sincronizan entre tus pestañas.</p>
+      <div class="mr-paleta-grid" role="group" aria-label="Paleta de MacroReborn">
+        <button type="button" class="mr-paleta-opcion" data-mr-paleta="macro" aria-pressed="false">
+          <span class="mr-paleta-muestra mr-paleta-macro" aria-hidden="true"></span><span><strong>Macro</strong><small>Identidad púrpura original</small></span>
+        </button>
+        <button type="button" class="mr-paleta-opcion" data-mr-paleta="neon" aria-pressed="false">
+          <span class="mr-paleta-muestra mr-paleta-neon" aria-hidden="true"></span><span><strong>Neon</strong><small>Acentos eléctricos</small></span>
+        </button>
+        <button type="button" class="mr-paleta-opcion" data-mr-paleta="arcade" aria-pressed="false">
+          <span class="mr-paleta-muestra mr-paleta-arcade" aria-hidden="true"></span><span><strong>Arcade</strong><small>Más cálida y retro</small></span>
+        </button>
+        <button type="button" class="mr-paleta-opcion" data-mr-paleta="clasica" aria-pressed="false">
+          <span class="mr-paleta-muestra mr-paleta-clasica" aria-hidden="true"></span><span><strong>Clásica</strong><small>Dorada, estilo portal</small></span>
+        </button>
+      </div>
+      <div class="mr-tema-inline">
+        <span><strong>Modo:</strong> <span id="mrTemaActual">Automático según tu elección</span></span>
+        <button type="button" class="mr-paleta-toggle" id="mrTemaPersonalizacion">Cambiar oscuro/claro</button>
+      </div>
+    </div>
+
     <div class="config-bloque">
       <h3>🔒 Seguridad</h3>
 
@@ -1098,7 +1119,9 @@
 <script defer src="js/core.js"></script>
 <script defer src="js/api-client.js"></script>
 <script defer src="js/session.js"></script>
+<script defer src="js/app-shell.js"></script>
 
+<script defer src="js/modal.js"></script>
 <script defer src="js/motor/permisos.js"></script>
 <script defer src="js/motor/actividad.js"></script>
 <script defer src="js/motor/logros.js"></script>
@@ -1133,6 +1156,22 @@
 <script defer src="js/buscador.js"></script>
 <script defer src="js/nav-toggle.js"></script>
  <script defer src="js/perfil-identidad.js"></script>
+<script defer>
+  document.addEventListener("DOMContentLoaded", function(){
+    const boton = document.getElementById("mrTemaPersonalizacion");
+    const etiqueta = document.getElementById("mrTemaActual");
+    function actualizar(){
+      if (!window.MRTheme || !etiqueta) return;
+      const estado = typeof MRTheme.getState === "function" ? MRTheme.getState() : null;
+      const tema = estado ? estado.tema : MRTheme.get();
+      const paleta = estado && estado.paletaDefinicion ? estado.paletaDefinicion.nombre : "Macro";
+      etiqueta.textContent = `${tema === "claro" ? "Claro" : "Oscuro"} · ${paleta}`;
+    }
+    if (boton && window.MRTheme) boton.addEventListener("click", function(){ MRTheme.toggle("personalizacion"); actualizar(); });
+    if (window.MRTheme && typeof MRTheme.subscribe === "function") MRTheme.subscribe(actualizar);
+    actualizar();
+  });
+</script>
 <script defer src="portal-growth.js"></script>
 </body>
 </html>

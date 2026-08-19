@@ -26,8 +26,8 @@ button {
   --clasico-borde: #6d3fd1;
   --clasico-radio: 10px;
   --clasico-plate: linear-gradient(180deg, #5b3aa0 0%, #2a1150 100%);
-  --clasico-header: linear-gradient(180deg, #2f1a5c 0%, #241145 100%);
-  --clasico-avatar-fondo: linear-gradient(180deg, #1f0f3d 0%, #0c0616 100%);
+  --clasico-header: linear-gradient(180deg, var(--bg-panel-alt) 0%, var(--bg-panel) 100%);
+  --clasico-avatar-fondo: linear-gradient(180deg, #1f0f3d 0%, var(--bg-deep) 100%);
   max-width: 1180px;
   margin: 0 auto;
   padding: 40px 24px 80px;
@@ -37,7 +37,7 @@ button {
 /* En modo claro (html[data-tema="claro"]) se ve prácticamente igual al
    portal clásico original: celeste vivo sobre paneles blancos. */
 html[data-tema="claro"] .perfil {
-  --clasico-borde: #8b5cf6;
+  --clasico-borde: var(--accent-color);
   --clasico-plate: linear-gradient(180deg, #8b6fd1 0%, #5b3aa0 100%);
   --clasico-header: linear-gradient(180deg, #f3eefb 0%, #e0d3f7 100%);
   --clasico-avatar-fondo: linear-gradient(180deg, #ede4fa 0%, #c9adf0 100%);
@@ -96,7 +96,7 @@ html[data-tema="claro"] .perfil {
 
 .nivel {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--bg-panel);
   box-shadow: 0 0 0 2px var(--clasico-borde);
 }
@@ -176,7 +176,7 @@ html[data-tema="claro"] .perfil {
 .datos button {
   align-self: flex-start;
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 10px 20px;
   border-radius: 10px;
@@ -572,7 +572,7 @@ a.actividad-cita:hover {
   display: block;
   text-align: center;
   background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
-  color: #241804;
+  color: var(--text-on-accent);
   font-weight: 800;
   font-size: 11px;
   border: none;
@@ -755,7 +755,7 @@ a.actividad-cita:hover {
 }
 
 .boton-reportar {
-  background: rgba(240, 180, 41, 0.14);
+  background: var(--warning-bg);
   color: var(--gold-bright);
   border: 1px solid rgba(240, 180, 41, 0.35);
   padding: 7px 14px;
@@ -816,7 +816,7 @@ a.actividad-cita:hover {
 
 #botonComentar {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 11px 22px;
   border-radius: 10px;
@@ -975,7 +975,7 @@ a.actividad-cita:hover {
 
 #botonCrearAvatar {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 12px 26px;
   border-radius: 10px;
@@ -1174,7 +1174,7 @@ a.actividad-cita:hover {
   margin-top: 2px;
   font-size: 11px;
   font-weight: 800;
-  color: var(--gold-bright, #f0b429);
+  color: var(--gold-bright, var(--gold));
 }
 
 /* ---- Acciones del editor ---- */
@@ -1189,7 +1189,7 @@ a.actividad-cita:hover {
 
 #guardarAvatar {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 12px 26px;
   border-radius: 10px;
@@ -1369,7 +1369,7 @@ a.actividad-cita:hover {
 
 .btn-guardar-aqui {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 1.5px solid var(--gold-deep);
 }
 
@@ -1699,18 +1699,18 @@ a.actividad-cita:hover {
 }
 
 .confirmacion-cancelar:hover {
-  border-color: var(--clasico-borde);
-  color: var(--clasico-borde);
+  border-color: var(--line-hover);
+  color: var(--accent);
 }
 
 .confirmacion-confirmar {
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: var(--danger-bg);
+  color: var(--danger-light);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
 .confirmacion-confirmar:hover {
-  background: rgba(239, 68, 68, 0.24);
+  background: color-mix(in srgb, var(--danger) 24%, transparent);
   transform: translateY(-1px);
 }
 
@@ -1799,8 +1799,8 @@ a.actividad-cita:hover {
 
 .campo-config input:focus {
   outline: none;
-  border-color: var(--clasico-borde);
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .campo-config input:disabled {
@@ -1844,7 +1844,7 @@ a.actividad-cita:hover {
 #botonGuardarPassword {
   align-self: flex-start;
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 11px 22px;
   border-radius: 10px;
@@ -2076,7 +2076,7 @@ a.actividad-cita:hover {
   font-size: 11.5px;
   border-radius: 999px;
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--bg-panel);
   box-shadow: 0 0 0 2px var(--clasico-borde), 0 4px 10px rgba(0, 0, 0, 0.35);
   white-space: nowrap;
@@ -2282,7 +2282,7 @@ a.actividad-cita:hover {
 
 .perfil-btn-editar {
   background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 65%, var(--gold-deep) 100%);
-  color: #241804;
+  color: var(--text-on-accent);
   border: 2px solid var(--gold-deep);
   padding: 9px 18px;
   border-radius: 10px;
@@ -2400,3 +2400,23 @@ a.actividad-cita:hover {
 @media (max-width:560px){
   .perfil-bienvenida-grid{grid-template-columns:1fr}
 }
+
+
+/* Personalización visual inspirada en ThemeContext de Morpho. */
+.config-bloque-personalizacion .config-subtitulo{max-width:760px}
+.mr-paleta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.mr-paleta-opcion{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-panel-alt);color:var(--text-main);cursor:pointer;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+.mr-paleta-opcion:hover{transform:translateY(-1px);border-color:var(--line-hover)}
+.mr-paleta-opcion.activo{border-color:var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 22%,transparent)}
+.mr-paleta-opcion span:last-child{display:flex;flex-direction:column;gap:2px}
+.mr-paleta-opcion strong{font-size:13px}
+.mr-paleta-opcion small{font-size:11px;color:var(--text-muted)}
+.mr-paleta-muestra{width:34px;height:34px;border-radius:10px;flex:0 0 34px;border:1px solid rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.mr-paleta-macro{background:linear-gradient(135deg,var(--accent),var(--gold))}
+.mr-paleta-neon{background:linear-gradient(135deg,#22d3ee,var(--cyan))}
+.mr-paleta-arcade{background:linear-gradient(135deg,#fb7185,#f59e0b)}
+.mr-paleta-clasica{background:linear-gradient(135deg,var(--gold),#60a5fa)}
+.mr-tema-inline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--text-muted)}
+.mr-paleta-toggle{border:1px solid var(--line);background:var(--bg-panel);color:var(--text-main);border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}
+.mr-paleta-toggle:hover{border-color:var(--line-hover)}
+@media(max-width:700px){.mr-paleta-grid{grid-template-columns:1fr}.mr-tema-inline{align-items:flex-start;flex-direction:column}}

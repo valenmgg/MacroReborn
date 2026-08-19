@@ -86,7 +86,7 @@
   gap: 6px;
   padding: 8px 15px;
   border-radius: 999px;
-  background: rgba(34, 197, 94, 0.14);
+  background: var(--success-bg);
   color: var(--green);
   border: 1px solid rgba(34, 197, 94, 0.35);
   font-weight: 700;
@@ -282,7 +282,7 @@
 }
 
 .btn-borrar {
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--danger-bg);
   color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: 8px;
@@ -342,7 +342,7 @@
 
 .escribir input:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.12);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .escribir input::placeholder {
@@ -351,7 +351,7 @@
 
 .escribir button {
   background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
-  color: #241804;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 11px;
   padding: 0 26px;
@@ -363,7 +363,7 @@
 
 .escribir button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(240, 180, 41, 0.3);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* ==========================================================================

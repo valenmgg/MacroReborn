@@ -1,0 +1,110 @@
+/* MacroReborn - modal global inspirado en MorphoKeyRequired.
+   El modal consume los tokens de MRTheme para que las paletas
+   de Personalización también alcancen los diálogos del sistema. */
+.mr-modal-root{
+  position:fixed;
+  inset:0;
+  z-index:100000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+.mr-modal-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.68);
+  backdrop-filter:blur(4px);
+}
+
+.mr-modal-dialog{
+  position:relative;
+  width:min(100%, 470px);
+  max-height:min(720px, calc(100vh - 48px));
+  overflow:auto;
+  padding:30px 28px 26px;
+  border:1px solid var(--line, rgba(127,127,127,.22));
+  border-radius:22px;
+  background:var(--bg-panel, #171717);
+  color:var(--text-main, #f5f5f5);
+  box-shadow:var(--sombra-suave, 0 28px 80px rgba(0,0,0,.42));
+  text-align:center;
+  outline:none;
+  animation:mrModalIn .18s ease-out;
+}
+
+.mr-modal-close{
+  position:absolute;
+  top:10px;
+  right:12px;
+  width:36px;
+  height:36px;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:var(--text-main, inherit);
+  font-size:26px;
+  line-height:1;
+  cursor:pointer;
+  opacity:.75;
+}
+
+.mr-modal-close:hover,
+.mr-modal-close:focus-visible{
+  opacity:1;
+  background:var(--chip-bg, rgba(127,127,127,.12));
+}
+
+.mr-modal-icon{
+  font-size:48px;
+  margin:4px 0 12px;
+}
+
+.mr-modal-title{
+  margin:0;
+  font-size:24px;
+  line-height:1.2;
+  color:var(--text-main, inherit);
+}
+
+.mr-modal-message{
+  margin:12px auto 22px;
+  max-width:390px;
+  line-height:1.55;
+  color:var(--text-secondary, inherit);
+}
+
+.mr-modal-action{
+  border:0;
+  border-radius:12px;
+  padding:11px 20px;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+  background:var(--accent-color, var(--gold, #6366f1));
+  color:var(--text-on-accent, #fff);
+  box-shadow:0 8px 18px color-mix(in srgb, var(--accent-color, #6366f1) 28%, transparent);
+}
+
+.mr-modal-action:hover,
+.mr-modal-action:focus-visible{
+  filter:brightness(1.08);
+}
+
+html.mr-modal-open{
+  overflow:hidden;
+}
+
+@keyframes mrModalIn{
+  from{opacity:0; transform:translateY(8px) scale(.97)}
+  to{opacity:1; transform:translateY(0) scale(1)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mr-modal-dialog{animation:none}
+}
+
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  .mr-modal-action{box-shadow:0 8px 18px rgba(0,0,0,.18)}
+}

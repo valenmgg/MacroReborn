@@ -22,7 +22,7 @@
   font-size: .72rem;
   letter-spacing: .16em;
   font-weight: 800;
-  color: #f0b429;
+  color: var(--gold);
 }
 
 .mr-identidad-hero h2 {

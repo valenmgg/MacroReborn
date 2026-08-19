@@ -19,7 +19,8 @@ const PUSHER_CLUSTER = "sa1";
 
 (function () {
 
-  if (typeof Pusher === "undefined") {
+  function iniciarTiempoReal() {
+    if (typeof Pusher === "undefined") {
     console.warn("MacroReborn: pusher-js no cargó, notificaciones en vivo desactivadas.");
     return;
   }
@@ -84,7 +85,16 @@ const PUSHER_CLUSTER = "sa1";
     });
   }
 
-  window.addEventListener("beforeunload", limpiarCanal);
+    window.addEventListener("beforeunload", limpiarCanal);
+  }
+
+  // Layout.js de Morpho -> MRApp: el tiempo real espera a que la
+  // infraestructura común esté lista, sin cambiar la arquitectura multi-página.
+  if (window.MRApp && typeof MRApp.whenReady === "function") {
+    MRApp.whenReady().then(iniciarTiempoReal);
+  } else {
+    iniciarTiempoReal();
+  }
 
 })();
 

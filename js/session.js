@@ -53,9 +53,19 @@
       motivo: motivo || "sync"
     };
 
-    try {
-      window.dispatchEvent(new CustomEvent(EVENTO, { detail: detalle }));
-    } catch (_) {}
+    let enviadoPorApp = false;
+    if (window.MRApp && MRApp.events && typeof MRApp.events.emit === "function") {
+      try {
+        MRApp.events.emit(EVENTO, detalle);
+        enviadoPorApp = true;
+      } catch (_) {}
+    }
+
+    if (!enviadoPorApp) {
+      try {
+        window.dispatchEvent(new CustomEvent(EVENTO, { detail: detalle }));
+      } catch (_) {}
+    }
 
     listeners.forEach((listener) => {
       try { listener(detalle); } catch (error) {

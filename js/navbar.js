@@ -4,6 +4,37 @@
 
 const nav = document.querySelector(".nav-links") || document.querySelector("nav");
 
+// MRApp coordina el arranque común (equivalente conceptual a Layout.js de Morpho).
+// Navbar mantiene su inicialización actual; solo marca que el shell está disponible.
+if (window.MRApp && typeof MRApp.subscribe === "function") {
+    MRApp.subscribe(function (servicios) {
+        document.documentElement.setAttribute("data-macro-navbar", servicios && servicios.ready ? "ready" : "pending");
+    });
+}
+
+// La navbar consume el estado público de MRTheme en vez de leer localStorage
+// o data-* por su cuenta. Así los presets de Personalización se reflejan
+// también en componentes dinámicos creados por esta capa.
+(function sincronizarTemaNavbar(){
+    function aplicarEstado(estado){
+        const dato = estado || (window.MRTheme && typeof MRTheme.getState === "function" ? MRTheme.getState() : null);
+        if (!dato) return;
+        document.documentElement.setAttribute("data-mr-navbar-tema", dato.tema || "oscuro");
+        document.documentElement.setAttribute("data-mr-navbar-paleta", dato.paleta || "macro");
+    }
+
+    if (window.MRTheme && typeof MRTheme.getState === "function") aplicarEstado(MRTheme.getState());
+
+    const suscribir = window.MRTheme && typeof MRTheme.subscribePalette === "function"
+        ? MRTheme.subscribePalette
+        : null;
+    if (suscribir) suscribir(aplicarEstado);
+
+    if (window.MRTheme && typeof MRTheme.subscribe === "function") MRTheme.subscribe(aplicarEstado);
+    else window.addEventListener("macro:theme-change", () => aplicarEstado());
+    window.addEventListener("macro:palette-change", () => aplicarEstado());
+})();
+
 const usuarioNav = (window.MRSession && typeof MRSession.get === "function")
     ? MRSession.get()
     : leerJSON(localStorage.getItem("usuarioActivo") || "null");
@@ -25,8 +56,8 @@ function _inyectarEstilosNotifDropdown(){
         .notif-dropdown{
             position: absolute; top: calc(100% + 10px); right: 0;
             width: 320px; max-width: 88vw;
-            background: #111c33; border: 1px solid rgba(148,163,184,0.18);
-            border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+            background: var(--bg-panel, #111c33); border: 1px solid var(--line, rgba(148,163,184,0.18));
+            border-radius: 12px; box-shadow: var(--sombra-suave, 0 16px 40px rgba(0,0,0,0.35));
             opacity: 0; transform: translateY(-6px); pointer-events: none;
             transition: opacity .15s ease, transform .15s ease;
             z-index: 200; overflow: hidden; text-align: left;
@@ -34,19 +65,19 @@ function _inyectarEstilosNotifDropdown(){
         .notif-dropdown.abierto{ opacity: 1; transform: translateY(0); pointer-events: auto; }
         .notif-dropdown-header{
             display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 14px; border-bottom: 1px solid rgba(148,163,184,0.15);
-            font-size: 13px; font-weight: 700; color: #f1f5f9;
+            padding: 12px 14px; border-bottom: 1px solid var(--line, rgba(148,163,184,0.15));
+            font-size: 13px; font-weight: 700; color: var(--text-main, #f1f5f9);
         }
         .notif-dropdown-lista{ max-height: 320px; overflow-y: auto; }
-        .notif-dropdown-item{ padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,0.1); }
+        .notif-dropdown-item{ padding: 10px 14px; border-bottom: 1px solid var(--line, rgba(148,163,184,0.1)); }
         .notif-dropdown-item:last-child{ border-bottom: none; }
-        .notif-dropdown-item.no-leida{ background: rgba(99,102,241,0.1); }
-        .notif-dropdown-item h4{ margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: #f1f5f9; }
-        .notif-dropdown-item p{ margin: 0 0 4px; font-size: 11.5px; color: #cbd5e1; line-height: 1.4; }
-        .notif-dropdown-item span{ font-size: 10.5px; color: #64748b; }
-        .notif-dropdown-vacio{ padding: 28px 14px; text-align: center; font-size: 12.5px; color: #94a3b8; }
-        .notif-dropdown-footer{ padding: 10px 14px; text-align: center; border-top: 1px solid rgba(148,163,184,0.15); }
-        .notif-dropdown-footer a{ font-size: 12px; font-weight: 600; color: #93c5fd; text-decoration: none; }
+        .notif-dropdown-item.no-leida{ background: var(--chip-bg, rgba(99,102,241,0.1)); }
+        .notif-dropdown-item h4{ margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: var(--text-main, #f1f5f9); }
+        .notif-dropdown-item p{ margin: 0 0 4px; font-size: 11.5px; color: var(--text-secondary, #cbd5e1); line-height: 1.4; }
+        .notif-dropdown-item span{ font-size: 10.5px; color: var(--text-muted, #64748b); }
+        .notif-dropdown-vacio{ padding: 28px 14px; text-align: center; font-size: 12.5px; color: var(--text-muted, #94a3b8); }
+        .notif-dropdown-footer{ padding: 10px 14px; text-align: center; border-top: 1px solid var(--line, rgba(148,163,184,0.15)); }
+        .notif-dropdown-footer a{ font-size: 12px; font-weight: 600; color: var(--cyan, #93c5fd); text-decoration: none; }
         .notif-dropdown-footer a:hover{ text-decoration: underline; }
     `;
     document.head.appendChild(estilo);

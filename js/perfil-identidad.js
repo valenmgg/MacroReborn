@@ -118,8 +118,10 @@
     const xp = number(user?.xp);
     const level = number(user?.nivel) || levelFromXP(xp);
     const coins = number(user?.monedas ?? user?.moneda ?? user?.coins);
-    const ranking = $('#ranking')?.textContent?.trim() || 'Sin clasificar';
-    const achievements = $('#puntosLogros')?.textContent?.trim() || '0 puntos';
+    const rankValue = Number(user?.rank_actual);
+    const ranking = Number.isFinite(rankValue) && rankValue > 0
+      ? `#${rankValue}`
+      : ($('#ranking')?.textContent?.trim() || 'Sin clasificar');
 
     root.querySelector('#mrIdentidadTitulo').textContent = `Perfil de ${user?.nombre || $('#nombreUsuario')?.textContent?.trim() || 'jugador'}`;
     root.querySelector('#mrIdentidadSubtitulo').textContent = user?.biografia || 'Construye tu identidad gamer, sube de nivel y deja tu huella en MacroReborn.';
@@ -130,7 +132,7 @@
       buildCard({ icon: '🪙', label: 'Monedas', value: coins.toLocaleString('es-ES'), detail: 'Saldo disponible' }),
       buildCard({ icon: '🎮', label: 'Juegos jugados', value: history.length.toLocaleString('es-ES'), detail: 'Registrados en tu cuenta' }),
       buildCard({ icon: '❤️', label: 'Favoritos', value: favorites.length.toLocaleString('es-ES'), detail: 'Juegos guardados' }),
-      buildCard({ icon: '🤝', label: 'Amigos', value: friends.length.toLocaleString('es-ES'), detail: achievements })
+      buildCard({ icon: '🤝', label: 'Amigos', value: friends.length.toLocaleString('es-ES'), detail: 'Conexiones' })
     ].join('');
   }
 
@@ -177,9 +179,18 @@
       </a>`).join('');
   }
 
+  function obtenerUsuarioPerfilPropio() {
+    if (window.MRProfileContext && MRProfileContext.type === 'own' && typeof MRProfileContext.getUser === 'function') {
+      return MRProfileContext.getUser();
+    }
+    if (typeof datosUsuario !== 'undefined' && datosUsuario) return datosUsuario;
+    if (window.MRSession && typeof MRSession.get === 'function') return MRSession.get();
+    return null;
+  }
+
   function refreshVisibleSessionStats(root) {
-    if (!root || !window.MRSession || typeof MRSession.get !== 'function') return;
-    const user = MRSession.get();
+    if (!root) return;
+    const user = obtenerUsuarioPerfilPropio();
     if (!user) return;
 
     const xp = number(user.xp);
@@ -192,6 +203,13 @@
       if (strong) strong.textContent = `Nivel ${level}`;
       if (small) small.textContent = `${xp.toLocaleString('es-ES')} XP`;
     }
+    if (stats[1]) {
+      const strong = stats[1].querySelector('strong');
+      if (strong) {
+        const rankValue = Number(user.rank_actual);
+        strong.textContent = Number.isFinite(rankValue) && rankValue > 0 ? `#${rankValue}` : ($('#ranking')?.textContent?.trim() || 'Sin clasificar');
+      }
+    }
     if (stats[2]) {
       const strong = stats[2].querySelector('strong');
       if (strong) strong.textContent = coins.toLocaleString('es-ES');
@@ -202,43 +220,120 @@
     if (subtitle && user.biografia) subtitle.textContent = user.biografia;
   }
 
-  async function load(root) {
-    let storedUser = (typeof datosUsuario !== 'undefined' && datosUsuario) || readActiveUser() || {};
+  let cargaPerfilEnCurso = null;
+  let refrescoProgramado = null;
+  let snapshot = { history: [], favorites: [], friends: [], ready: false };
 
-    // Primera consumidora de la nueva capa MRSession: pedimos el estado
-    // actual a Neon y conservamos el token de sesión existente. Si la API
-    // está temporalmente caída, se sigue usando la copia local para que el
-    // perfil no quede vacío.
-    if (window.MRSession && typeof MRSession.refresh === 'function') {
-      const remoto = await MRSession.refresh();
-      if (remoto) storedUser = remoto;
+  function obtenerNombrePerfil() {
+    const user = obtenerUsuarioPerfilPropio() || readActiveUser() || {};
+    return user.nombre || user.username || $('#nombreUsuario')?.textContent?.trim() || '';
+  }
+
+  function pintarSnapshot(root, user) {
+    renderStats(root, user, snapshot.history, snapshot.favorites, snapshot.friends);
+    renderGameList(root.querySelector('#mrIdentidadActividad'), snapshot.history, 'Todavía no hay juegos registrados en tu historial.');
+    renderGameList(root.querySelector('#mrIdentidadFavoritos'), snapshot.favorites, 'Todavía no guardaste juegos como favoritos.');
+    refreshVisibleSessionStats(root);
+  }
+
+  async function load(root, options = {}) {
+    if (!root) return;
+    if (cargaPerfilEnCurso) return cargaPerfilEnCurso;
+
+    const forceSessionRefresh = options.refreshSession === true;
+    const refreshParts = Array.isArray(options.parts) && options.parts.length
+      ? new Set(options.parts)
+      : new Set(['history', 'favorites', 'friends']);
+
+    cargaPerfilEnCurso = (async () => {
+      let storedUser = obtenerUsuarioPerfilPropio() || readActiveUser() || {};
+
+      // Solo sincronizamos con Neon cuando realmente cambió la sesión o
+      // la carga inicial lo requiere. Los eventos de juego/logro/actividad
+      // pueden actualizar únicamente la parte afectada.
+      if (forceSessionRefresh && window.MRApp && typeof MRApp.refreshSession === 'function') {
+        const remoto = await MRApp.refreshSession();
+        if (remoto) storedUser = remoto;
+      }
+
+      const username = storedUser.nombre || storedUser.username || $('#nombreUsuario')?.textContent?.trim();
+      if (!username) return;
+
+      if (refreshParts.has('history') || refreshParts.has('favorites') || refreshParts.has('friends')) {
+        const encoded = encodeURIComponent(username);
+        const jobs = [];
+        if (refreshParts.has('history')) jobs.push(fetchJSON(`/api/content?action=game-history&username=${encoded}`).then(data => {
+          if (data?.success) snapshot.history = data.historial || [];
+        }));
+        if (refreshParts.has('favorites')) jobs.push(fetchJSON(`/api/content?action=favorites&username=${encoded}`).then(data => {
+          if (data?.success) snapshot.favorites = data.favoritos || [];
+        }));
+        if (refreshParts.has('friends')) jobs.push(fetchJSON(`/api/social?action=friends&username=${encoded}`).then(data => {
+          if (data?.success) snapshot.friends = data.amigos || [];
+        }));
+        await Promise.all(jobs);
+      }
+
+      snapshot.ready = true;
+      pintarSnapshot(root, storedUser);
+    })();
+
+    try {
+      return await cargaPerfilEnCurso;
+    } finally {
+      cargaPerfilEnCurso = null;
+    }
+  }
+
+  function programarRefresco(root, options = {}) {
+    const refreshSession = options.refreshSession === true;
+    const requestedParts = Array.isArray(options.parts) && options.parts.length
+      ? options.parts
+      : ['history', 'favorites', 'friends'];
+
+    if (refrescoProgramado) {
+      refrescoProgramado.refreshSession = refrescoProgramado.refreshSession || refreshSession;
+      requestedParts.forEach(part => refrescoProgramado.parts.add(part));
+      return;
     }
 
-    const username = storedUser.nombre || storedUser.username || $('#nombreUsuario')?.textContent?.trim();
+    const estado = { refreshSession, parts: new Set(requestedParts) };
+    refrescoProgramado = estado;
+    setTimeout(() => {
+      const debeRefrescarSesion = estado.refreshSession;
+      const partes = Array.from(estado.parts);
+      refrescoProgramado = null;
+      load(root, { refreshSession: debeRefrescarSesion, parts: partes });
+    }, 120);
+  }
 
-    if (!username) return;
-
-    const encoded = encodeURIComponent(username);
-    const [historyData, favoritesData, friendsData] = await Promise.all([
-      fetchJSON(`/api/content?action=game-history&username=${encoded}`),
-      fetchJSON(`/api/content?action=favorites&username=${encoded}`),
-      fetchJSON(`/api/social?action=friends&username=${encoded}`)
-    ]);
-
-    const user = storedUser;
-
-    const history = historyData?.success ? (historyData.historial || []) : [];
-    const favorites = favoritesData?.success ? (favoritesData.favoritos || []) : [];
-    const friends = friendsData?.success ? (friendsData.amigos || []) : [];
-
-    renderStats(root, user, history, favorites, friends);
-    renderGameList(root.querySelector('#mrIdentidadActividad'), history, 'Todavía no hay juegos registrados en tu historial.');
-    renderGameList(root.querySelector('#mrIdentidadFavoritos'), favorites, 'Todavía no guardaste juegos como favoritos.');
-
+  function subscribeToProfileEvents(root) {
     if (window.MRSession && typeof MRSession.subscribe === 'function') {
-      MRSession.subscribe(function () {
+      MRSession.subscribe(() => {
+        // MRSession es solo la fuente de cambios de la CUENTA PROPIA.
+        // El usuario mostrado sigue viniendo de MRProfileContext.
         refreshVisibleSessionStats(root);
       });
+    }
+
+    const handlers = {
+      'macro:game-played': () => programarRefresco(root, { parts: ['history'] }),
+      // Un logro no modifica el historial/favoritos/amigos del resumen.
+      // perfil-realtime.js se encarga de refrescar el bloque de logros.
+      'macro:achievement-unlocked': () => refreshVisibleSessionStats(root),
+      // Solo una actividad de tipo juego cambia el conteo de juegos jugados.
+      'macro:activity-recorded': (detail) => {
+        if (detail && String(detail.tipo || '').toLowerCase() === 'juego') {
+          programarRefresco(root, { parts: ['history'] });
+        }
+      },
+      'macro:session-change': () => programarRefresco(root, { refreshSession: true })
+    };
+
+    if (window.MRApp && MRApp.events && typeof MRApp.events.on === 'function') {
+      Object.entries(handlers).forEach(([eventName, handler]) => MRApp.events.on(eventName, handler));
+    } else {
+      Object.entries(handlers).forEach(([eventName, handler]) => window.addEventListener(eventName, handler));
     }
   }
 
@@ -246,7 +341,8 @@
     const root = createShell();
     if (!root) return;
     wireActions(root);
-    load(root);
+    subscribeToProfileEvents(root);
+    load(root, { refreshSession: true });
   }
 
   if (document.readyState === 'loading') {

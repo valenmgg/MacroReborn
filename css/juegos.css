@@ -201,7 +201,7 @@
 }
 
 .badge-estado {
-  background: rgba(240, 180, 41, 0.14);
+  background: var(--warning-bg);
   color: var(--gold-bright);
   border: 1px solid rgba(240, 180, 41, 0.35);
 }
@@ -243,7 +243,7 @@
 .juego-card button {
   width: 100%;
   background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
-  color: #241804;
+  color: var(--text-on-accent);
   border: none;
   padding: 11px 20px;
   border-radius: 8px;
@@ -255,7 +255,7 @@
 
 .juego-card button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(240, 180, 41, 0.3);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* Toque de detalle "cartucho" clásico en la primera fila de Destacados */
@@ -305,7 +305,7 @@
    FILTROS + TARJETAS DE PORTAL
    ============================================================================ */
 .catalogo-busqueda { display:flex; align-items:center; gap:10px; max-width:760px; margin:24px auto 0; padding:12px 15px; background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; }
-.catalogo-busqueda:focus-within { border-color:var(--gold); box-shadow:0 0 0 4px rgba(240,180,41,.11); }
+.catalogo-busqueda:focus-within { border-color:var(--gold); box-shadow:0 0 0 4px var(--focus-ring); }
 .catalogo-busqueda span { opacity:.85; }
 .catalogo-busqueda input { width:100%; border:0; outline:0; background:transparent; color:var(--text-main); font:600 15px var(--font-body); }
 .catalogo-busqueda input::placeholder { color:var(--text-placeholder); }
@@ -322,7 +322,7 @@
 .juego-imagen { position:relative; height:auto; aspect-ratio:16/10; margin:0; border:0; border-radius:0; overflow:hidden; }
 .juego-imagen img { width:100%; height:100%; object-fit:cover; transition:transform .24s ease; }
 .juego-card:hover .juego-imagen img { transform:scale(1.05); }
-.juego-hover-accion { position:absolute; left:50%; bottom:10px; transform:translate(-50%,8px); opacity:0; padding:7px 14px; border-radius:999px; background:var(--gold); color:#241804; font-size:11px; font-weight:900; transition:.18s ease; }
+.juego-hover-accion { position:absolute; left:50%; bottom:10px; transform:translate(-50%,8px); opacity:0; padding:7px 14px; border-radius:999px; background:var(--gold); color:var(--text-on-accent); font-size:11px; font-weight:900; transition:.18s ease; }
 .juego-card:hover .juego-hover-accion { opacity:1; transform:translate(-50%,0); }
 .juego-card-contenido { padding:11px 13px 13px; display:flex; flex:1; flex-direction:column; }
 .juego-card h3 { font-size:14px; line-height:1.25; margin-bottom:7px; text-align:left; }
@@ -331,7 +331,7 @@
 .juego-card-meta span:last-child { color:var(--gold-bright); font-weight:700; }
 .juego-card > a { margin-top:0; }
 .juego-card button { display:none; }
-.juego-card-cta { display:inline-flex; align-items:center; justify-content:center; margin-top:10px; padding:9px 12px; border-radius:10px; background:var(--accent, #7c3aed); color:#fff; font-weight:800; font-size:11px; text-decoration:none; transition:transform .2s ease, filter .2s ease; }
+.juego-card-cta { display:inline-flex; align-items:center; justify-content:center; margin-top:10px; padding:9px 12px; border-radius:10px; background:var(--accent, var(--accent)); color:#fff; font-weight:800; font-size:11px; text-decoration:none; transition:transform .2s ease, filter .2s ease; }
 .juego-card:hover .juego-card-cta { transform:translateY(-1px); filter:brightness(1.08); }
 @media (max-width:768px){ .catalogo-resultados{width:100%; margin-left:0; padding-bottom:0;} .catalogo-filtro-bloque{flex:1 1 180px;} .juego-card-top{padding:8px 8px 0;} }
 

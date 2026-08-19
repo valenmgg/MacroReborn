@@ -19,8 +19,8 @@
     }
     if(badge) badge.textContent="@"+u.nombre;
     let user = u;
-    if(window.MRSession && typeof window.MRSession.refresh === "function") {
-      const sincronizado = await window.MRSession.refresh();
+    if(window.MRApp && typeof window.MRApp.refreshSession === "function") {
+      const sincronizado = await window.MRApp.refreshSession();
       if(sincronizado) user = sincronizado;
     }
     const historyRes = await get("/api/content?action=game-history&username="+encodeURIComponent(user.nombre));

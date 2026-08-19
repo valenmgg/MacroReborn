@@ -4,6 +4,9 @@
 
 function obtenerUsuarioSesionFavoritos(){
     try {
+        if (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function") {
+            return MRProfileContext.getUser();
+        }
         return (window.MRSession && typeof MRSession.get === "function")
             ? MRSession.get()
             : leerJSON(localStorage.getItem("usuarioActivo"));

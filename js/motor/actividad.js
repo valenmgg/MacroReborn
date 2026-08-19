@@ -258,9 +258,8 @@ function registrarActividad(nombre, tipo, detalle){
     try{ datos = await resp.json(); }catch(_){}
     if(!resp.ok || !datos || datos.success !== true) return;
 
-    // La actividad ya está confirmada en Neon. Avisamos a la UI actual
-    // y sincronizamos otras pestañas sin escribir ningún dato de actividad
-    // localmente.
+    // La actividad ya está confirmada en Neon. MRApp.events coordina la pestaña actual
+    // y conserva el CustomEvent tradicional; localStorage sincroniza otras pestañas.
     try{
       const eventoActividad = {
         username: nombre,
@@ -268,7 +267,11 @@ function registrarActividad(nombre, tipo, detalle){
         detalle: detalle || "",
         at: Date.now()
       };
-      window.dispatchEvent(new CustomEvent("macro:activity-recorded", { detail: eventoActividad }));
+      if(window.MRApp && MRApp.events && typeof MRApp.events.emit === "function"){
+        MRApp.events.emit("macro:activity-recorded", eventoActividad);
+      }else{
+        window.dispatchEvent(new CustomEvent("macro:activity-recorded", { detail: eventoActividad }));
+      }
       localStorage.setItem("macro:last-activity-recorded", JSON.stringify(eventoActividad));
     }catch(_){}
   }).catch(error=>{

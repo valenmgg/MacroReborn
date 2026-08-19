@@ -237,15 +237,19 @@ try{
         juegosUnicos = datos.juegosUnicos;
 
         // Notifica al frontend que Neon ya registró esta partida.
-        // Se usa CustomEvent para la pestaña actual y localStorage para
-        // sincronizar otras pestañas sin crear ningún endpoint nuevo.
+        // MRApp.events emite el evento local y conserva el CustomEvent tradicional;
+        // localStorage sincroniza otras pestañas sin crear ningún endpoint nuevo.
         try{
             const eventoJuego = {
                 username: usuario.nombre,
                 gameId: idJuego,
                 at: Date.now()
             };
-            window.dispatchEvent(new CustomEvent("macro:game-played", { detail: eventoJuego }));
+            if (window.MRApp && MRApp.events && typeof MRApp.events.emit === "function") {
+              MRApp.events.emit("macro:game-played", eventoJuego);
+            } else {
+              window.dispatchEvent(new CustomEvent("macro:game-played", { detail: eventoJuego }));
+            }
             localStorage.setItem("macro:last-game-played", JSON.stringify(eventoJuego));
         }catch(_){}
     }

@@ -246,6 +246,20 @@ async function bloqueadoPorSuspension(){
 }
 
 function mostrarAvisoSuspension(){
+  const activo = obtenerUsuarioActivo();
+  const nombre = activo && activo.nombre ? activo.nombre : "tu cuenta";
+  const mensaje = "La cuenta de " + nombre + " está suspendida y las acciones de comunidad permanecen bloqueadas.";
+
+  if(window.MRModal && typeof window.MRModal.show === "function") {
+    window.MRModal.show({
+      title: "Cuenta suspendida",
+      message: mensaje,
+      icon: "🚫",
+      buttonText: "Entendido"
+    });
+    return;
+  }
+
   alert("🚫 Tu cuenta está suspendida.");
 }
 

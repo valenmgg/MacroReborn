@@ -80,13 +80,16 @@ datosUsuario.ultimaConexion = datosUsuario.last_login || null;
 
 // PERFIL
 
-// RANKING: se reutiliza obtenerPosicionRanking() (definida en js/ranking.js)
-// para que la posición mostrada acá sea siempre la misma que en ranking.html.
-// Es asincrónica (ahora sale de /api/users), así que se pinta con un
-// placeholder y se actualiza cuando resuelve.
-const posicionRankingPromesa = typeof obtenerPosicionRanking === "function"
-  ? obtenerPosicionRanking(datosUsuario.nombre)
-  : Promise.resolve(null);
+// RANKING: preferimos la posición ya calculada por el servidor (rank_actual)
+// que viaja con el usuario de la sesión. Solo hacemos la consulta completa
+// del ranking como fallback cuando ese dato no está disponible. Esto evita
+// descargar /api/users?limit=500 en la carga normal del perfil.
+const rankActualSesion = Number(datosUsuario.rank_actual);
+const posicionRankingPromesa = Number.isFinite(rankActualSesion) && rankActualSesion > 0
+  ? Promise.resolve(rankActualSesion)
+  : (typeof obtenerPosicionRanking === "function"
+      ? obtenerPosicionRanking(datosUsuario.nombre)
+      : Promise.resolve(null));
 
 const usuario={
 
@@ -108,6 +111,17 @@ const usuario={
 
   ultimaConexion: datosUsuario.ultimaConexion || "Nunca",
 
+};
+
+// Contexto explícito del PERFIL PROPIO.
+// Este objeto deja clara la frontera entre perfil.html (yo) y
+// usuario.html (perfil público ajeno): ningún módulo del perfil debe
+// sustituir al usuario objetivo por otro valor obtenido de la URL.
+window.MRProfileContext = {
+  type: "own",
+  getUser(){
+    return { ...datosUsuario, nombre: usuario.nombre, nivel: usuario.nivel, xp: usuario.xp, biografia: usuario.biografia, ultimaConexion: usuario.ultimaConexion };
+  }
 };
 
 document.getElementById("nombreUsuario").textContent=usuario.nombre;
@@ -204,6 +218,70 @@ function pintarUltimaConexion(){
 }
 
 pintarUltimaConexion();
+
+// ==============================
+// SINCRONIZACIÓN CON MRSESSION / MRAPP
+// ==============================
+// El perfil propio ahora reacciona a cambios confirmados por el servidor
+// (XP, monedas, nivel, bio, avatar, actividad) sin obligar a recargar la página.
+// El fallback a localStorage se conserva para compatibilidad con páginas antiguas.
+function actualizarPerfilDesdeSesion(detalle){
+  const actualizado = detalle && detalle.usuario ? detalle.usuario
+    : (window.MRSession && typeof MRSession.get === "function" ? MRSession.get() : null);
+  if(!actualizado || !actualizado.username && !actualizado.nombre) return;
+
+  const nombre = actualizado.nombre || actualizado.username;
+  const nivel = Number(actualizado.level ?? actualizado.nivel ?? datosUsuario.nivel) || 1;
+  const xp = Number(actualizado.xp ?? datosUsuario.xp) || 0;
+  const bio = actualizado.bio ?? actualizado.biografia ?? datosUsuario.biografia;
+  const ultima = actualizado.last_login ?? actualizado.ultimaConexion ?? datosUsuario.ultimaConexion;
+
+  datosUsuario = { ...datosUsuario, ...actualizado, username: nombre, level: nivel, xp };
+  datosUsuario.nombre = nombre;
+  datosUsuario.nivel = nivel;
+  datosUsuario.biografia = bio || "Todavía no escribió una biografía.";
+  datosUsuario.last_login = ultima || datosUsuario.last_login;
+  datosUsuario.ultimaConexion = ultima || null;
+
+  usuario.nombre = nombre;
+  usuario.nivel = nivel;
+  usuario.xp = xp;
+  usuario.biografia = datosUsuario.biografia;
+  usuario.ultimaConexion = datosUsuario.ultimaConexion || "Nunca";
+
+  const nombreEl = document.getElementById("nombreUsuario");
+  if(nombreEl) nombreEl.textContent = nombre;
+  const estadoEl = document.querySelector(".estado");
+  if(estadoEl) estadoEl.textContent = nombre + " · " + usuario.estado;
+  const nivelEl = document.querySelector(".nivel");
+  if(nivelEl) nivelEl.textContent = "⭐ Nivel " + nivel;
+  const bioEl = document.getElementById("biografia");
+  if(bioEl) bioEl.textContent = usuario.biografia;
+  const xpEl = document.getElementById("xp");
+  if(xpEl) xpEl.textContent = "⚡ " + xp + " XP";
+
+  if(barraXP && textoXP){
+    const necesario = nivel === 1 ? 50 : (nivel === 2 ? 100 : 100 + ((nivel - 2) * 200));
+    const porcentaje = Math.max(0, Math.min(100, (xp / necesario) * 100));
+    barraXP.style.width = porcentaje + "%";
+    textoXP.textContent = xp + " / " + necesario + " XP";
+  }
+
+  pintarUltimaConexion();
+  if(typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+  if(typeof renderLogros === "function") renderLogros();
+}
+
+function suscribirPerfilSesion(){
+  if(window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(actualizarPerfilDesdeSesion);
+  }
+  if(window.MRApp && MRApp.events && typeof MRApp.events.on === "function") {
+    MRApp.events.on("macro:session-change", actualizarPerfilDesdeSesion);
+  }
+}
+
+suscribirPerfilSesion();
 
 
 // ==============================
@@ -1997,46 +2075,3 @@ function renderLogros(){
 }
 
 logrosListos.then(renderLogros);
-
-// ==============================
-// RESUMEN RÁPIDO DEL PERFIL
-// ==============================
-// Carga contadores reales para que el encabezado funcione como un
-// dashboard de jugador. Los endpoints ya existen y, si alguno falla,
-// se conserva el 0 sin romper el resto del perfil.
-(async function cargarResumenPerfil(){
-  const nombre = datosUsuario && datosUsuario.nombre;
-  if(!nombre) return;
-
-  const pintar = (id, valor) => {
-    const el = document.getElementById(id);
-    if(el) el.textContent = String(Number(valor) || 0);
-  };
-
-  const pedir = (url) => {
-    if(window.MRApi && typeof MRApi.requestShared === 'function') {
-      return MRApi.requestShared('GET', url, { credentials: 'same-origin' });
-    }
-    return fetch(url).then(r => r.json());
-  };
-
-  const peticiones = await Promise.allSettled([
-    pedir('/api/content?action=game-history&username=' + encodeURIComponent(nombre)),
-    pedir('/api/content?action=favorites&username=' + encodeURIComponent(nombre)),
-    pedir('/api/social?action=friends&username=' + encodeURIComponent(nombre))
-  ]);
-
-  const historial = peticiones[0].status === 'fulfilled' && peticiones[0].value?.success
-    ? (peticiones[0].value.historial || []) : [];
-  const favoritos = peticiones[1].status === 'fulfilled' && peticiones[1].value?.success
-    ? (peticiones[1].value.favoritos || []) : [];
-  const amigos = peticiones[2].status === 'fulfilled' && peticiones[2].value?.success
-    ? (peticiones[2].value.amigos || []) : [];
-
-  pintar('perfilResumenJuegos', historial.length);
-  pintar('perfilResumenFavoritos', favoritos.length);
-  pintar('perfilResumenAmigos', amigos.length);
-
-  const logros = typeof obtenerLogros === 'function' ? obtenerLogros(nombre) : [];
-  pintar('perfilResumenLogros', Array.isArray(logros) ? logros.length : 0);
-})();

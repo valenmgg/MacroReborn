@@ -5,6 +5,9 @@
 const contenedorHistorial = document.querySelector("#ultimos");
 
 function usuarioHistorialActual(){
+    if (window.MRProfileContext && MRProfileContext.type === "own" && typeof MRProfileContext.getUser === "function") {
+        return MRProfileContext.getUser();
+    }
     return (window.MRSession && typeof MRSession.get === "function")
       ? MRSession.get()
       : leerJSON(localStorage.getItem("usuarioActivo"));
@@ -84,12 +87,24 @@ async function renderHistorialPerfil(){
 renderHistorialPerfil();
 
 // Actualización inmediata cuando esta misma pestaña registra un juego.
-window.addEventListener("macro:game-played", function(event){
+function refrescarHistorialPorJuego(payload){
     const usuario = usuarioHistorialActual();
-    const actor = event && event.detail && event.detail.username;
+    const actor = payload && payload.username;
     if(!usuario || !actor || String(usuario.nombre).toLowerCase() !== String(actor).toLowerCase()) return;
     renderHistorialPerfil();
-});
+}
+
+function escucharEventoMacroHistorial(nombre, handler){
+    if(window.MRApp && MRApp.events && typeof MRApp.events.on === "function") {
+        MRApp.events.on(nombre, handler);
+        return;
+    }
+    window.addEventListener(nombre, function(event){
+        handler(event && event.detail);
+    });
+}
+
+escucharEventoMacroHistorial("macro:game-played", refrescarHistorialPorJuego);
 
 // Sincronización entre pestañas: jugar en otra pestaña refresca el historial
 // cuando Neon ya confirmó la escritura.

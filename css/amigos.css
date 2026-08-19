@@ -85,12 +85,12 @@
 
 .atab.activa-tab {
   background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
-  color: #241804;
+  color: var(--text-on-accent);
   border-color: transparent;
 }
 
 .atab.activa-tab .badge {
-  background: #241804;
+  background: var(--text-on-accent);
   color: var(--gold-bright);
 }
 
@@ -98,7 +98,7 @@
 
 .badge {
   background: var(--gold);
-  color: #241804;
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 800;
   min-width: 18px;
@@ -266,14 +266,14 @@
 }
 
 .btn-ver-perfil:hover {
-  background: rgba(240, 180, 41, 0.14);
+  background: var(--warning-bg);
   transform: translateY(-2px);
 }
 
 .btn-eliminar-amigo,
 .btn-rechazar,
 .btn-cancelar-solicitud {
-  background: rgba(239, 68, 68, 0.12);
+  background: var(--danger-bg);
   color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.4);
   padding: 9px 18px;

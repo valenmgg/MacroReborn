@@ -371,20 +371,29 @@ window.addEventListener("focus",()=>{
 
 
 // ---------- INICIO ----------
+// Inspirado en Layout.js de Morpho: las piezas dependientes de la
+// infraestructura global arrancan cuando MRApp declara lista la aplicación.
+// Si app-shell no estuviera cargado por compatibilidad, se mantiene el
+// arranque inmediato anterior.
+function iniciarSistemaNotificaciones(){
+    actualizarContador();
+    renderNotificaciones();
 
-actualizarContador();
+    if (window.MRSession && typeof MRSession.subscribe === "function") {
+        MRSession.subscribe(() => {
+            const usuario = obtenerUsuarioNotificaciones();
+            if(usuario && usuario.nombre) invalidarNotificaciones(usuario.nombre);
+            actualizarContador();
+            renderNotificaciones();
+            renderNotificacionesDropdown();
+        });
+    }
 
-renderNotificaciones();
-
-
-if (window.MRSession && typeof MRSession.subscribe === "function") {
-    MRSession.subscribe(() => {
-        const usuario = obtenerUsuarioNotificaciones();
-        if(usuario && usuario.nombre) invalidarNotificaciones(usuario.nombre);
-        actualizarContador();
-        renderNotificaciones();
-        renderNotificacionesDropdown();
-    });
+    programarPollingNotificaciones();
 }
 
-programarPollingNotificaciones();
+if (window.MRApp && typeof MRApp.whenReady === "function") {
+    MRApp.whenReady().then(iniciarSistemaNotificaciones);
+} else {
+    iniciarSistemaNotificaciones();
+}
