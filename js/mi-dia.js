@@ -1,16 +1,31 @@
 (function(){
   'use strict';
-  const token=localStorage.getItem('macroSessionToken');
   const status=document.getElementById('status');
   const $=id=>document.getElementById(id);
-  const headers=token?{Authorization:'Bearer '+token}:{};
+  function usuarioActual(){
+    try{
+      if(window.MRSession && typeof window.MRSession.get === 'function'){
+        return window.MRSession.get();
+      }
+      if(typeof leerJSON === 'function') return leerJSON(localStorage.getItem('usuarioActivo')||'null');
+      return JSON.parse(localStorage.getItem('usuarioActivo')||'null');
+    }catch(_){ return null; }
+  }
+  function authHeaders(){
+    try{
+      const token=(window.MRSession && typeof window.MRSession.getToken === 'function')
+        ? window.MRSession.getToken()
+        : localStorage.getItem('macroSessionToken');
+      return token?{Authorization:'Bearer '+token}:{};
+    }catch(_){ return {}; }
+  }
   function money(n){return '🪙 '+Number(n||0).toLocaleString('es-ES');}
   function pct(v,t){return t?Math.max(0,Math.min(100,(Number(v||0)/Number(t))*100)):0;}
   function show(msg,ok=false){status.hidden=false;status.textContent=msg;status.style.color=ok?'#9cf0d6':'';}
   function hide(){status.hidden=true;}
-  async function json(url,opts){const r=await fetch(url,opts);const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'No se pudo cargar');return d;}
+  async function json(url,opts){const options=opts||{};const mergedHeaders={...authHeaders(),...(options.headers||{})};const r=await fetch(url,{...options,headers:mergedHeaders,cache:'no-store'});const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'No se pudo cargar');return d;}
 
-  if(!token){show('Iniciá sesión para activar tu racha, misiones, notificaciones y actividad de amigos.');return;}
+  if(!usuarioActual() || !usuarioActual().nombre){show('Iniciá sesión para activar tu racha, misiones, notificaciones y actividad de amigos.');return;}
 
   async function loadProgress(){
     const d=await json('/api/progreso?action=status',{headers});
@@ -30,7 +45,10 @@
 
   async function loadNotifications(){
     try{
-      const d=await json('/api/content?action=notifications&username='+encodeURIComponent(localStorage.getItem('macroUsuario')||localStorage.getItem('usuario')||''));
+      const usuario=usuarioActual();
+      const username=usuario && usuario.nombre ? usuario.nombre : '';
+      if(!username) throw new Error('Sesión no disponible');
+      const d=await json('/api/content?action=notifications&username='+encodeURIComponent(username));
       const list=(d.notificaciones||[]).slice(0,5); const box=$('notifications');
       box.innerHTML=list.length?list.map(n=>`<div class="md-item"><strong>${esc(n.titulo||'Notificación')}</strong><small>${esc(n.mensaje||'')} · ${new Date(n.created_at).toLocaleString('es-ES')}</small></div>`).join(''):'<p class="md-muted">No tienes novedades pendientes.</p>';
     }catch(e){$('notifications').innerHTML='<p class="md-muted">No se pudieron cargar las notificaciones ahora.</p>';}
@@ -38,7 +56,9 @@
 
   async function loadFriends(){
     try{
-      const username=localStorage.getItem('macroUsuario')||localStorage.getItem('usuario')||'';
+      const usuario=usuarioActual();
+      const username=usuario && usuario.nombre ? usuario.nombre : '';
+      if(!username) throw new Error('Sesión no disponible');
       const d=await json('/api/social?action=friends&username='+encodeURIComponent(username));
       const list=(d.amigos||[]).slice(0,8); const box=$('friends');
       box.innerHTML=list.length?list.map(f=>`<div class="md-friend"><div><strong>@${esc(f.username)}</strong><small>Nivel ${Number(f.level||1)} · ${Number(f.xp||0).toLocaleString('es-ES')} XP</small></div><span class="md-pill">Amigo</span></div>`).join(''):'<p class="md-muted">Todavía no tienes amigos agregados.</p>';
