@@ -437,7 +437,9 @@
 document.addEventListener("DOMContentLoaded", function () {
 (function () {
   try {
-    var usuario = JSON.parse(localStorage.getItem("usuarioActivo") || "null");
+    var usuario = (window.MRSession && typeof MRSession.get === "function")
+      ? MRSession.get()
+      : JSON.parse(localStorage.getItem("usuarioActivo") || "null");
     if (!usuario) return;
 
     var invitado = document.getElementById("bienvenidaInvitado");

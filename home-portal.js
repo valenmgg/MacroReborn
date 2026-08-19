@@ -17,6 +17,9 @@
 
   function usuarioActivo() {
     try {
+      if (window.MRSession && typeof window.MRSession.get === "function") {
+        return window.MRSession.get();
+      }
       return typeof leerJSON === "function"
         ? leerJSON(localStorage.getItem("usuarioActivo") || "null")
         : null;
@@ -25,6 +28,13 @@
 
   async function json(url, fallback) {
     try {
+      if (window.MRApi && typeof window.MRApi.requestShared === "function") {
+        const datos = await window.MRApi.requestShared("GET", url, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" }
+        });
+        return datos || fallback;
+      }
       const resp = await fetch(url, { headers: { Accept: "application/json" } });
       const datos = await resp.json();
       return datos || fallback;
@@ -86,17 +96,25 @@
   async function cargarDashboard() {
     const seccion = document.getElementById("portalSeccionPersonal");
     const host = document.getElementById("homeDashboard");
-    const activo = usuarioActivo();
+    let activo = usuarioActivo();
     if (!seccion || !host || !activo || !activo.nombre) return;
 
-    const [uRes, amigosRes, logrosRes, favRes] = await Promise.all([
-      json(`/api/users?username=${encodeURIComponent(activo.nombre)}`, {}),
+    // La sesión ya contiene los datos devueltos por login/Neon. Solo se
+    // sincroniza una vez si existe el gestor global; esto evita una segunda
+    // petición /api/users dedicada al dashboard. MRSession además comparte
+    // la petición si otra parte de la página está refrescando el mismo usuario.
+    if (window.MRSession && typeof window.MRSession.refresh === "function") {
+      const sincronizado = await MRSession.refresh();
+      if (sincronizado) activo = sincronizado;
+    }
+
+    const [amigosRes, logrosRes, favRes] = await Promise.all([
       json(`/api/social?action=friends&username=${encodeURIComponent(activo.nombre)}`, {}),
       json(`/api/social?action=achievements&username=${encodeURIComponent(activo.nombre)}`, {}),
       json(`/api/content?action=favorites&username=${encodeURIComponent(activo.nombre)}`, {})
     ]);
 
-    const user = uRes && uRes.success ? uRes.user : activo;
+    const user = activo;
     const nivel = Math.max(1, Number(user.level || user.nivel || 1));
     const xp = Math.max(0, Number(user.xp || 0));
     const siguiente = nivel === 1 ? 50 : (nivel === 2 ? 100 : 100 + ((nivel - 2) * 200));

@@ -18,8 +18,12 @@
       renderMissions({games:0,history:0}); return;
     }
     if(badge) badge.textContent="@"+u.nombre;
-    const [userRes,historyRes]=await Promise.all([get("/api/users?username="+encodeURIComponent(u.nombre)),get("/api/content?action=game-history&username="+encodeURIComponent(u.nombre))]);
-    const user=userRes?.user||u;
+    let user = u;
+    if(window.MRSession && typeof window.MRSession.refresh === "function") {
+      const sincronizado = await window.MRSession.refresh();
+      if(sincronizado) user = sincronizado;
+    }
+    const historyRes = await get("/api/content?action=game-history&username="+encodeURIComponent(user.nombre));
     const historial=Array.isArray(historyRes?.historial)?historyRes.historial:[];
     document.getElementById("mrNivel").textContent=Number(user.level||user.nivel||1);
     document.getElementById("mrXp").textContent=Number(user.xp||0).toLocaleString("es-AR");
