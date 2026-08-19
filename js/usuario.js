@@ -128,10 +128,18 @@ const activo = obtenerActivo();
 
 try{
 
-  const respuesta = await (window.MRApi && typeof window.MRApi.requestShared === "function"
-    ? window.MRApi.requestShared("GET", "/api/users?username=" + encodeURIComponent(nombreBuscado), { credentials: "same-origin" })
-    : fetch("/api/users?username=" + encodeURIComponent(nombreBuscado)));
-  const datos = await respuesta.json();
+  let datos;
+  if(window.MRApi && typeof window.MRApi.requestShared === "function"){
+    // MRApi ya devuelve el JSON parseado; no es un Response.
+    datos = await window.MRApi.requestShared(
+      "GET",
+      "/api/users?username=" + encodeURIComponent(nombreBuscado),
+      { credentials: "same-origin" }
+    );
+  }else{
+    const respuesta = await fetch("/api/users?username=" + encodeURIComponent(nombreBuscado));
+    datos = await respuesta.json();
+  }
 
   if(datos && datos.success){
     usuario = {

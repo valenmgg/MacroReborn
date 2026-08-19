@@ -87,10 +87,13 @@ async function renderActividadAmigos(){
   let misFavoritos = [];
   try{
     const url = "/api/social?action=favoriteFriends&username=" + encodeURIComponent(usuarioActual.nombre);
-    const resp = (window.MRApi && typeof MRApi.requestShared === "function")
-      ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
-      : await fetch(url);
-    const datos = await resp.json();
+    let datos;
+    if(window.MRApi && typeof MRApi.requestShared === "function"){
+      datos = await MRApi.requestShared("GET", url, { credentials: "same-origin" });
+    }else{
+      const resp = await fetch(url);
+      datos = await resp.json();
+    }
     misFavoritos = (datos && datos.success) ? datos.favoritos : [];
   }catch(error){
     console.warn("MacroReborn: no se pudo cargar los amigos favoritos.", error);

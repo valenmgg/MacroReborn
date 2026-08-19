@@ -27,10 +27,13 @@ async function renderHistorialPerfil(){
 
         try{
             const url = "/api/content?action=game-history&username=" + encodeURIComponent(usuarioActivoHistorial.nombre);
-            const resp = (window.MRApi && typeof MRApi.requestShared === "function")
-                ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
-                : await fetch(url);
-            const datos = await resp.json();
+            let datos;
+            if(window.MRApi && typeof MRApi.requestShared === "function"){
+                datos = await MRApi.requestShared("GET", url, { credentials: "same-origin" });
+            }else{
+                const resp = await fetch(url);
+                datos = await resp.json();
+            }
             historial = (datos && datos.success) ? datos.historial : [];
         }catch(error){
             console.warn("MacroReborn: no se pudo cargar el historial.", error);

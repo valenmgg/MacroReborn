@@ -32,10 +32,13 @@ async function renderFavoritosPerfil(){
 
     try{
         const url = "/api/content?action=favorites&username=" + encodeURIComponent(usuarioActivoFavoritos.nombre);
-        const resp = (window.MRApi && typeof MRApi.requestShared === "function")
-            ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
-            : await fetch(url);
-        const datos = await resp.json();
+        let datos;
+        if(window.MRApi && typeof MRApi.requestShared === "function"){
+            datos = await MRApi.requestShared("GET", url, { credentials: "same-origin" });
+        }else{
+            const resp = await fetch(url);
+            datos = await resp.json();
+        }
         favoritos = (datos && datos.success) ? datos.favoritos : [];
     }catch(error){
         console.warn("MacroReborn: no se pudieron cargar los favoritos.", error);
