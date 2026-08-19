@@ -28,7 +28,7 @@
   if(!usuarioActual() || !usuarioActual().nombre){show('Iniciá sesión para activar tu racha, misiones, notificaciones y actividad de amigos.');return;}
 
   async function loadProgress(){
-    const d=await json('/api/progreso?action=status',{headers});
+    const d=await json('/api/progreso?action=status');
     const s=d.streak||{}; $('streakCurrent').textContent=Number(s.current_streak||0)+' días'; $('streakBest').textContent='Mejor racha: '+Number(s.best_streak||0);
     $('checkinState').textContent=s.last_checkin_date?'Último registro: '+String(s.last_checkin_date).slice(0,10):'Aún sin registro';
     const dm=d.today?.mission||{}; $('dailyTitle').textContent=dm.title||'Misión diaria'; $('dailyDesc').textContent=dm.description||''; $('dailyValue').textContent=(dm.value||0)+'/'+(dm.target||0); $('dailyReward').textContent='+'+(dm.xp||0)+' XP · '+money(dm.coins); $('dailyPeriod').textContent=dm.periodKey||''; $('dailyBar').style.width=pct(dm.value,dm.target)+'%';
@@ -38,7 +38,7 @@
 
   async function checkin(){
     const b=$('checkinBtn'); b.disabled=true;
-    try{const d=await json('/api/progreso?action=checkin',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:'{}'}); show(d.alreadyChecked?'Tu día ya estaba registrado.':'🔥 Día registrado. Racha actual: '+Number(d.streak?.current_streak||0)+' días.',true); await loadProgress();}
+    try{const d=await json('/api/progreso?action=checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); show(d.alreadyChecked?'Tu día ya estaba registrado.':'🔥 Día registrado. Racha actual: '+Number(d.streak?.current_streak||0)+' días.',true); await loadProgress();}
     catch(e){show(e.message);}
     finally{b.disabled=false;}
   }
