@@ -55,9 +55,11 @@ const ACCIONES_MODERACION = {
 
 async function registrarAccionModeracion(datos){
 
-  const activo = typeof obtenerUsuarioActivo === "function"
-    ? obtenerUsuarioActivo()
-    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const activo = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : (typeof obtenerUsuarioActivo === "function"
+      ? obtenerUsuarioActivo()
+      : leerJSON(localStorage.getItem("usuarioActivo") || "null"));
 
   if(!activo || !datos || !datos.accion) return null;
 

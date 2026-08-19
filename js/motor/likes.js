@@ -68,7 +68,7 @@ async function _refrescarLikesVisibles(){
         porTipo[tipo].add(b.dataset.item);
     });
 
-    const activo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    const activo = (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
     for(const tipo of Object.keys(porTipo)){
 
@@ -131,7 +131,7 @@ document.addEventListener("click", async (e)=>{
     const boton = e.target.closest(".boton-like");
     if(!boton) return;
 
-    const usuarioActivo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    const usuarioActivo = (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
     if(!usuarioActivo){
         alert("Iniciá sesión para dar like.");

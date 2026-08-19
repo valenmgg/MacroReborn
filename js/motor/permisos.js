@@ -37,11 +37,10 @@ async function obtenerUsuarios(){
 }
 
 function obtenerUsuarioActivo(){
-
-  return leerJSON(
-    localStorage.getItem("usuarioActivo") || "null"
-  );
-
+  if (window.MRSession && typeof window.MRSession.get === "function") {
+    return window.MRSession.get();
+  }
+  return leerJSON(localStorage.getItem("usuarioActivo") || "null");
 }
 
 async function buscarUsuarioPorNombre(nombre){

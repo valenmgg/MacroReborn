@@ -130,7 +130,9 @@ const MINUTOS_CONECTADO = 5;
 
 function _registrarLatidoPresencia(){
 
-  const activo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const activo = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
   if(!activo || !activo.nombre) return;
 
   const mapa = leerJSON(localStorage.getItem("presenciaMacro") || "{}") || {};
@@ -174,10 +176,14 @@ const MINUTOS_LATIDO_SERVIDOR = 2; // más seguido que el umbral de "conectado" 
 
 function _latidoServidor(){
 
-  const activo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const activo = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
   if(!activo || !activo.nombre) return;
 
-  const token = localStorage.getItem("macroSessionToken");
+  const token = (window.MRSession && typeof MRSession.getToken === "function")
+    ? MRSession.getToken()
+    : localStorage.getItem("macroSessionToken");
   if (!token) return;
 
   fetch("/api/users?action=heartbeat", {

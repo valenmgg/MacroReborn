@@ -23,9 +23,11 @@
   const nombreVisitado = parametros.get("usuario");
   if (!nombreVisitado) return;
 
-  const activo = (typeof leerJSON === "function")
-    ? leerJSON(localStorage.getItem("usuarioActivo") || "null")
-    : JSON.parse(localStorage.getItem("usuarioActivo") || "null");
+  const obtenerActivo = () => (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : ((typeof leerJSON === "function")
+      ? leerJSON(localStorage.getItem("usuarioActivo") || "null")
+      : JSON.parse(localStorage.getItem("usuarioActivo") || "null"));
 
   // ---------- ORDEN DE CAPAS / RUTAS DE IMAGEN ----------
   // Mismo criterio que rutaImagenCapa() de js/usuario.js.
@@ -64,6 +66,7 @@
   async function obtenerGaleria() {
     try {
       const params = new URLSearchParams({ action: "avatar-gallery", username: nombreVisitado });
+      const activo = obtenerActivo();
       if (activo) params.set("viewer", activo.nombre);
 
       const resp = await fetch("/api/content?" + params.toString());
@@ -80,6 +83,7 @@
   }
 
   async function votarAvatar(avatarId, voto) {
+    const activo = obtenerActivo();
     if (!activo) {
       alert("Iniciá sesión para votar este avatar");
       return null;

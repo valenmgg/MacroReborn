@@ -2,15 +2,21 @@
 // MACROREBORN - FAVORITOS PERFIL (Fase 2: Neon)
 // =========================
 
-const usuarioActivoFavoritos = leerJSON(
-    localStorage.getItem("usuarioActivo")
-);
+function obtenerUsuarioSesionFavoritos(){
+    try {
+        return (window.MRSession && typeof MRSession.get === "function")
+            ? MRSession.get()
+            : leerJSON(localStorage.getItem("usuarioActivo"));
+    } catch (_) { return null; }
+}
 
 const contenedorFavoritos = document.querySelector(".juegos-favoritos");
 
 async function renderFavoritosPerfil(){
 
     if (!contenedorFavoritos) return;
+
+    const usuarioActivoFavoritos = obtenerUsuarioSesionFavoritos();
 
     if (!usuarioActivoFavoritos) {
 
@@ -66,3 +72,14 @@ async function renderFavoritosPerfil(){
 }
 
 renderFavoritosPerfil();
+
+
+if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe((detalle) => {
+        if (detalle && detalle.motivo === "logout") {
+            renderFavoritosPerfil();
+            return;
+        }
+        renderFavoritosPerfil();
+    });
+}

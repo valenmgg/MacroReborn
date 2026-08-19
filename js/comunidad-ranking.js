@@ -48,7 +48,12 @@ const comContador = document.getElementById("contadorUsuarios");
 const comBuscador = document.getElementById("buscadorUsuarios");
 
 // Usuario con sesión iniciada en este navegador.
-const activoComRk = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+let activoComRk = window.MRSession ? window.MRSession.get() : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+if (window.MRSession && typeof window.MRSession.subscribe === "function") {
+  window.MRSession.subscribe(function (detalle) {
+    activoComRk = detalle && detalle.usuario ? detalle.usuario : null;
+  });
+}
 
 let _rkOrdenarPorLogros = false;
 let _rkModo = "general";

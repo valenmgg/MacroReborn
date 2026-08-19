@@ -253,6 +253,24 @@ function registrarActividad(nombre, tipo, detalle){
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: nombre, tipo, detalle: detalle || "" })
+  }).then(async resp=>{
+    let datos = null;
+    try{ datos = await resp.json(); }catch(_){}
+    if(!resp.ok || !datos || datos.success !== true) return;
+
+    // La actividad ya está confirmada en Neon. Avisamos a la UI actual
+    // y sincronizamos otras pestañas sin escribir ningún dato de actividad
+    // localmente.
+    try{
+      const eventoActividad = {
+        username: nombre,
+        tipo,
+        detalle: detalle || "",
+        at: Date.now()
+      };
+      window.dispatchEvent(new CustomEvent("macro:activity-recorded", { detail: eventoActividad }));
+      localStorage.setItem("macro:last-activity-recorded", JSON.stringify(eventoActividad));
+    }catch(_){}
   }).catch(error=>{
     console.warn("MacroReborn: no se pudo registrar la actividad.", error);
   });

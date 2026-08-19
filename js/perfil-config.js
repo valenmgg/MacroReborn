@@ -46,7 +46,9 @@
     const nueva = inputNueva.value;
     const confirmar = inputConfirmar.value;
 
-    const usuarioActivoActual = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    const usuarioActivoActual = (window.MRSession && typeof MRSession.get === "function")
+      ? MRSession.get()
+      : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
     if (!usuarioActivoActual) {
       mostrarMensajeConfig("No se encontró una sesión activa. Iniciá sesión de nuevo.", "error");

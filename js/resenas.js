@@ -17,7 +17,12 @@
 
   if (Number.isNaN(idJuegoResena)) return;
 
-  const usuarioResena = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  let usuarioResena = window.MRSession ? window.MRSession.get() : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  if (window.MRSession && typeof window.MRSession.subscribe === "function") {
+    window.MRSession.subscribe(function (detalle) {
+      usuarioResena = detalle && detalle.usuario ? detalle.usuario : null;
+    });
+  }
 
   // ---------- ELEMENTOS ----------
 

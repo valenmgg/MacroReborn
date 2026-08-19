@@ -3,8 +3,10 @@
   "use strict";
 
   function activo(){
-    try { return typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null; }
-    catch(e){ return null; }
+    try {
+      if (window.MRSession && typeof MRSession.get === "function") return MRSession.get();
+      return typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null;
+    } catch(e){ return null; }
   }
 
   function escapeHtml(value){

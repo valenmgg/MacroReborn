@@ -46,7 +46,10 @@ async function renderActividadReciente(){
   const contenedor = document.getElementById("listaActividadReciente");
   if(!contenedor) return;
 
-  const lista = await obtenerActividades(datosUsuario.nombre);
+  const usuarioActual = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  if(!usuarioActual || !usuarioActual.nombre) return;
+
+  const lista = await obtenerActividades(usuarioActual.nombre);
 
   if(lista.length === 0){
     contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía no tenés actividad registrada.</p>`;
@@ -59,10 +62,10 @@ async function renderActividadReciente(){
   // línea el nuevo encabezado con avatar (ver renderizarActividadHTML en
   // js/motor/actividad.js) mostraría siempre el avatar por defecto en esta
   // pestaña en vez del avatar real del dueño del perfil.
-  _cacheAvatares[datosUsuario.nombre] = normalizarAvatar(datosUsuario.avatar);
+  _cacheAvatares[usuarioActual.nombre] = normalizarAvatar(usuarioActual.avatar);
 
   contenedor.innerHTML = lista.map(a =>
-    renderizarActividadHTML(datosUsuario.nombre, a.tipo, a.detalle, a.fecha, a.hora, avatarMiniActividad)
+    renderizarActividadHTML(usuarioActual.nombre, a.tipo, a.detalle, a.fecha, a.hora, avatarMiniActividad)
   ).join("");
 }
 
@@ -78,9 +81,12 @@ async function renderActividadAmigos(){
   const contenedor = document.getElementById("listaActividadAmigos");
   if(!contenedor) return;
 
+  const usuarioActual = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  if(!usuarioActual || !usuarioActual.nombre) return;
+
   let misFavoritos = [];
   try{
-    const resp = await fetch("/api/social?action=favoriteFriends&username=" + encodeURIComponent(datosUsuario.nombre));
+    const resp = await fetch("/api/social?action=favoriteFriends&username=" + encodeURIComponent(usuarioActual.nombre));
     const datos = await resp.json();
     misFavoritos = (datos && datos.success) ? datos.favoritos : [];
   }catch(error){
@@ -113,3 +119,54 @@ async function renderActividadAmigos(){
 
 renderActividadReciente();
 renderActividadAmigos();
+
+if(window.MRSession && typeof MRSession.subscribe === "function"){
+  MRSession.subscribe(function(detalle){
+    if(!detalle || !detalle.usuario) return;
+    renderActividadReciente();
+    renderActividadAmigos();
+  });
+}
+
+// Cuando un juego acaba de registrarse en Neon, la pestaña de perfil puede
+// refrescar solamente los bloques visibles de actividad. No se escribe
+// ninguna actividad localmente: siempre se vuelve a leer del servidor.
+function refrescarActividadPorJuego(payload){
+  const usuario = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  if(!usuario || !usuario.nombre || !payload || !payload.username) return;
+  if(String(usuario.nombre).toLowerCase() !== String(payload.username).toLowerCase()) return;
+  renderActividadReciente();
+}
+
+window.addEventListener("macro:game-played", function(event){
+  refrescarActividadPorJuego(event && event.detail);
+});
+
+function refrescarActividadPorEvento(payload){
+  const usuario = (window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario;
+  if(!usuario || !usuario.nombre || !payload || !payload.username) return;
+  if(String(usuario.nombre).toLowerCase() !== String(payload.username).toLowerCase()) return;
+  renderActividadReciente();
+}
+
+window.addEventListener("macro:achievement-unlocked", function(event){
+  refrescarActividadPorEvento(event && event.detail);
+});
+
+window.addEventListener("macro:activity-recorded", function(event){
+  refrescarActividadPorEvento(event && event.detail);
+});
+
+window.addEventListener("storage", function(event){
+  if(event.key === "macro:last-game-played" && event.newValue){
+    try{ refrescarActividadPorJuego(JSON.parse(event.newValue)); }catch(_){}
+    return;
+  }
+  if(event.key === "macro:last-achievement-unlocked" && event.newValue){
+    try{ refrescarActividadPorEvento(JSON.parse(event.newValue)); }catch(_){}
+    return;
+  }
+  if(event.key === "macro:last-activity-recorded" && event.newValue){
+    try{ refrescarActividadPorEvento(JSON.parse(event.newValue)); }catch(_){}
+  }
+});

@@ -75,7 +75,7 @@
 
   async function obtenerPerfilRecomendacion(){
     try{
-      const usuario = typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null;
+      const usuario = (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : (typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null);
       if(!usuario || !usuario.nombre) return null;
       const [h,f] = await Promise.all([
         fetch("/api/content?action=game-history&username="+encodeURIComponent(usuario.nombre)),

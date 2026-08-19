@@ -22,7 +22,15 @@ const buscador = document.getElementById("buscarJugador");
 // Usuario con sesión iniciada en este navegador — se usa únicamente
 // para resaltar visualmente su propia fila/tarjeta en el ranking.
 // No participa del cálculo ni del orden del ranking.
-const activoRanking = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+let activoRanking = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+
+if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(function (detalle) {
+        activoRanking = detalle && detalle.usuario ? detalle.usuario : null;
+    });
+}
 
 
 // ==============================

@@ -173,35 +173,55 @@
       </a>`).join('');
   }
 
+  function refreshVisibleSessionStats(root) {
+    if (!root || !window.MRSession || typeof MRSession.get !== 'function') return;
+    const user = MRSession.get();
+    if (!user) return;
+
+    const xp = number(user.xp);
+    const level = number(user.nivel) || levelFromXP(xp);
+    const coins = number(user.monedas ?? user.moneda ?? user.coins);
+    const stats = root.querySelectorAll('.mr-identidad-stat');
+    if (stats[0]) {
+      const strong = stats[0].querySelector('strong');
+      const small = stats[0].querySelector('small');
+      if (strong) strong.textContent = `Nivel ${level}`;
+      if (small) small.textContent = `${xp.toLocaleString('es-ES')} XP`;
+    }
+    if (stats[2]) {
+      const strong = stats[2].querySelector('strong');
+      if (strong) strong.textContent = coins.toLocaleString('es-ES');
+    }
+    const title = root.querySelector('#mrIdentidadTitulo');
+    const subtitle = root.querySelector('#mrIdentidadSubtitulo');
+    if (title && user.nombre) title.textContent = `Perfil de ${user.nombre}`;
+    if (subtitle && user.biografia) subtitle.textContent = user.biografia;
+  }
+
   async function load(root) {
-    const storedUser = (typeof datosUsuario !== 'undefined' && datosUsuario) || readActiveUser() || {};
-    const username = storedUser.nombre || $('#nombreUsuario')?.textContent?.trim();
+    let storedUser = (typeof datosUsuario !== 'undefined' && datosUsuario) || readActiveUser() || {};
+
+    // Primera consumidora de la nueva capa MRSession: pedimos el estado
+    // actual a Neon y conservamos el token de sesión existente. Si la API
+    // está temporalmente caída, se sigue usando la copia local para que el
+    // perfil no quede vacío.
+    if (window.MRSession && typeof MRSession.refresh === 'function') {
+      const remoto = await MRSession.refresh();
+      if (remoto) storedUser = remoto;
+    }
+
+    const username = storedUser.nombre || storedUser.username || $('#nombreUsuario')?.textContent?.trim();
 
     if (!username) return;
 
     const encoded = encodeURIComponent(username);
-    const [profileData, historyData, favoritesData, friendsData] = await Promise.all([
-      fetchJSON(`/api/users?username=${encoded}`),
+    const [historyData, favoritesData, friendsData] = await Promise.all([
       fetchJSON(`/api/content?action=game-history&username=${encoded}`),
       fetchJSON(`/api/content?action=favorites&username=${encoded}`),
       fetchJSON(`/api/social?action=friends&username=${encoded}`)
     ]);
 
-    // La sesión guardada en localStorage puede quedar desactualizada
-    // (por ejemplo, después de ganar/gastar monedas). Para este resumen
-    // usamos siempre el usuario actual de Neon y sincronizamos la caché
-    // local para que navbar/perfil compartan el mismo saldo.
-    let user = storedUser;
-    if (profileData?.success && profileData.user) {
-      user = {
-        ...profileData.user,
-        nombre: profileData.user.username,
-        nivel: profileData.user.level
-      };
-      try {
-        localStorage.setItem('usuarioActivo', JSON.stringify(user));
-      } catch (_) {}
-    }
+    const user = storedUser;
 
     const history = historyData?.success ? (historyData.historial || []) : [];
     const favorites = favoritesData?.success ? (favoritesData.favoritos || []) : [];
@@ -210,6 +230,12 @@
     renderStats(root, user, history, favorites, friends);
     renderGameList(root.querySelector('#mrIdentidadActividad'), history, 'Todavía no hay juegos registrados en tu historial.');
     renderGameList(root.querySelector('#mrIdentidadFavoritos'), favorites, 'Todavía no guardaste juegos como favoritos.');
+
+    if (window.MRSession && typeof MRSession.subscribe === 'function') {
+      MRSession.subscribe(function () {
+        refreshVisibleSessionStats(root);
+      });
+    }
   }
 
   function init() {

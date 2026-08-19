@@ -136,9 +136,9 @@ async function asignarInsignia(nombre,id){
 
   try{
 
-    const activo = typeof obtenerUsuarioActivo === "function"
-      ? obtenerUsuarioActivo()
-      : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    const activo = (window.MRSession && typeof window.MRSession.get === "function")
+      ? window.MRSession.get()
+      : (typeof obtenerUsuarioActivo === "function" ? obtenerUsuarioActivo() : leerJSON(localStorage.getItem("usuarioActivo") || "null"));
 
     await fetch("/api/social?action=badges", {
       method: "POST",

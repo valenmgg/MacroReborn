@@ -18,7 +18,13 @@
 
   if (Number.isNaN(idJuegoVal)) return;
 
-  const usuarioVal = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  function obtenerUsuarioValoraciones() {
+    try {
+      return (window.MRSession && typeof MRSession.get === "function")
+        ? MRSession.get()
+        : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    } catch (_) { return null; }
+  }
 
   // ---------- ELEMENTOS ----------
 
@@ -38,6 +44,7 @@
   // ---------- CALIFICACIONES (1 a 5 ESTRELLAS) ----------
 
   async function obtenerCalificaciones() {
+    const usuarioVal = obtenerUsuarioValoraciones();
     try {
       const params = new URLSearchParams({ action: "game-ratings", gameId: idJuegoVal });
       if (usuarioVal) params.set("username", usuarioVal.nombre);
@@ -95,6 +102,7 @@
       });
 
       btn.addEventListener("click", async () => {
+        const usuarioVal = obtenerUsuarioValoraciones();
         if (!usuarioVal) {
           alert("Iniciá sesión para calificar este juego");
           return;
@@ -128,6 +136,7 @@
   // ---------- LIKE / NO ME GUSTA ----------
 
   async function obtenerVotosJuego() {
+    const usuarioVal = obtenerUsuarioValoraciones();
     try {
       const params = new URLSearchParams({ action: "game-votes", gameId: idJuegoVal });
       if (usuarioVal) params.set("username", usuarioVal.nombre);
@@ -156,6 +165,7 @@
   }
 
   async function votarJuego(tipo) {
+    const usuarioVal = obtenerUsuarioValoraciones();
     if (!usuarioVal) {
       alert("Iniciá sesión para votar este juego");
       return;
@@ -199,4 +209,11 @@
   }
 
   renderVotosJuego();
+
+  if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(() => {
+      renderCalificacion();
+      renderVotosJuego();
+    });
+  }
 })();

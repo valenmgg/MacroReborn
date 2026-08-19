@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const readUser=()=>{try{return JSON.parse(localStorage.getItem("usuarioActivo")||"null")}catch(_){return null}};
+  const readUser=()=>{try{if(window.MRSession&&typeof window.MRSession.get==="function") return window.MRSession.get(); return JSON.parse(localStorage.getItem("usuarioActivo")||"null")}catch(_){return null}};
   const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   async function get(url){try{const r=await fetch(url,{headers:{Accept:"application/json"}}); if(!r.ok) throw new Error(); return await r.json();}catch(_){return null;}}
   function missionHtml(m){const pct=Math.max(0,Math.min(100,(m.value/m.goal)*100));return `<article class="mr-card mission"><div class="mission-top"><span>${m.icon}</span><b>+${m.reward} XP</b></div><h3>${esc(m.title)}</h3><p>${esc(m.text)}</p><div class="progress"><span style="width:${pct}%"></span></div><small><span>${m.value}/${m.goal}</span><span>${pct>=100?"Completado":"En progreso"}</span></small></article>`;}

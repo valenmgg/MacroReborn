@@ -28,7 +28,7 @@ async function renderActividadUsuario(){
 
     const viewerActividad = (() => {
       try {
-        const activo = typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null;
+        const activo = (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : (typeof leerJSON === "function" ? leerJSON(localStorage.getItem("usuarioActivo") || "null") : null);
         return activo && activo.nombre ? activo.nombre : "";
       } catch (_) { return ""; }
     })();

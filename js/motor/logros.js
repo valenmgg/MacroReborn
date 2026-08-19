@@ -390,6 +390,20 @@ async function desbloquearLogro(nombre,id){
 
   if(!datos.nuevo) return;
 
+  // Notifica a la UI solo después de que Neon confirmó el desbloqueo.
+  // La pestaña actual escucha el evento y las demás pestañas reciben el
+  // mismo dato mediante storage; no crea ningún pedido adicional.
+  try{
+    const eventoLogro = {
+      username: nombre,
+      achievementId: id,
+      achievementName: LOGROS[id].nombre,
+      at: Date.now()
+    };
+    window.dispatchEvent(new CustomEvent("macro:achievement-unlocked", { detail: eventoLogro }));
+    localStorage.setItem("macro:last-achievement-unlocked", JSON.stringify(eventoLogro));
+  }catch(_){}
+
   // ==============================
   // ACTIVIDAD RECIENTE - LOGRO
   // ==============================

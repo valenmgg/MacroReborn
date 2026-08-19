@@ -62,7 +62,9 @@ botonesTab.forEach(boton => {
 // ---------- HELPERS ----------
 
 function obtenerActivo() {
-  return leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  return (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 }
 
 // ---------- ORDEN DE CAPAS ----------
@@ -104,7 +106,7 @@ const nombreBuscado = params.get("usuario");
 // porque los nombres de usuario no son sensibles a eso en ningún otro
 // lugar del sitio (login, búsqueda, etc.).
 
-const _activoParaRedirigir = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+const _activoParaRedirigir = obtenerActivo();
 
 const _esPropioPerfil = !!(
   _activoParaRedirigir &&

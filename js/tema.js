@@ -61,6 +61,22 @@
       .forEach((boton) => actualizarIconoBoton(boton));
   }
 
+  // API pública inspirada en ThemeContext de Morpho. Mantiene el mismo
+  // almacenamiento y las mismas dos apariencias actuales de MacroReborn.
+  window.MRTheme = {
+    get: temaActual,
+    set: function (tema) {
+      const nuevo = tema === "claro" ? "claro" : "oscuro";
+      aplicarTema(nuevo);
+      localStorage.setItem(CLAVE_TEMA, nuevo);
+      document
+        .querySelectorAll(".boton-tema")
+        .forEach((boton) => actualizarIconoBoton(boton));
+      return nuevo;
+    },
+    toggle: alternarTema
+  };
+
   function crearBotonTema() {
     // Si ya hay uno (por si este script se llegara a cargar dos veces),
     // no duplicamos nada.

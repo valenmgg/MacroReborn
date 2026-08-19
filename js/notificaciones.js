@@ -5,9 +5,13 @@
 
 // ---------- USUARIO ACTIVO ----------
 
-const _usuarioNotif = leerJSON(
-    localStorage.getItem("usuarioActivo") || "null"
-);
+function obtenerUsuarioNotificaciones(){
+    try {
+        return (window.MRSession && typeof MRSession.get === "function")
+            ? MRSession.get()
+            : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+    } catch (_) { return null; }
+}
 
 
 // ---------- OBTENER ----------
@@ -50,7 +54,7 @@ function crearNotificacion(nombre, titulo, mensaje, origenNombre){
     }).then(()=>{
         // Si la notificación es para quien está mirando esta página
         // ahora mismo, refrescamos el contador y la lista.
-        if(_usuarioNotif && _usuarioNotif.nombre === nombre){
+        if(obtenerUsuarioNotificaciones() && obtenerUsuarioNotificaciones().nombre === nombre){
             actualizarContador();
             renderNotificaciones();
         }
@@ -72,7 +76,7 @@ async function renderNotificacionesDropdown(){
 
     if(!contenedor) return;
 
-    if(!_usuarioNotif){
+    if(!obtenerUsuarioNotificaciones()){
 
         contenedor.innerHTML = `
         <div class="notif-dropdown-vacio">
@@ -85,7 +89,7 @@ async function renderNotificacionesDropdown(){
 
     contenedor.innerHTML = `<div class="notif-dropdown-vacio">Cargando...</div>`;
 
-    const lista = await obtenerNotificaciones(_usuarioNotif.nombre);
+    const lista = await obtenerNotificaciones(obtenerUsuarioNotificaciones().nombre);
 
     if(lista.length === 0){
 
@@ -137,7 +141,7 @@ async function renderNotificaciones(){
 
     if(!contenedor) return;
 
-    if(!_usuarioNotif){
+    if(!obtenerUsuarioNotificaciones()){
 
         contenedor.innerHTML = `
         <div class="vacio">
@@ -150,7 +154,7 @@ async function renderNotificaciones(){
 
     }
 
-    const lista = await obtenerNotificaciones(_usuarioNotif.nombre);
+    const lista = await obtenerNotificaciones(obtenerUsuarioNotificaciones().nombre);
 
     if(lista.length === 0){
 
@@ -212,7 +216,7 @@ async function actualizarContador(){
 
     }
 
-    if(!_usuarioNotif){
+    if(!obtenerUsuarioNotificaciones()){
 
         contador.textContent = "";
 
@@ -220,7 +224,7 @@ async function actualizarContador(){
 
     }
 
-    const lista = await obtenerNotificaciones(_usuarioNotif.nombre);
+    const lista = await obtenerNotificaciones(obtenerUsuarioNotificaciones().nombre);
 
     const sinLeer = lista.filter(n=>!n.leida).length;
 
@@ -233,13 +237,13 @@ async function actualizarContador(){
 
 document.getElementById("marcarLeidas")?.addEventListener("click", async ()=>{
 
-    if(!_usuarioNotif) return;
+    if(!obtenerUsuarioNotificaciones()) return;
 
     try{
         await fetch("/api/content?action=notifications-mark-read", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: _usuarioNotif.nombre })
+            body: JSON.stringify({ username: obtenerUsuarioNotificaciones().nombre })
         });
     }catch(error){
         console.warn("MacroReborn: no se pudieron marcar las notificaciones como leídas.", error);
@@ -254,7 +258,7 @@ document.getElementById("marcarLeidas")?.addEventListener("click", async ()=>{
 
 document.getElementById("borrarTodas")?.addEventListener("click", async ()=>{
 
-    if(!_usuarioNotif) return;
+    if(!obtenerUsuarioNotificaciones()) return;
 
     if(!confirm("¿Vaciar todas las notificaciones?")) return;
 
@@ -262,7 +266,7 @@ document.getElementById("borrarTodas")?.addEventListener("click", async ()=>{
         await fetch("/api/content?action=notifications", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: _usuarioNotif.nombre })
+            body: JSON.stringify({ username: obtenerUsuarioNotificaciones().nombre })
         });
     }catch(error){
         console.warn("MacroReborn: no se pudieron borrar las notificaciones.", error);
@@ -298,3 +302,12 @@ window.addEventListener("focus",()=>{
 actualizarContador();
 
 renderNotificaciones();
+
+
+if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(() => {
+        actualizarContador();
+        renderNotificaciones();
+        renderNotificacionesDropdown();
+    });
+}

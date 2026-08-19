@@ -2,7 +2,7 @@
   'use strict';
 
   const $ = (selector) => document.querySelector(selector);
-  const activeUser = (() => { try { return JSON.parse(localStorage.getItem('usuarioActivo') || 'null'); } catch (_) { return null; } })();
+  const activeUser = (() => { try { return (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : JSON.parse(localStorage.getItem('usuarioActivo') || 'null'); } catch (_) { return null; } })();
   const state = { users: [], friends: [], globalFeed: [], online: [] };
 
   const escapeHTML = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));

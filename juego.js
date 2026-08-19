@@ -183,11 +183,11 @@ const botonJugar = document.querySelector(".boton-jugar");
 
 
 
-const usuario = leerJSON(
-
-localStorage.getItem("usuarioActivo")
-
-);
+function obtenerUsuarioJuego() {
+  return (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+}
 
 
 
@@ -199,6 +199,8 @@ if(botonJugar){
 
 
 botonJugar.addEventListener("click", async ()=>{
+
+const usuario = obtenerUsuarioJuego();
 
 if(!usuario){
 
@@ -237,6 +239,19 @@ try{
     const datos = await resp.json();
     if(datos && datos.success){
         juegosUnicos = datos.juegosUnicos;
+
+        // Notifica al frontend que Neon ya registró esta partida.
+        // Se usa CustomEvent para la pestaña actual y localStorage para
+        // sincronizar otras pestañas sin crear ningún endpoint nuevo.
+        try{
+            const eventoJuego = {
+                username: usuario.nombre,
+                gameId: idJuego,
+                at: Date.now()
+            };
+            window.dispatchEvent(new CustomEvent("macro:game-played", { detail: eventoJuego }));
+            localStorage.setItem("macro:last-game-played", JSON.stringify(eventoJuego));
+        }catch(_){}
     }
 }catch(error){
     console.warn("MacroReborn: no se pudo registrar la partida.", error);

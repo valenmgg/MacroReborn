@@ -25,9 +25,11 @@
 
 async function reportarComentario(targetType, targetId, origen, contenido, motivo){
 
-  const quienReporta = typeof obtenerUsuarioActivo === "function"
-    ? obtenerUsuarioActivo()
-    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const quienReporta = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : (typeof obtenerUsuarioActivo === "function"
+      ? obtenerUsuarioActivo()
+      : leerJSON(localStorage.getItem("usuarioActivo") || "null"));
 
   try{
     await fetch("/api/content?action=reports", {

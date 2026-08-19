@@ -103,10 +103,14 @@ formulario.addEventListener("submit", async function(e){
             };
 
             if (datos.token) localStorage.setItem("macroSessionToken", datos.token);
-            localStorage.setItem(
-                "usuarioActivo",
-                JSON.stringify(usuarioNormalizado)
-            );
+            if (window.MRSession && typeof MRSession.set === "function") {
+                MRSession.set(usuarioNormalizado);
+            } else {
+                localStorage.setItem(
+                    "usuarioActivo",
+                    JSON.stringify(usuarioNormalizado)
+                );
+            }
 
 
 

@@ -51,11 +51,9 @@ function detenerXP(){
 async function ganarXP(cantidad){
 
 
-    const usuario = leerJSON(
-        localStorage.getItem("usuarioActivo")
-    );
-
-
+    const usuario = (window.MRSession && typeof MRSession.get === "function")
+        ? MRSession.get()
+        : leerJSON(localStorage.getItem("usuarioActivo"));
 
     if(!usuario || !usuario.nombre) return;
 
@@ -83,6 +81,15 @@ async function ganarXP(cantidad){
         usuario.level = datos.user.level;
         usuario.xp = datos.user.xp;
 
+        // El servidor ya calcula el saldo nuevo de monedas en el mismo
+        // pulso de XP. Lo reflejamos en la sesión global sin hacer otra
+        // petición a Neon. Esto mantiene navbar/perfil sincronizados.
+        if (datos.monedas && Number.isFinite(Number(datos.monedas.saldoNuevo))) {
+            usuario.monedas = Number(datos.monedas.saldoNuevo);
+        } else if (datos.user && Number.isFinite(Number(datos.user.monedas))) {
+            usuario.monedas = Number(datos.user.monedas);
+        }
+
         subioNivel = !!datos.subioNivel;
 
     } catch(error){
@@ -93,7 +100,18 @@ async function ganarXP(cantidad){
     }
 
 
-    guardarUsuario(usuario);
+    // MRSession persiste también en `usuarioActivo`, por lo que los módulos
+    // antiguos siguen viendo los mismos datos sin una segunda escritura.
+    if (window.MRSession && typeof MRSession.update === "function") {
+        MRSession.update({
+            nivel: usuario.nivel,
+            level: usuario.level,
+            xp: usuario.xp,
+            monedas: usuario.monedas
+        });
+    } else {
+        guardarUsuario(usuario);
+    }
 
 
     if(subioNivel){

@@ -37,9 +37,9 @@ window.addEventListener("hashchange", activarPestañaDesdeHash);
 
 // USUARIO LOGUEADO
 
-let datosUsuario = leerJSON(
-  localStorage.getItem("usuarioActivo") || "null"
-);
+let datosUsuario = (window.MRSession && typeof MRSession.get === "function")
+  ? MRSession.get()
+  : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
 
 if(!datosUsuario){
@@ -886,19 +886,34 @@ function cargarAvatar(){
 
 async function guardarAvatar(avatar){
 
+  const avatarAnterior = datosUsuario.avatar;
   datosUsuario.avatar = avatar;
-  localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
 
   try{
 
-    await fetch("/api/users?action=update-avatar", {
+    const respuesta = await fetch("/api/users?action=update-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: datosUsuario.nombre, avatar: avatar })
     });
 
+    if(!respuesta.ok){
+      datosUsuario.avatar = avatarAnterior;
+      console.warn("MacroReborn: el servidor no confirmó el cambio de avatar.");
+      return;
+    }
+
+    // Neon confirmó el cambio: recién ahora actualizamos el estado global
+    // para que navbar, perfil y otras pestañas vean el nuevo avatar.
+    if (window.MRSession && typeof MRSession.update === "function") {
+      MRSession.update({ avatar: avatar });
+    } else {
+      localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
+    }
+
   }catch(error){
 
+    datosUsuario.avatar = avatarAnterior;
     console.warn("MacroReborn: no se pudo guardar el avatar en el servidor.", error);
 
   }
@@ -1374,11 +1389,14 @@ btnGuardar.addEventListener("click", ()=>{
 
     datosUsuario.bio = nuevo;
 
-
-    localStorage.setItem(
-      "usuarioActivo",
-      JSON.stringify(datosUsuario)
-    );
+    if (window.MRSession && typeof MRSession.update === "function") {
+      MRSession.update({ bio: nuevo, biografia: nuevo });
+    } else {
+      localStorage.setItem(
+        "usuarioActivo",
+        JSON.stringify(datosUsuario)
+      );
+    }
 
 
   })
@@ -1751,7 +1769,9 @@ async function renderComentarios(){
   // Usuario logueado en ESTE navegador: el botón "Eliminar" solo debe
   // aparecer en los comentarios que escribió esta persona, sin
   // importar en qué perfil los haya dejado (el suyo o el de otro).
-  const usuarioActivoComentarios = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const usuarioActivoComentarios = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
   const miNombreComentarios = usuarioActivoComentarios ? usuarioActivoComentarios.nombre : null;
 
   if(lista.length === 0){
@@ -1878,7 +1898,9 @@ document.getElementById("botonComentar")?.addEventListener("click", async ()=>{
   const texto = input.value.trim();
   if(!texto) return;
 
-  const usuarioActivo = leerJSON(localStorage.getItem("usuarioActivo") || "null");
+  const usuarioActivo = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
   try{
     const respuestaComentario = await fetch("/api/content?action=comments", {

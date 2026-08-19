@@ -6,13 +6,22 @@
 
 // ---------- USUARIO ACTIVO ----------
 
-const usuarioActivo = leerJSON(
-    localStorage.getItem("usuarioActivo") || "null"
-);
+let usuarioActivo = typeof window.MRSession === "object"
+    ? window.MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
-const miNombre = usuarioActivo
-    ? usuarioActivo.nombre
+let miNombre = usuarioActivo
+    ? (usuarioActivo.nombre || usuarioActivo.username || "Invitado")
     : "Invitado";
+
+if (window.MRSession && typeof window.MRSession.subscribe === "function") {
+    window.MRSession.subscribe(function (detalle) {
+        usuarioActivo = detalle && detalle.usuario ? detalle.usuario : null;
+        miNombre = usuarioActivo
+            ? (usuarioActivo.nombre || usuarioActivo.username || "Invitado")
+            : "Invitado";
+    });
+}
 
 
 // ---------- MENSAJES ----------

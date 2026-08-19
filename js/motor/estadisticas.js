@@ -4,9 +4,9 @@
 
 function obtenerEstadisticas() {
 
-    const usuario = leerJSON(
-        localStorage.getItem("usuarioActivo")
-    );
+    const usuario = (window.MRSession && typeof MRSession.get === "function")
+        ? MRSession.get()
+        : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
     if (!usuario) return null;
 
@@ -46,9 +46,9 @@ function obtenerEstadisticas() {
 
 function guardarEstadisticas(datos) {
 
-    const usuario = leerJSON(
-        localStorage.getItem("usuarioActivo")
-    );
+    const usuario = (window.MRSession && typeof MRSession.get === "function")
+        ? MRSession.get()
+        : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
     if (!usuario) return;
 

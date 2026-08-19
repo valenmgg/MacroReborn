@@ -19,8 +19,34 @@
 
 (function () {
 
+  // Eventos locales: funcionan incluso cuando Pusher no está disponible.
+  // No hacen escrituras ni llamadas al backend por sí mismos; solo vuelven
+  // a pintar lo que ya confirmó el servidor.
+  if (typeof datosUsuario !== "undefined" && datosUsuario && datosUsuario.nombre) {
+    function esMiEvento(payload){
+      return payload && payload.username && String(payload.username).toLowerCase() === String(datosUsuario.nombre).toLowerCase();
+    }
+
+    window.addEventListener("macro:achievement-unlocked", function (event) {
+      if (!esMiEvento(event && event.detail)) return;
+      if (typeof renderLogros === "function") renderLogros();
+      if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+    });
+
+    window.addEventListener("storage", function (event) {
+      if (event.key === "macro:last-achievement-unlocked" && event.newValue) {
+        try {
+          const payload = JSON.parse(event.newValue);
+          if (!esMiEvento(payload)) return;
+          if (typeof renderLogros === "function") renderLogros();
+          if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+        } catch (_) {}
+      }
+    });
+  }
+
   if (typeof Pusher === "undefined") {
-    console.warn("MacroReborn: pusher-js no cargó, actualizaciones en vivo del perfil desactivadas.");
+    console.warn("MacroReborn: pusher-js no cargó, actualizaciones Pusher del perfil desactivadas; eventos locales siguen activos.");
     return;
   }
 

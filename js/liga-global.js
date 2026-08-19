@@ -2,7 +2,8 @@
   "use strict";
   const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   const readActive=()=>{try{return JSON.parse(localStorage.getItem("usuarioActivo")||"null")}catch(_){return null}};
-  const active=readActive();
+  let active=window.MRSession?window.MRSession.get():readActive();
+  if(window.MRSession&&typeof window.MRSession.subscribe==="function"){window.MRSession.subscribe(function(d){active=d&&d.usuario?d.usuario:null;renderMe();});}
   let users=[]; let filter="todos";
   const league=(pos,total)=>{const p=pos/Math.max(total,1);if(p<=.03)return["Leyenda","👑","lg-leyenda"];if(p<=.10)return["Maestro","💎","lg-maestro"];if(p<=.20)return["Diamante","💠","lg-diamante"];if(p<=.40)return["Platino","🏆","lg-platino"];if(p<=.65)return["Oro","🥇","lg-oro"];if(p<=.85)return["Plata","🥈","lg-plata"];return["Bronce","🥉","lg-bronce"]};
   const name=u=>String(u?.username||u?.nombre||"");

@@ -4,9 +4,9 @@
 
 const nav = document.querySelector(".nav-links") || document.querySelector("nav");
 
-const usuarioNav = leerJSON(
-    localStorage.getItem("usuarioActivo") || "null"
-);
+const usuarioNav = (window.MRSession && typeof MRSession.get === "function")
+    ? MRSession.get()
+    : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
 // ---------- ESTILOS DEL DESPLEGABLE DE NOTIFICACIONES ----------
 // Se inyectan una sola vez desde acá, así el desplegable funciona en
@@ -160,16 +160,38 @@ if(nav){
         // avatares de comunidad-ranking.html). Se reusa ese mismo
         // endpoint porque ya devuelve el saldo actual; no hace falta
         // pedir nada nuevo al servidor solo para mostrar el numerito acá.
-        fetch("/api/content?action=avatar-shop&username=" + encodeURIComponent(usuarioNav.nombre))
-            .then(resp => resp.json())
-            .then(datos => {
-                if(!datos || !datos.success) return;
-                const spanMonedas = document.getElementById("navMonedas");
-                if(spanMonedas) spanMonedas.textContent = "🪙 " + (datos.monedas != null ? datos.monedas : 0);
-            })
-            .catch(error => {
-                console.warn("MacroReborn: no se pudo cargar el saldo de monedas.", error);
-            });
+        function cargarMonedasNavbar(nombre){
+            if(!nombre) return;
+
+            const spanMonedas = document.getElementById("navMonedas");
+            if(spanMonedas){
+                const saldoLocal = Number(
+                    (window.MRSession && typeof MRSession.get === "function" ? MRSession.get() : usuarioNav)?.monedas
+                );
+                if(Number.isFinite(saldoLocal)){
+                    spanMonedas.textContent = "🪙 " + saldoLocal.toLocaleString("es-ES");
+                }
+            }
+
+            fetch("/api/content?action=avatar-shop&username=" + encodeURIComponent(nombre))
+                .then(resp => resp.json())
+                .then(datos => {
+                    if(!datos || !datos.success) return;
+                    const span = document.getElementById("navMonedas");
+                    const saldo = datos.monedas != null ? Number(datos.monedas) : 0;
+                    if(span) span.textContent = "🪙 " + (Number.isFinite(saldo) ? saldo.toLocaleString("es-ES") : "0");
+
+                    if(window.MRSession && Number.isFinite(saldo)){
+                        const actual = MRSession.get() || {};
+                        if(Number(actual.monedas) !== saldo) MRSession.update({ monedas: saldo });
+                    }
+                })
+                .catch(error => {
+                    console.warn("MacroReborn: no se pudo cargar el saldo de monedas.", error);
+                });
+        }
+
+        cargarMonedasNavbar(usuarioNav.nombre);
 
         // Contador de notificaciones (Neon)
         fetch("/api/content?action=notifications&username=" + encodeURIComponent(usuarioNav.nombre))
@@ -253,14 +275,48 @@ if(nav){
 
         const botonCerrar = document.getElementById("cerrarSesion");
 
+        if(window.MRSession && typeof MRSession.subscribe === "function"){
+            MRSession.subscribe(function(detalle){
+                const usuarioActual = detalle && detalle.usuario;
+                const nombreEl = document.querySelector("#botonUsuarioMenu .user-guest-nombre");
+                const tituloEl = document.querySelector("#dropdownUsuarioMenu .user-guest-dropdown-header");
+                const monedasEl = document.getElementById("navMonedas");
+
+                if(!usuarioActual){
+                    return;
+                }
+
+                const nombreActual = usuarioActual.nombre || usuarioActual.username;
+                if(nombreActual){
+                    if(nombreEl) nombreEl.textContent = nombreActual;
+                    if(tituloEl) tituloEl.textContent = nombreActual;
+                }
+
+                // Si la sesión ya trae el saldo nuevo (por ejemplo, después
+                // de un pulso de XP), lo pintamos directamente. Solo
+                // consultamos el endpoint de la tienda cuando la sesión no
+                // tiene un saldo confiable todavía.
+                const saldo = Number(usuarioActual.monedas);
+                if(monedasEl && Number.isFinite(saldo)){
+                    monedasEl.textContent = "🪙 " + saldo.toLocaleString("es-ES");
+                }else if(nombreActual){
+                    cargarMonedasNavbar(nombreActual);
+                }
+            });
+        }
+
         if(botonCerrar){
 
             botonCerrar.addEventListener("click",(e)=>{
 
                 e.preventDefault();
 
-                localStorage.removeItem("usuarioActivo");
-                localStorage.removeItem("macroSessionToken");
+                if (window.MRSession) {
+                    MRSession.logout();
+                } else {
+                    localStorage.removeItem("usuarioActivo");
+                    localStorage.removeItem("macroSessionToken");
+                }
 
                 window.location.href="index.html";
 
@@ -405,7 +461,11 @@ if(nav){
                         };
 
                         if (datos.token) localStorage.setItem("macroSessionToken", datos.token);
-                        localStorage.setItem("usuarioActivo", JSON.stringify(usuarioNormalizado));
+                        if (window.MRSession) {
+                            MRSession.set(usuarioNormalizado);
+                        } else {
+                            localStorage.setItem("usuarioActivo", JSON.stringify(usuarioNormalizado));
+                        }
 
                         mostrarMensajeLoginNav("Bienvenido " + datos.user.username, "exito");
 
