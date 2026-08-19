@@ -30,16 +30,6 @@ const PUSHER_CLUSTER = "sa1";
   }
 
   const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-  pusher.connection.bind("state_change", function (states) {
-    if (states && states.current === "connected") {
-      const usuario = usuarioActual();
-      if (usuario) suscribirUsuario(usuario);
-    }
-  });
-  pusher.connection.bind("error", function (error) {
-    console.warn("MacroReborn: Pusher reportó un error de conexión.", error);
-  });
-
   let canalActual = null;
   let nombreActual = "";
 
@@ -70,12 +60,6 @@ const PUSHER_CLUSTER = "sa1";
     limpiarCanal();
     nombreActual = nombre;
     canalActual = pusher.subscribe("notificaciones-" + nombre);
-    canalActual.bind("pusher:subscription_succeeded", function () {
-      console.info("MacroReborn: canal de notificaciones conectado para", nombre);
-    });
-    canalActual.bind("pusher:subscription_error", function (status) {
-      console.warn("MacroReborn: no se pudo suscribir al canal de notificaciones.", { nombre, status });
-    });
 
     canalActual.bind("nueva-notificacion", function (notif) {
       // Pusher confirmó que hay una notificación nueva: invalidamos la

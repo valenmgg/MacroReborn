@@ -64,26 +64,9 @@ async function obtenerNotificaciones(nombre){
 
     const solicitud = (async ()=>{
         try{
-            const resp = await fetch(
-                "/api/content?action=notifications&username=" + encodeURIComponent(nombre),
-                { credentials: "same-origin", cache: "no-store" }
-            );
-
-            if(!resp.ok){
-                let detalle = "";
-                try {
-                    const err = await resp.json();
-                    detalle = err && (err.error || err.message) ? " — " + (err.error || err.message) : "";
-                } catch (_) {}
-                console.warn("MacroReborn: GET de notificaciones devolvió HTTP " + resp.status + detalle);
-                return [];
-            }
-
+            const resp = await fetch("/api/content?action=notifications&username=" + encodeURIComponent(nombre), { cache: "no-store" });
             const datos = await resp.json();
-            if(!datos || !datos.success){
-                console.warn("MacroReborn: GET de notificaciones no confirmó success.", datos);
-                return [];
-            }
+            if(!datos || !datos.success) return [];
 
             const lista = datos.notificaciones.map(n => ({
                 id: n.id,
@@ -121,38 +104,31 @@ window.MRNotifications = {
 
 function crearNotificacion(nombre, titulo, mensaje, origenNombre){
 
-    if(!nombre) return;
+    if(!nombre || !titulo) return Promise.resolve({success:false, error:"Datos incompletos"});
 
-    fetch("/api/content?action=notifications", {
+    return fetch("/api/content?action=notifications", {
         method: "POST",
-        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({ username: nombre, titulo, mensaje, origenNombre })
-    }).then(async resp => {
+    }).then(async (resp)=>{
         let datos = null;
         try { datos = await resp.json(); } catch (_) {}
 
         if(!resp.ok || !datos || !datos.success){
-            console.warn(
-                "MacroReborn: no se pudo crear la notificación.",
-                { status: resp.status, respuesta: datos }
-            );
-            return;
+            console.warn("MacroReborn: el servidor rechazó la notificación.", resp.status, datos && datos.error);
+            return datos || {success:false, error:"Respuesta inválida"};
         }
 
         invalidarNotificaciones(nombre);
-
         if(obtenerUsuarioNotificaciones() && obtenerUsuarioNotificaciones().nombre === nombre){
-            await actualizarContador();
-            await renderNotificaciones();
-            await renderNotificacionesDropdown();
+            actualizarContador();
+            renderNotificaciones();
         }
-
-        window.dispatchEvent(new CustomEvent("macro:notification-created", {
-            detail: { usuario: nombre, notificacion: datos.notificacion || null }
-        }));
+        return datos;
     }).catch(error=>{
-        console.warn("MacroReborn: error de red al crear la notificación.", error);
+        console.warn("MacroReborn: error creando la notificación.", error);
+        return {success:false, error:error && error.message ? error.message : "Error de red"};
     });
 
 }

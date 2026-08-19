@@ -586,3 +586,37 @@ if(document.readyState === "loading"){
 }else{
   _iniciarObservadorAvatares();
 }
+
+
+// ==============================
+// FALLBACK DE NOTIFICACIONES
+// ==============================
+// Algunas páginas históricas podían cargar navbar.js sin notificaciones.js.
+// En esas páginas, los módulos que llaman a crearNotificacion() se quedaban
+// sin una función global y el POST nunca llegaba a Vercel.
+// Este fallback mantiene la compatibilidad: notificaciones.js lo reemplaza
+// cuando está cargado, y en las páginas antiguas garantiza que la creación
+// llegue igualmente al endpoint existente.
+if (typeof window.crearNotificacion !== "function") {
+    window.crearNotificacionFallback = true;
+    window.crearNotificacion = function(nombre, titulo, mensaje, origenNombre) {
+        if (!nombre || !titulo) return Promise.resolve({ success: false, error: "Datos incompletos" });
+
+        return fetch("/api/content?action=notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({ username: nombre, titulo, mensaje: mensaje || "", origenNombre })
+        }).then(async (resp) => {
+            let datos = null;
+            try { datos = await resp.json(); } catch (_) {}
+            if (!resp.ok || !datos || !datos.success) {
+                console.warn("MacroReborn: el servidor rechazó la notificación.", resp.status, datos && datos.error);
+            }
+            return datos;
+        }).catch((error) => {
+            console.warn("MacroReborn: error creando la notificación.", error);
+            return { success: false, error: error && error.message ? error.message : "Error de red" };
+        });
+    };
+}
