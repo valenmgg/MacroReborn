@@ -156,7 +156,7 @@ async function listarUsuarios(req, res) {
 
   if (username) {
     const usuario = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, u.avatar, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, u.avatar, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
