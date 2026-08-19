@@ -13,124 +13,69 @@ html[data-tema="claro"] body.mr-root {
 }
 
 /* -------------------------------
-   CABECERA SUPERIOR: aspecto portal
+   NAVBAR: se queda igual que en modo oscuro
+   ----------------------------------------------------------------------
+   El rediseño "MacroJuegos clásico" es solo para la sección de perfil.
+   El navbar no forma parte de este cambio, así que acá anulamos los
+   overrides genéricos de modo claro (los de css/theme-canonical.css)
+   restaurando, únicamente dentro de .navbar, las mismas variables que
+   usa el modo oscuro por defecto. Como el resto de las reglas del
+   navbar en css/inicio.css ya están escritas con var(--...), alcanza
+   con resetear las variables acá para que todo lo que cuelga del
+   navbar (links inyectados, dropdown de invitado, campanita, etc.)
+   vuelva a verse exactamente como en modo oscuro.
    ------------------------------- */
 html[data-tema="claro"] .navbar {
-  position: relative !important;
-  top: auto !important;
-  display: flex !important;
-  align-items: stretch !important;
-  flex-wrap: wrap !important;
-  gap: 0 !important;
-  padding: 0 8px 0 8px !important;
-  min-height: 59px !important;
-  background: linear-gradient(#2f78d3, #1459a8) !important;
-  border-bottom: 3px solid #d8a900 !important;
-  box-shadow: 0 2px 5px rgba(0,0,0,.35) !important;
-  backdrop-filter: none !important;
+  --bg-panel: #241145;
+  --bg-panel-alt: #2f1a5c;
+  --line: #3d2166;
+  --line-hover: #55348f;
+  --navbar-bg: rgba(21, 10, 40, 0.92);
+  --gold: #f0b429;
+  --gold-bright: #ffd666;
+  --gold-deep: #a8710f;
+  --cyan: #38bdf8;
+  --green: #35d488;
+  --text-main: #f4f1fb;
+  --text-muted: #b6a9d6;
+  --text-secondary: #d8cff0;
+  --text-placeholder: #8b7fb0;
+  --danger: #ff6b6b;
+  --success-light: #86efac;
+  --sombra-suave: 0 14px 30px rgba(0, 0, 0, .45);
+
+  background: var(--navbar-bg) !important;
+  border-color: var(--gold) !important;
 }
 
-html[data-tema="claro"] .navbar::before {
-  content: "MACRO\A JUEGOS";
-  white-space: pre;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 150px;
-  min-height: 59px;
-  margin-right: 6px;
-  padding: 1px 7px 0;
-  box-sizing: border-box;
-  background: linear-gradient(#f7f7f7 0 47%, #f2a700 48% 100%);
-  color: #16437e;
-  font-family: Arial Black, Arial, sans-serif;
-  font-size: 22px;
-  line-height: .72;
-  font-weight: 900;
-  letter-spacing: -1.5px;
-  text-align: center;
-  text-shadow: 0 1px #fff;
-  border-right: 1px solid #0d4382;
-  border-left: 1px solid #0d4382;
+html[data-tema="claro"] .navbar .nav-logo {
+  color: var(--gold) !important;
 }
 
-html[data-tema="claro"] .nav-logo {
-  display: none !important;
+html[data-tema="claro"] .navbar .nav-links a,
+html[data-tema="claro"] .navbar .nav-categorias a {
+  color: var(--text-secondary) !important;
 }
 
-html[data-tema="claro"] .nav-boton-comunidad {
-  align-self: flex-start !important;
-  margin: 5px 8px 0 0 !important;
-  padding: 5px 12px !important;
-  min-height: 28px !important;
-  background: linear-gradient(#c75aff, #7b21c7) !important;
-  border-radius: 2px !important;
-  border: 1px solid #4c1280 !important;
-  box-shadow: inset 0 1px rgba(255,255,255,.35) !important;
-  font-size: 13px !important;
-  letter-spacing: 0 !important;
-}
-
-html[data-tema="claro"] .nav-links {
-  margin-left: auto !important;
-  align-self: flex-start !important;
-  min-height: 32px !important;
-  padding-top: 3px !important;
-}
-
-html[data-tema="claro"] .nav-links a,
-html[data-tema="claro"] .nav-links button {
+html[data-tema="claro"] .navbar .nav-boton-comunidad {
   color: #fff !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-size: 12px !important;
-  padding: 6px 7px !important;
 }
 
-html[data-tema="claro"] .nav-categorias {
-  flex: 1 0 calc(100% - 164px) !important;
-  order: 4 !important;
-  min-width: 0 !important;
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  align-items: stretch !important;
-  overflow: hidden !important;
-  gap: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background: #1c63b4 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
+html[data-tema="claro"] .navbar a:hover {
+  color: var(--gold-bright) !important;
 }
 
-html[data-tema="claro"] .nav-categorias a {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: 29px !important;
-  padding: 0 11px !important;
+html[data-tema="claro"] .navbar .nav-categorias a.activa-nav,
+html[data-tema="claro"] .navbar .nav-categorias a.activa-nav:hover {
   color: #fff !important;
-  background: transparent !important;
-  border-right: 1px solid rgba(255,255,255,.12) !important;
-  border-radius: 0 !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px #16406f !important;
 }
 
-html[data-tema="claro"] .nav-categorias a:hover,
-html[data-tema="claro"] .nav-categorias a.activa-nav {
-  color: #fff !important;
-  background: #2a70c6 !important;
-}
-
-/* Ocultar iconos emoji de la barra visual sin alterar sus enlaces. */
-html[data-tema="claro"] .nav-categorias a,
-html[data-tema="claro"] .nav-links a {
-  font-family: Arial, Helvetica, sans-serif !important;
+@media (max-width: 768px) {
+  html[data-tema="claro"] .navbar .nav-links,
+  html[data-tema="claro"] .navbar .nav-categorias {
+    background: var(--bg-panel) !important;
+    border-color: var(--line) !important;
+  }
 }
 
 /* -------------------------------
@@ -613,29 +558,12 @@ html[data-tema="claro"] .config-bloque-personalizacion {
   html[data-tema="claro"] .tarjeta-avatar {
     width: 100% !important;
   }
-
-  html[data-tema="claro"] .nav-categorias {
-    overflow-x: auto !important;
-  }
 }
 
 @media (max-width: 640px) {
   html[data-tema="claro"] .perfil {
     padding-left: 4px !important;
     padding-right: 4px !important;
-  }
-
-  html[data-tema="claro"] .navbar::before {
-    width: 105px;
-    font-size: 17px;
-  }
-
-  html[data-tema="claro"] .nav-boton-comunidad {
-    display: none !important;
-  }
-
-  html[data-tema="claro"] .nav-categorias {
-    flex-basis: calc(100% - 105px) !important;
   }
 
   html[data-tema="claro"] .menu-perfil .tab {
