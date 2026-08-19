@@ -1042,3 +1042,175 @@ html[data-tema="claro"] body textarea,
 html[data-tema="claro"] body select { color: var(--text-main); background: var(--control-bg); border-color: var(--control-border); }
 html[data-tema="claro"] body input::placeholder,
 html[data-tema="claro"] body textarea::placeholder { color: var(--text-placeholder) !important; opacity: 1; }
+
+/* =======================================================================
+   V69 — MACROJUEGOS ORIGINAL EN MODO CLARO
+   Referencia histórica recuperada del CSS original del proyecto.
+   Esto NO toca el modo oscuro.
+   ======================================================================= */
+html[data-tema="claro"] {
+  --mj-blue: #167ac6;
+  --mj-blue-light: #4aa3df;
+  --mj-blue-bg: #dff3ff;
+  --mj-blue-hover: #eaf7ff;
+  --mj-yellow: #ffcc00;
+  --mj-yellow-hover: #ffe066;
+  --mj-yellow-border: #e6a800;
+  --mj-sky: #7ed6ff;
+  --mj-orange: #ff9900;
+  --mj-white: #ffffff;
+  --mj-text: #333333;
+}
+
+html[data-tema="claro"] body {
+  background: var(--mj-blue-bg) !important;
+  color: var(--mj-text) !important;
+}
+
+html[data-tema="claro"] #pantalla-inicio,
+html[data-tema="claro"] .inicio,
+html[data-tema="claro"] .login-screen,
+html[data-tema="claro"] .auth-shell {
+  background: linear-gradient(var(--mj-sky), var(--mj-white)) !important;
+}
+
+/* Navegación global */
+html[data-tema="claro"] .navbar,
+html[data-tema="claro"] nav.navbar,
+html[data-tema="claro"] .mr-progress-nav,
+html[data-tema="claro"] .mr-orig-nav {
+  background: var(--mj-blue) !important;
+  border-color: var(--mj-blue-light) !important;
+}
+html[data-tema="claro"] .navbar a,
+html[data-tema="claro"] .navbar .nav-logo,
+html[data-tema="claro"] .navbar .nav-links a,
+html[data-tema="claro"] .navbar .nav-categorias a,
+html[data-tema="claro"] .navbar .nav-boton-comunidad,
+html[data-tema="claro"] .mr-progress-nav a,
+html[data-tema="claro"] .mr-progress-nav .mr-progress-brand,
+html[data-tema="claro"] .mr-orig-nav a,
+html[data-tema="claro"] .mr-brand {
+  color: #fff !important;
+}
+html[data-tema="claro"] .navbar a:hover,
+html[data-tema="claro"] .mr-progress-nav a:hover,
+html[data-tema="claro"] .mr-orig-nav a:hover {
+  color: var(--mj-yellow) !important;
+}
+
+/* Superficies que componen las páginas */
+html[data-tema="claro"] .panel,
+html[data-tema="claro"] .card,
+html[data-tema="claro"] .box,
+html[data-tema="claro"] .tarjeta,
+html[data-tema="claro"] .placeholder-seccion,
+html[data-tema="claro"] .perfil,
+html[data-tema="claro"] .inicio-contenido,
+html[data-tema="claro"] .md-card,
+html[data-tema="claro"] .mr-card,
+html[data-tema="claro"] .mr-level-card,
+html[data-tema="claro"] .mr-global-card,
+html[data-tema="claro"] .mr-roadmap-card,
+html[data-tema="claro"] .social-panel,
+html[data-tema="claro"] .social-hero,
+html[data-tema="claro"] .cr-panel,
+html[data-tema="claro"] .cr-card,
+html[data-tema="claro"] .lg-card,
+html[data-tema="claro"] .mr-original-card,
+html[data-tema="claro"] .mr-panel,
+html[data-tema="claro"] .mission,
+html[data-tema="claro"] .friend-card,
+html[data-tema="claro"] .online-card,
+html[data-tema="claro"] .social-feed-item {
+  background: #fff !important;
+  color: var(--mj-text) !important;
+  border-color: var(--mj-blue-light) !important;
+}
+
+html[data-tema="claro"] .tarjeta:hover,
+html[data-tema="claro"] .inicio-contenido:hover,
+html[data-tema="claro"] .card:hover {
+  background: var(--mj-blue-hover) !important;
+}
+
+/* Acentos originales */
+html[data-tema="claro"] .titulo-principal,
+html[data-tema="claro"] .nav-logo,
+html[data-tema="claro"] .accent,
+html[data-tema="claro"] .text-link,
+html[data-tema="claro"] .text-btn {
+  color: var(--mj-blue) !important;
+}
+html[data-tema="claro"] .subtitulo {
+  color: var(--mj-orange) !important;
+}
+html[data-tema="claro"] .boton-entrar,
+html[data-tema="claro"] .btn-primary,
+html[data-tema="claro"] .button-primary,
+html[data-tema="claro"] .primary-btn {
+  background: var(--mj-yellow) !important;
+  border-color: var(--mj-yellow-border) !important;
+  color: #222 !important;
+}
+html[data-tema="claro"] .boton-entrar:hover,
+html[data-tema="claro"] .btn-primary:hover,
+html[data-tema="claro"] .button-primary:hover,
+html[data-tema="claro"] .primary-btn:hover {
+  background: var(--mj-yellow-hover) !important;
+  border-color: var(--mj-yellow-border) !important;
+}
+
+/* Botones secundarios y controles */
+html[data-tema="claro"] button:not(.boton-entrar):not(.primary):not(.accent),
+html[data-tema="claro"] .btn:not(.primary):not(.accent),
+html[data-tema="claro"] .button:not(.primary):not(.accent),
+html[data-tema="claro"] .md-btn:not(.md-primary),
+html[data-tema="claro"] .social-btn:not(.social-btn-primary),
+html[data-tema="claro"] .lg-filters button,
+html[data-tema="claro"] .lg-nav a {
+  background: var(--mj-blue-hover) !important;
+  color: var(--mj-blue) !important;
+  border-color: var(--mj-blue-light) !important;
+}
+html[data-tema="claro"] input,
+html[data-tema="claro"] textarea,
+html[data-tema="claro"] select,
+html[data-tema="claro"] [contenteditable="true"] {
+  background: #fff !important;
+  color: var(--mj-text) !important;
+  border-color: var(--mj-blue-light) !important;
+}
+html[data-tema="claro"] input::placeholder,
+html[data-tema="claro"] textarea::placeholder {
+  color: #777 !important;
+}
+
+/* Bordes/íconos visuales heredados de MacroJuegos. */
+html[data-tema="claro"] .avatar,
+html[data-tema="claro"] .inicio-contenido,
+html[data-tema="claro"] .tarjeta,
+html[data-tema="claro"] .perfil {
+  border-color: var(--mj-blue-light) !important;
+}
+html[data-tema="claro"] .avatar,
+html[data-tema="claro"] .podio,
+html[data-tema="claro"] .ranking-avatar {
+  box-shadow: 0 0 0 2px var(--mj-yellow) !important;
+}
+
+/* Links de contenido */
+html[data-tema="claro"] a:not(.boton-entrar):not(.btn-primary):not(.button-primary):not(.primary-btn) {
+  color: var(--mj-blue);
+}
+html[data-tema="claro"] a:not(.boton-entrar):not(.btn-primary):not(.button-primary):not(.primary-btn):hover {
+  color: var(--mj-blue-light);
+}
+
+/* La pestaña de tema y controles de personalización siguen legibles. */
+html[data-tema="claro"] .boton-tema,
+html[data-tema="claro"] [data-mr-paleta] {
+  color: var(--mj-blue) !important;
+  background: #fff !important;
+  border-color: var(--mj-blue-light) !important;
+}
