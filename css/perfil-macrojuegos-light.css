@@ -1,448 +1,651 @@
-/*
- * MacroReborn — Perfil estilo MacroJuegos clásico.
- * IMPORTANTE: todas las reglas están limitadas al modo claro.
- * El modo oscuro no recibe ningún selector de este archivo.
- */
+/* ======================================================================
+   PERFIL MACROJUEGOS CLÁSICO — SOLO MODO CLARO
+   ----------------------------------------------------------------------
+   Esta hoja es exclusivamente visual. No cambia IDs, eventos, URLs,
+   datos, autenticación, sesión ni lógica de perfil. El modo oscuro no
+   recibe ninguna regla de esta hoja.
+   ====================================================================== */
 
 html[data-tema="claro"] body.mr-root {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f5f5f5;
-  color: #222;
+  background: #f4f4f4 !important;
+  color: #203b66 !important;
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
-/* El bloque moderno "Identidad Gamer" no existía en el perfil clásico. */
-html[data-tema="claro"] #mrIdentidadHub,
-html[data-tema="claro"] .mr-identidad-hub {
+/* -------------------------------
+   CABECERA SUPERIOR: aspecto portal
+   ------------------------------- */
+html[data-tema="claro"] .navbar {
+  position: relative !important;
+  top: auto !important;
+  display: flex !important;
+  align-items: stretch !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important;
+  padding: 0 8px 0 8px !important;
+  min-height: 59px !important;
+  background: linear-gradient(#2f78d3, #1459a8) !important;
+  border-bottom: 3px solid #d8a900 !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,.35) !important;
+  backdrop-filter: none !important;
+}
+
+html[data-tema="claro"] .navbar::before {
+  content: "MACRO\A JUEGOS";
+  white-space: pre;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 150px;
+  min-height: 59px;
+  margin-right: 6px;
+  padding: 1px 7px 0;
+  box-sizing: border-box;
+  background: linear-gradient(#f7f7f7 0 47%, #f2a700 48% 100%);
+  color: #16437e;
+  font-family: Arial Black, Arial, sans-serif;
+  font-size: 22px;
+  line-height: .72;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  text-align: center;
+  text-shadow: 0 1px #fff;
+  border-right: 1px solid #0d4382;
+  border-left: 1px solid #0d4382;
+}
+
+html[data-tema="claro"] .nav-logo {
   display: none !important;
+}
+
+html[data-tema="claro"] .nav-boton-comunidad {
+  align-self: flex-start !important;
+  margin: 5px 8px 0 0 !important;
+  padding: 5px 12px !important;
+  min-height: 28px !important;
+  background: linear-gradient(#c75aff, #7b21c7) !important;
+  border-radius: 2px !important;
+  border: 1px solid #4c1280 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.35) !important;
+  font-size: 13px !important;
+  letter-spacing: 0 !important;
+}
+
+html[data-tema="claro"] .nav-links {
+  margin-left: auto !important;
+  align-self: flex-start !important;
+  min-height: 32px !important;
+  padding-top: 3px !important;
+}
+
+html[data-tema="claro"] .nav-links a,
+html[data-tema="claro"] .nav-links button {
+  color: #fff !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 12px !important;
+  padding: 6px 7px !important;
+}
+
+html[data-tema="claro"] .nav-categorias {
+  flex: 1 0 calc(100% - 164px) !important;
+  order: 4 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  gap: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
+  background: #1c63b4 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
 }
 
-/* Contenedor general del perfil: ancho y espaciado más cercanos al portal clásico. */
+html[data-tema="claro"] .nav-categorias a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 29px !important;
+  padding: 0 11px !important;
+  color: #fff !important;
+  background: transparent !important;
+  border-right: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 0 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px #16406f !important;
+}
+
+html[data-tema="claro"] .nav-categorias a:hover,
+html[data-tema="claro"] .nav-categorias a.activa-nav {
+  color: #fff !important;
+  background: #2a70c6 !important;
+}
+
+/* Ocultar iconos emoji de la barra visual sin alterar sus enlaces. */
+html[data-tema="claro"] .nav-categorias a,
+html[data-tema="claro"] .nav-links a {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* -------------------------------
+   CONTENEDOR DEL PERFIL
+   ------------------------------- */
 html[data-tema="claro"] .perfil {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 92px 8px 50px;
-  font-family: Arial, Helvetica, sans-serif;
+  max-width: 1100px !important;
+  margin: 0 auto !important;
+  padding: 96px 8px 50px !important;
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 html[data-tema="claro"] .perfil-migas {
-  gap: 8px;
-  margin-bottom: 7px;
-  color: #35507a;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  letter-spacing: 0;
-  min-height: 35px;
+  margin: 0 0 7px !important;
+  gap: 7px !important;
+  color: #38537a !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
 }
 
 html[data-tema="claro"] .perfil-migas-texto strong {
-  color: #243e73;
-  font-weight: 700;
+  color: #27436f !important;
 }
 
 html[data-tema="claro"] .perfil-volver {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 50%;
-  background: #4aa3df;
-  color: #fff;
-  font-size: 32px;
-  line-height: 1;
-  box-shadow: none;
-  text-decoration: none;
+  width: 38px !important;
+  height: 38px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #5bc0ed !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  font-size: 29px !important;
+  font-weight: 400 !important;
 }
 
-html[data-tema="claro"] .perfil-volver:hover {
-  transform: none;
-  background: #167ac6;
-}
-
-/* Layout principal: tarjeta grande izquierda + contenido a la derecha. */
+/* -------------------------------
+   DOS COLUMNAS
+   ------------------------------- */
 html[data-tema="claro"] .perfil-cuerpo {
-  grid-template-columns: 312px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
+  grid-template-columns: 312px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: start !important;
 }
 
 html[data-tema="claro"] .perfil-sidebar {
-  position: static;
-  gap: 10px;
+  position: static !important;
+  gap: 10px !important;
 }
 
-/* Tarjeta del usuario: marco fino, casi cuadrado, como la captura histórica. */
+/* -------------------------------
+   TARJETA DEL USUARIO — referencia
+   ------------------------------- */
 html[data-tema="claro"] .tarjeta-avatar {
-  border: 1px solid #9ea8b5;
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+  position: relative !important;
+  width: 312px !important;
+  border: 2px solid #7e9caf !important;
+  border-radius: 5px !important;
+  background: #102d58 !important;
+  box-shadow: 0 0 2px rgba(0,0,0,.55) !important;
+  overflow: hidden !important;
 }
 
 html[data-tema="claro"] .tarjeta-avatar .avatar {
-  aspect-ratio: 327 / 505;
-  background: #dfeaf4;
+  width: 100% !important;
+  aspect-ratio: 327 / 505 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #102d58 !important;
+  overflow: hidden !important;
 }
 
 html[data-tema="claro"] .tarjeta-avatar .avatar img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
 }
 
-/* Chapa de nivel púrpura arriba a la izquierda. */
 html[data-tema="claro"] .tarjeta-avatar-chapas {
-  padding: 7px 8px;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 5 !important;
+  padding: 6px 7px !important;
+  pointer-events: none !important;
+}
+
+html[data-tema="claro"] .tarjeta-avatar-chapas > * {
+  position: absolute !important;
+  pointer-events: none !important;
 }
 
 html[data-tema="claro"] .tarjeta-chapa-nivel.nivel {
-  margin: 0;
-  padding: 4px 12px;
-  min-width: 54px;
-  border: 0;
-  border-radius: 18px;
-  background: rgba(173, 49, 241, .92);
-  color: #fff;
-  box-shadow: none;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+  top: 0 !important;
+  left: 0 !important;
+  width: 61px !important;
+  height: 61px !important;
+  min-width: 61px !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  border: 1px solid #7233ae !important;
+  background: #b13cf0 !important;
+  color: #fff !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.45) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,.45) !important;
+  transform: translate(-1px,-1px) !important;
 }
 
-/* Estado negro arriba a la derecha. */
 html[data-tema="claro"] .tarjeta-chapa-estado.estado {
-  margin: 0;
-  padding: 4px 9px;
-  border: 0;
-  border-radius: 2px;
-  background: rgba(30, 35, 45, .92);
-  color: #fff;
-  box-shadow: none;
-  backdrop-filter: none;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
+  top: 4px !important;
+  right: 6px !important;
+  max-width: 92px !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  border-radius: 1px !important;
+  border: 1px solid #2c3e50 !important;
+  background: #626f7c !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
-/* Corazones decorativos, como los de la tarjeta histórica. */
 html[data-tema="claro"] .tarjeta-avatar-chapas::after {
-  content: "♥ ♥ ♥";
+  content: "♥♥♥";
   position: absolute;
-  right: 10px;
-  top: 31px;
-  color: #e3262e;
+  right: 7px;
+  top: 35px;
+  color: #ff2020;
   font-size: 15px;
   line-height: 1;
   letter-spacing: 1px;
+  text-shadow: 0 1px 1px #000;
+}
+
+html[data-tema="claro"] .tarjeta-avatar-pie {
+  position: absolute !important;
+  left: 7px !important;
+  right: 7px !important;
+  bottom: 4px !important;
+  z-index: 6 !important;
+  min-height: 47px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 7px 72px 7px 70px !important;
+  background: rgba(124, 46, 183, .67) !important;
+  border: 0 !important;
+  text-align: left !important;
+}
+
+html[data-tema="claro"] .tarjeta-avatar-pie::after {
+  content: "★";
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 57px;
+  height: 57px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffc300;
+  color: #fff;
+  clip-path: polygon(50% 0%, 61% 28%, 92% 17%, 74% 45%, 100% 61%, 68% 64%, 69% 100%, 49% 75%, 27% 100%, 31% 66%, 0% 60%, 25% 43%, 8% 16%, 40% 28%);
+  font-size: 25px;
   text-shadow: 0 1px 1px rgba(0,0,0,.35);
 }
 
-/* Pie superpuesto sobre la imagen. */
-html[data-tema="claro"] .tarjeta-avatar-pie {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 4;
-  padding: 6px 14px 8px;
-  background: rgba(122, 67, 176, .74);
-  border-top: 1px solid rgba(255,255,255,.28);
-}
-
 html[data-tema="claro"] .tarjeta-avatar-nombre {
-  color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 23px;
-  line-height: 1.05;
-  font-weight: 700;
-  text-shadow: 0 1px 1px rgba(0,0,0,.75);
+  color: #fff !important;
+  font-family: Arial Black, Arial, sans-serif !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.65) !important;
 }
 
-/* Medalla visual de la esquina inferior derecha. */
-html[data-tema="claro"] .tarjeta-avatar::after {
-  content: "★";
-  position: absolute;
-  right: 4px;
-  bottom: 1px;
-  z-index: 5;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  background: #ffcf19;
-  color: #c98c00;
-  clip-path: polygon(50% 0%, 61% 27%, 90% 20%, 72% 45%, 100% 50%, 72% 56%, 86% 84%, 60% 71%, 50% 100%, 40% 71%, 14% 84%, 28% 56%, 0% 50%, 28% 45%, 10% 20%, 39% 27%);
-  font-size: 25px;
-  text-shadow: 0 1px 0 rgba(255,255,255,.45);
-  pointer-events: none;
+/* Insignias modernas: no pertenecen a la referencia clásica. */
+html[data-tema="claro"] .insignias-usuario,
+html[data-tema="claro"] #mrIdentidadHub,
+html[data-tema="claro"] .mr-identidad-hub {
+  display: none !important;
 }
 
-/* Estadísticas: compactas, azules y rectas. */
+/* -------------------------------
+   ESTADÍSTICAS: compactas, bajo la tarjeta
+   ------------------------------- */
 html[data-tema="claro"] .tarjeta-stats {
-  border: 1px solid #b1b7c0;
-  border-radius: 0;
-  background: #fff;
-  box-shadow: none;
+  border: 1px solid #aac2d8 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
 }
 
 html[data-tema="claro"] .tarjeta-stats-titulo {
-  padding: 7px 10px;
-  background: #2b5da8;
-  color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  background: #6c88f0 !important;
+  border-bottom: 1px solid #516ec5 !important;
+  color: #fff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 15px !important;
+  text-align: left !important;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas {
-  padding: 2px 10px 7px;
+  padding: 2px 10px 7px !important;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas > div {
-  padding: 7px 0;
-  border-bottom: 1px solid #d8dde4;
-}
-
-html[data-tema="claro"] .tarjeta-stats .estadisticas h3,
-html[data-tema="claro"] .tarjeta-stats .estadisticas > div > p {
-  font-family: Arial, Helvetica, sans-serif;
+  padding: 7px 0 !important;
+  border-bottom: 1px dotted #ccd6e0 !important;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas h3 {
-  color: #4b4f55;
-  font-size: 11px;
-  font-weight: 700;
+  color: #5b6e84 !important;
+  font-size: 11px !important;
 }
 
 html[data-tema="claro"] .tarjeta-stats .estadisticas > div > p {
-  color: #214d91;
-  font-size: 12px;
+  color: #2b527f !important;
+  font-size: 12px !important;
 }
 
-html[data-tema="claro"] .tarjeta-stats .barra-xp {
-  height: 7px;
-  border: 1px solid #a5aeb8;
-  border-radius: 1px;
-  background: #edf1f4;
-}
-
-html[data-tema="claro"] .tarjeta-stats #progresoXP {
-  background: #4aa3df;
-}
-
-/* Nombre y cabecera derecha. */
+/* -------------------------------
+   COLUMNA DERECHA
+   ------------------------------- */
 html[data-tema="claro"] .perfil-principal {
-  min-width: 0;
+  min-width: 0 !important;
 }
 
+html[data-tema="claro"] .menu-perfil {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 3px !important;
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  background: #113875 !important;
+  border: 2px solid #efad09 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab {
+  flex: 0 0 auto !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 0 !important;
+  background: #113875 !important;
+  color: #fff !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  box-shadow: none !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab:hover {
+  background: #1b4d94 !important;
+  color: #fff !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab.activa {
+  background: #6f90ff !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.3) !important;
+}
+
+/* Configuración no forma parte de la barra pública de la captura. */
+html[data-tema="claro"] .menu-perfil .tab[data-tab="config-cuenta"] {
+  display: none !important;
+}
+
+/* -------------------------------
+   NOMBRE / BIOGRAFÍA
+   ------------------------------- */
 html[data-tema="claro"] .perfil-datos-cabecera {
-  margin: 0 0 7px;
+  display: block !important;
+  margin: 0 !important;
+  padding: 8px 8px 4px !important;
 }
 
 html[data-tema="claro"] .perfil-datos-cabecera h1 {
-  display: block;
-  margin: 0;
-  padding: 0 6px 6px;
-  color: #263f70;
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-  text-shadow: none;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 18px;
-  line-height: 1.15;
-  font-weight: 700;
-}
-
-/* Barra de pestañas clásica azul oscuro con línea amarilla. */
-html[data-tema="claro"] .menu-perfil {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 0;
-  margin: 0 0 8px;
-  padding: 5px 4px 0;
-  background: linear-gradient(#112c63, #173c83);
-  border: 1px solid #0c1e48;
-  border-bottom: 3px solid #e6a800;
-  border-radius: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,.25);
-}
-
-html[data-tema="claro"] .menu-perfil button {
-  min-height: 29px;
-  margin: 0;
-  padding: 3px 8px 5px;
-  border: 0;
-  border-right: 1px solid rgba(255,255,255,.08);
-  border-radius: 0;
-  background: transparent;
-  color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.1;
-  box-shadow: none;
-  white-space: nowrap;
-}
-
-html[data-tema="claro"] .menu-perfil button:hover,
-html[data-tema="claro"] .menu-perfil button.activa {
-  background: #3e66b3;
-  color: #fff;
-}
-
-html[data-tema="claro"] .menu-perfil button.activa {
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
-}
-
-/* Las secciones usan el blanco/celeste del perfil histórico. */
-html[data-tema="claro"] .contenido-tab {
-  padding: 0;
-  color: #222;
-  background: transparent;
-}
-
-html[data-tema="claro"] .contenido-tab > h2 {
-  margin: 8px 0;
-  padding: 7px 9px;
-  background: #6b8fed;
-  color: #fff;
-  border: 1px solid #5678d0;
-  border-radius: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
-  line-height: 1.2;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #203b66 !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
 }
 
 html[data-tema="claro"] .perfil-caja-info {
-  margin: 0 0 15px;
-  padding: 12px 14px;
-  background: #eaf7ff;
-  border: 1px solid #bfd7ea;
-  border-left: 1px solid #bfd7ea;
-  border-radius: 0;
-  box-shadow: none;
-  min-height: 225px;
-  overflow: auto;
-  max-height: 330px;
+  position: relative !important;
+  min-height: 280px !important;
+  margin: 0 8px 15px !important;
+  padding: 14px 14px 12px !important;
+  background: #dff0fc !important;
+  border: 1px solid #9ab5ca !important;
+  border-left: 1px solid #9ab5ca !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.4) !important;
+  overflow: hidden !important;
+}
+
+html[data-tema="claro"] .perfil-caja-info::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 13px;
+  height: 100%;
+  background: linear-gradient(#eef7ff, #d4e7f6);
+  border-left: 1px solid #cad9e5;
 }
 
 html[data-tema="claro"] .perfil-caja-info .biografia {
-  margin: 0;
-  max-width: none;
-  color: #1f2937;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 15px;
-  line-height: 1.33;
-  white-space: pre-line;
+  margin: 0 !important;
+  max-width: none !important;
+  padding-right: 18px !important;
+  color: #1f2f43 !important;
+  font-family: "Courier New", Courier, monospace !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  white-space: pre-line !important;
 }
 
 html[data-tema="claro"] .perfil-btn-editar {
-  margin-top: 10px;
-  padding: 5px 10px;
-  background: #f2f2f2;
-  color: #333;
-  border: 1px solid #aaa;
-  border-radius: 2px;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  box-shadow: none;
+  margin-top: 8px !important;
+  padding: 4px 8px !important;
+  background: #fff !important;
+  color: #315888 !important;
+  border: 1px solid #90a9c0 !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
 }
 
-html[data-tema="claro"] .perfil-btn-editar:hover {
-  transform: none;
-  filter: none;
-  background: #fff;
-}
-
+/* -------------------------------
+   SEPARADOR "ÚLTIMOS COMENTARIOS"
+   ------------------------------- */
 html[data-tema="claro"] .perfil-barra-comentarios {
-  display: flex;
-  width: calc(100% - 34px);
-  margin-left: 34px;
-  padding: 6px 10px;
-  min-height: 30px;
-  border: 0;
-  border-radius: 0;
-  background: #6d8fe9;
-  color: #fff;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: none;
-}
-
-html[data-tema="claro"] .perfil-barra-comentarios:hover {
-  filter: none;
-  background: #5e81dd;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: calc(100% - 84px) !important;
+  margin: 0 auto !important;
+  min-height: 29px !important;
+  padding: 5px 9px !important;
+  background: #6b8cf2 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #fff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+  text-align: left !important;
 }
 
 html[data-tema="claro"] .perfil-preview-comentarios {
-  margin: 0 0 10px 34px;
+  margin: 0 auto !important;
+  width: calc(100% - 84px) !important;
 }
 
-/* Formularios/paneles de otras pestañas también adoptan la estética plana. */
-html[data-tema="claro"] .contenido-tab .config-tarjeta,
-html[data-tema="claro"] .contenido-tab .panel,
-html[data-tema="claro"] .contenido-tab .tarjeta,
-html[data-tema="claro"] .contenido-tab .perfil-panel {
-  border-radius: 0;
-  box-shadow: none;
+/* -------------------------------
+   DEMÁS PESTAÑAS: mismos paneles clásicos
+   ------------------------------- */
+html[data-tema="claro"] .contenido-tab {
+  background: #fff !important;
+  border: 1px solid #9ab5ca !important;
+  border-radius: 0 !important;
+  padding: 14px !important;
+  margin: 8px 8px 0 !important;
+  box-shadow: none !important;
 }
 
-/* La configuración moderna no forma parte de la cabecera histórica. */
-html[data-tema="claro"] .menu-perfil button[data-tab="config-cuenta"] {
-  display: none;
+html[data-tema="claro"] .contenido-tab > h2 {
+  margin: -14px -14px 12px !important;
+  padding: 7px 9px !important;
+  background: #6b8cf2 !important;
+  border-bottom: 1px solid #5571c9 !important;
+  color: #fff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+}
+
+html[data-tema="claro"] .contenido-tab > p,
+html[data-tema="claro"] .contenido-tab label,
+html[data-tema="claro"] .contenido-tab li,
+html[data-tema="claro"] .contenido-tab td,
+html[data-tema="claro"] .contenido-tab th {
+  color: #31465f !important;
+}
+
+/* Los iconos emoji de los tabs secundarios no forman parte de la
+   referencia visual; sus textos siguen existiendo en el DOM. */
+html[data-tema="claro"] #actividad-amigos > h2,
+html[data-tema="claro"] #actividad > h2,
+html[data-tema="claro"] #comentarios > h2,
+html[data-tema="claro"] #favoritos > h2,
+html[data-tema="claro"] #ultimos > h2,
+html[data-tema="claro"] #amigos > h2,
+html[data-tema="claro"] #avatares > h2,
+html[data-tema="claro"] #logros > h2,
+html[data-tema="claro"] #config-cuenta > h2 {
+  font-size: 0 !important;
+}
+
+html[data-tema="claro"] #actividad-amigos > h2::after { content:"Actividad de amigos"; }
+html[data-tema="claro"] #actividad > h2::after { content:"Actividad reciente"; }
+html[data-tema="claro"] #comentarios > h2::after { content:"Comentarios"; }
+html[data-tema="claro"] #favoritos > h2::after { content:"Juegos favoritos"; }
+html[data-tema="claro"] #ultimos > h2::after { content:"Últimos juegos jugados"; }
+html[data-tema="claro"] #amigos > h2::after { content:"Amigos"; }
+html[data-tema="claro"] #avatares > h2::after { content:"Mi avatar"; }
+html[data-tema="claro"] #logros > h2::after { content:"Logros"; }
+html[data-tema="claro"] #config-cuenta > h2::after { content:"Configuración de cuenta"; }
+
+html[data-tema="claro"] .contenido-tab > h2::after {
+  font-size: 15px;
+}
+
+/* -------------------------------
+   Ocultar elementos modernos que rompen la referencia clásica
+   ------------------------------- */
+html[data-tema="claro"] .perfil-eyebrow,
+html[data-tema="claro"] .perfil-cabecera-subtexto,
+html[data-tema="claro"] .perfil-bienvenida-grid,
+html[data-tema="claro"] .perfil-mini-panel {
+  display: none !important;
+}
+
+/* Mantener la configuración funcionando, pero sin tarjetas modernas
+   visibles en la vista Home. */
+html[data-tema="claro"] .config-bloque-personalizacion {
+  border-radius: 0 !important;
 }
 
 @media (max-width: 900px) {
   html[data-tema="claro"] .perfil {
-    padding-top: 60px;
+    padding-top: 70px !important;
   }
+
   html[data-tema="claro"] .perfil-cuerpo {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
+
+  html[data-tema="claro"] .perfil-sidebar {
+    width: 312px !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
   html[data-tema="claro"] .tarjeta-avatar {
-    max-width: 327px;
+    width: 100% !important;
   }
-  html[data-tema="claro"] .menu-perfil button {
-    font-size: 10px;
-    padding-left: 6px;
-    padding-right: 6px;
+
+  html[data-tema="claro"] .nav-categorias {
+    overflow-x: auto !important;
   }
 }
 
-/* Elementos alternativos: el DOM original sigue intacto para el modo oscuro. */
-html[data-tema="claro"] .perfil-migas-original { display: none; }
-html[data-tema="claro"] .perfil-migas-clasico { display: inline; }
+@media (max-width: 640px) {
+  html[data-tema="claro"] .perfil {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
 
-html[data-tema="claro"] .menu-perfil button { font-size: 0; }
-html[data-tema="claro"] .menu-perfil button::after {
-  display: inline;
-  font-size: 11px;
-  font-weight: 700;
-}
-html[data-tema="claro"] .menu-perfil button[data-tab="inicio"]::after { content: "Home"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="actividad-amigos"]::after { content: "Actividad de amigos"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="actividad"]::after { content: "Actividad Reciente"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="comentarios"]::after { content: "Comentarios"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="favoritos"]::after { content: "Favoritos"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="ultimos"]::after { content: "Últimos Jugados"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="amigos"]::after { content: "Amigos"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="avatares"]::after { content: "Avatar"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="logros"]::after { content: "Logros"; }
-html[data-tema="claro"] .menu-perfil button[data-tab="config-cuenta"]::after { content: "Configuración"; }
+  html[data-tema="claro"] .navbar::before {
+    width: 105px;
+    font-size: 17px;
+  }
 
-html[data-tema="claro"] .perfil-barra-comentarios {
-  font-size: 0;
-}
-html[data-tema="claro"] .perfil-barra-comentarios::after {
-  content: "Últimos Comentarios";
-  font-size: 12px;
-  font-weight: 700;
+  html[data-tema="claro"] .nav-boton-comunidad {
+    display: none !important;
+  }
+
+  html[data-tema="claro"] .nav-categorias {
+    flex-basis: calc(100% - 105px) !important;
+  }
+
+  html[data-tema="claro"] .menu-perfil .tab {
+    font-size: 10px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  html[data-tema="claro"] .perfil-barra-comentarios,
+  html[data-tema="claro"] .perfil-preview-comentarios {
+    width: 100% !important;
+  }
 }
