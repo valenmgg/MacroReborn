@@ -130,8 +130,21 @@
     ].join('');
   }
 
+  function findCatalogGame(idOrGame) {
+    const item = idOrGame?.juego || idOrGame?.game || idOrGame;
+    if (item && typeof item === 'object' && (item.nombre || item.name || item.titulo || item.imagen || item.image)) {
+      return item;
+    }
+
+    const id = item?.game_id ?? item?.id ?? item;
+    if (id == null) return null;
+
+    const catalog = (typeof juegos !== 'undefined' && Array.isArray(juegos)) ? juegos : [];
+    return catalog.find((juego) => String(juego.id) === String(id)) || null;
+  }
+
   function normalizeGame(item) {
-    const game = item?.juego || item?.game || item;
+    const game = findCatalogGame(item);
     if (!game) return null;
     return {
       name: game.nombre || game.name || game.titulo || 'Juego',
@@ -161,17 +174,34 @@
   }
 
   async function load(root) {
-    const user = (typeof datosUsuario !== 'undefined' && datosUsuario) || readActiveUser() || {};
-    const username = user.nombre || $('#nombreUsuario')?.textContent?.trim();
+    const storedUser = (typeof datosUsuario !== 'undefined' && datosUsuario) || readActiveUser() || {};
+    const username = storedUser.nombre || $('#nombreUsuario')?.textContent?.trim();
 
     if (!username) return;
 
     const encoded = encodeURIComponent(username);
-    const [historyData, favoritesData, friendsData] = await Promise.all([
+    const [profileData, historyData, favoritesData, friendsData] = await Promise.all([
+      fetchJSON(`/api/users?username=${encoded}`),
       fetchJSON(`/api/content?action=game-history&username=${encoded}`),
       fetchJSON(`/api/content?action=favorites&username=${encoded}`),
       fetchJSON(`/api/social?action=friends&username=${encoded}`)
     ]);
+
+    // La sesión guardada en localStorage puede quedar desactualizada
+    // (por ejemplo, después de ganar/gastar monedas). Para este resumen
+    // usamos siempre el usuario actual de Neon y sincronizamos la caché
+    // local para que navbar/perfil compartan el mismo saldo.
+    let user = storedUser;
+    if (profileData?.success && profileData.user) {
+      user = {
+        ...profileData.user,
+        nombre: profileData.user.username,
+        nivel: profileData.user.level
+      };
+      try {
+        localStorage.setItem('usuarioActivo', JSON.stringify(user));
+      } catch (_) {}
+    }
 
     const history = historyData?.success ? (historyData.historial || []) : [];
     const favorites = favoritesData?.success ? (favoritesData.favoritos || []) : [];
