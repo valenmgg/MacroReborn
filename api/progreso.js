@@ -40,6 +40,14 @@ const MISIONES_SEMANALES = [
   { key: "weekly_10_games", title: "Turista del catálogo", description: "Jugá 10 juegos distintos esta semana.", metric: "games_week", target: 10, xp: 320, coins: 240 }
 ];
 
+// Debe coincidir con la fórmula usada por /api/users?action=xp.
+function xpNecesaria(nivel) {
+  const n = Math.max(1, Number(nivel) || 1);
+  if (n === 1) return 50;
+  if (n === 2) return 100;
+  return 100 + ((n - 2) * 200);
+}
+
 function pickDaily(dateText) {
   const day = new Date(`${dateText}T12:00:00-03:00`).getDate();
   return MISIONES_DIARIAS[day % MISIONES_DIARIAS.length];
@@ -215,6 +223,17 @@ async function reclamar(req, res, auth) {
     return res.status(400).json({ success: false, error: "Todavía no completaste la misión" });
   }
 
+  const usuarioActual = await sql`
+    SELECT id, username, level, xp, monedas, rank_actual, ranking_puntuacion
+    FROM users
+    WHERE id = ${auth.sub}
+    LIMIT 1;
+  `;
+
+  if (!usuarioActual.length) {
+    return res.status(404).json({ success: false, error: "Usuario no encontrado" });
+  }
+
   const creada = await sql`
     INSERT INTO player_mission_claims (user_id, mission_key, period_key, reward_xp, reward_coins)
     VALUES (${auth.sub}, ${mission.key}, ${esperado}, ${mission.xp}, ${mission.coins})
@@ -226,13 +245,35 @@ async function reclamar(req, res, auth) {
     return res.status(200).json({ success: true, alreadyClaimed: true });
   }
 
-  await sql`UPDATE users SET monedas = COALESCE(monedas,0) + ${mission.coins} WHERE id = ${auth.sub};`;
-  const usuario = await sql`SELECT username, level, xp, monedas FROM users WHERE id = ${auth.sub} LIMIT 1;`;
+  // Aplicamos XP + monedas en la misma actualización lógica.
+  // El cálculo de nivel sigue la misma regla que /api/users?action=xp
+  // para que las recompensas de misión respeten el sistema existente.
+  let level = Math.max(1, Number(usuarioActual[0].level) || 1);
+  let xp = Math.max(0, Number(usuarioActual[0].xp) || 0) + Number(mission.xp);
+  let subioNivel = false;
+  const necesario = xpNecesaria(level);
+
+  if (xp >= necesario) {
+    level += 1;
+    xp = 0;
+    subioNivel = true;
+  }
+
+  const actualizado = await sql`
+    UPDATE users
+    SET level = ${level},
+        xp = ${xp},
+        monedas = COALESCE(monedas, 0) + ${mission.coins}
+    WHERE id = ${auth.sub}
+    RETURNING username, level, xp, monedas, rank_actual, ranking_puntuacion;
+  `;
+
   return res.status(200).json({
     success: true,
     alreadyClaimed: false,
     reward: { xp: mission.xp, coins: mission.coins },
-    user: usuario[0] || null
+    subioNivel,
+    user: actualizado[0] || null
   });
 }
 
