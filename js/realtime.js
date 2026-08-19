@@ -24,32 +24,67 @@ const PUSHER_CLUSTER = "sa1";
     return;
   }
 
-  // _usuarioNotif ya lo define js/notificaciones.js (mismo scope
-  // global, ese script se carga justo antes que este).
-  if (!_usuarioNotif || !_usuarioNotif.nombre) return;
-
   if (PUSHER_KEY === "TU_PUSHER_KEY") {
     console.warn("MacroReborn: falta configurar PUSHER_KEY/PUSHER_CLUSTER en js/realtime.js.");
     return;
   }
 
   const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+  let canalActual = null;
+  let nombreActual = "";
 
-  const nombreCanal = "notificaciones-" + _usuarioNotif.nombre.toLowerCase();
-  const canal = pusher.subscribe(nombreCanal);
+  function usuarioActual() {
+    return (typeof obtenerUsuarioNotificaciones === "function")
+      ? obtenerUsuarioNotificaciones()
+      : (window.MRSession && typeof MRSession.get === "function" ? MRSession.get() : null);
+  }
 
-  canal.bind("nueva-notificacion", function (notif) {
+  function limpiarCanal() {
+    if (!canalActual || !nombreActual) return;
+    canalActual.unbind("nueva-notificacion");
+    pusher.unsubscribe("notificaciones-" + nombreActual);
+    canalActual = null;
+    nombreActual = "";
+  }
 
-    // Refresca todo lo que ya sabe pintarse solo (campanita,
-    // desplegable de la navbar y, si estamos en notificaciones.html,
-    // el listado completo).
-    if (typeof actualizarContador === "function") actualizarContador();
-    if (typeof renderNotificaciones === "function") renderNotificaciones();
-    if (typeof renderNotificacionesDropdown === "function") renderNotificacionesDropdown();
+  function suscribirUsuario(usuario) {
+    const nombre = String(usuario && (usuario.nombre || usuario.username) || "").trim().toLowerCase();
 
-    mostrarToastNotificacion(notif.titulo, notif.mensaje);
+    if (!nombre) {
+      limpiarCanal();
+      return;
+    }
 
-  });
+    if (nombre === nombreActual && canalActual) return;
+
+    limpiarCanal();
+    nombreActual = nombre;
+    canalActual = pusher.subscribe("notificaciones-" + nombre);
+
+    canalActual.bind("nueva-notificacion", function (notif) {
+      // Pusher confirmó que hay una notificación nueva: invalidamos la
+      // caché local antes de volver a consultar Neon.
+      if (window.MRNotifications && typeof MRNotifications.invalidate === "function") {
+        MRNotifications.invalidate(nombre);
+      }
+
+      if (typeof actualizarContador === "function") actualizarContador();
+      if (typeof renderNotificaciones === "function") renderNotificaciones();
+      if (typeof renderNotificacionesDropdown === "function") renderNotificacionesDropdown();
+
+      mostrarToastNotificacion(notif && notif.titulo, notif && notif.mensaje);
+    });
+  }
+
+  suscribirUsuario(usuarioActual());
+
+  if (window.MRSession && typeof MRSession.subscribe === "function") {
+    MRSession.subscribe(function (detalle) {
+      suscribirUsuario((detalle && detalle.usuario) || usuarioActual());
+    });
+  }
+
+  window.addEventListener("beforeunload", limpiarCanal);
 
 })();
 

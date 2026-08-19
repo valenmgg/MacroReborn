@@ -104,14 +104,17 @@
 
     refreshPromise = (async function () {
       try {
-      const response = await window.fetch(
-        "/api/users?username=" + encodeURIComponent(username),
-        { credentials: "same-origin" }
-      );
+      const url = "/api/users?username=" + encodeURIComponent(username);
+      let data;
 
-      if (!response.ok) return local;
+      if (window.MRApi && typeof MRApi.requestShared === "function") {
+        data = await MRApi.requestShared("GET", url, { credentials: "same-origin" });
+      } else {
+        const response = await window.fetch(url, { credentials: "same-origin" });
+        if (!response.ok) return local;
+        data = await response.json();
+      }
 
-      const data = await response.json();
       if (!data || !data.success || !data.user) return local;
 
       const remoto = normalizarUsuario({

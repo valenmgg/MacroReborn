@@ -17,6 +17,10 @@
 
   async function fetchJSON(url) {
     try {
+      if (window.MRApi && typeof MRApi.requestShared === 'function') {
+        return await MRApi.requestShared('GET', url, { credentials: 'same-origin' });
+      }
+
       const response = await fetch(url, { credentials: 'same-origin' });
       if (!response.ok) return null;
       return await response.json();

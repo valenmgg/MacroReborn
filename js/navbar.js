@@ -193,18 +193,29 @@ if(nav){
 
         cargarMonedasNavbar(usuarioNav.nombre);
 
-        // Contador de notificaciones (Neon)
-        fetch("/api/content?action=notifications&username=" + encodeURIComponent(usuarioNav.nombre))
-            .then(resp => resp.json())
-            .then(datos => {
-                if(!datos || !datos.success) return;
-                const sinLeer = datos.notificaciones.filter(n => !n.leida).length;
+        // Contador de notificaciones (Neon). Si notificaciones.js está
+        // disponible, reutilizamos su caché/coalescing para no pedir la
+        // misma lista dos veces en la misma página.
+        const cargarContadorNotificaciones = (nombre) => {
+            if(!nombre) return;
+            const obtener = (window.MRNotifications && typeof MRNotifications.get === "function")
+                ? MRNotifications.get(nombre)
+                : fetch("/api/content?action=notifications&username=" + encodeURIComponent(nombre))
+                    .then(resp => resp.json())
+                    .then(datos => (datos && datos.success) ? datos.notificaciones.map(n => ({ leida: n.leida })) : []);
+
+            Promise.resolve(obtener).then(lista => {
+                const sinLeer = Array.isArray(lista)
+                    ? lista.filter(n => !n.leida).length
+                    : 0;
                 const span = document.getElementById("contadorNotificaciones");
                 if(span) span.textContent = sinLeer > 0 ? sinLeer : "";
-            })
-            .catch(error => {
+            }).catch(error => {
                 console.warn("MacroReborn: no se pudo cargar el contador de notificaciones.", error);
             });
+        };
+
+        cargarContadorNotificaciones(usuarioNav.nombre);
 
         // ---------- DESPLEGABLE DE NOTIFICACIONES ----------
 

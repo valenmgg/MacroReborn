@@ -90,7 +90,9 @@
     if (!seccion || !host || !activo || !activo.nombre) return;
 
     const [uRes, amigosRes, logrosRes, favRes] = await Promise.all([
-      json(`/api/users?username=${encodeURIComponent(activo.nombre)}`, {}),
+      (window.MRApi && typeof MRApi.requestShared === 'function'
+      ? MRApi.requestShared('GET', `/api/users?username=${encodeURIComponent(activo.nombre)}`, { credentials: 'same-origin' })
+      : json(`/api/users?username=${encodeURIComponent(activo.nombre)}`, {})),
       json(`/api/social?action=friends&username=${encodeURIComponent(activo.nombre)}`, {}),
       json(`/api/social?action=achievements&username=${encodeURIComponent(activo.nombre)}`, {}),
       json(`/api/content?action=favorites&username=${encodeURIComponent(activo.nombre)}`, {})

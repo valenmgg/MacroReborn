@@ -49,7 +49,9 @@ async function buscarUsuarioPorNombre(nombre){
 
   try{
 
-    const resp = await fetch("/api/users?username=" + encodeURIComponent(nombre));
+    const resp = await (window.MRApi && typeof window.MRApi.requestShared === "function"
+      ? window.MRApi.requestShared("GET", "/api/users?username=" + encodeURIComponent(nombre), { credentials: "same-origin" })
+      : fetch("/api/users?username=" + encodeURIComponent(nombre)));
     const datos = await resp.json();
     return (datos && datos.success) ? datos.user : null;
 

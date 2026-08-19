@@ -26,7 +26,10 @@ async function renderHistorialPerfil(){
         let historial = [];
 
         try{
-            const resp = await fetch("/api/content?action=game-history&username=" + encodeURIComponent(usuarioActivoHistorial.nombre));
+            const url = "/api/content?action=game-history&username=" + encodeURIComponent(usuarioActivoHistorial.nombre);
+            const resp = (window.MRApi && typeof MRApi.requestShared === "function")
+                ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
+                : await fetch(url);
             const datos = await resp.json();
             historial = (datos && datos.success) ? datos.historial : [];
         }catch(error){

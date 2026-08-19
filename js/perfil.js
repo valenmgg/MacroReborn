@@ -2013,10 +2013,17 @@ logrosListos.then(renderLogros);
     if(el) el.textContent = String(Number(valor) || 0);
   };
 
+  const pedir = (url) => {
+    if(window.MRApi && typeof MRApi.requestShared === 'function') {
+      return MRApi.requestShared('GET', url, { credentials: 'same-origin' });
+    }
+    return fetch(url).then(r => r.json());
+  };
+
   const peticiones = await Promise.allSettled([
-    fetch('/api/content?action=game-history&username=' + encodeURIComponent(nombre)).then(r => r.json()),
-    fetch('/api/content?action=favorites&username=' + encodeURIComponent(nombre)).then(r => r.json()),
-    fetch('/api/social?action=friends&username=' + encodeURIComponent(nombre)).then(r => r.json())
+    pedir('/api/content?action=game-history&username=' + encodeURIComponent(nombre)),
+    pedir('/api/content?action=favorites&username=' + encodeURIComponent(nombre)),
+    pedir('/api/social?action=friends&username=' + encodeURIComponent(nombre))
   ]);
 
   const historial = peticiones[0].status === 'fulfilled' && peticiones[0].value?.success

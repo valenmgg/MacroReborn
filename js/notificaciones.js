@@ -15,27 +15,86 @@ function obtenerUsuarioNotificaciones(){
 
 
 // ---------- OBTENER ----------
+// Evita peticiones duplicadas cuando contador, página completa y dropdown
+// solicitan las mismas notificaciones casi al mismo tiempo. El caché es
+// muy corto y se invalida después de mutaciones.
+const _notificacionesCache = new Map();
+const _notificacionesInflight = new Map();
+const NOTIFICACIONES_CACHE_TTL = 2500;
+
+const NOTIFICACIONES_POLL_MS = 20000;
+let _notificacionesPollTimer = null;
+
+function programarPollingNotificaciones(){
+    if(_notificacionesPollTimer) clearInterval(_notificacionesPollTimer);
+
+    _notificacionesPollTimer = setInterval(async ()=>{
+        const usuario = obtenerUsuarioNotificaciones();
+        if(!usuario || !usuario.nombre) return;
+        if(document.visibilityState === "hidden") return;
+
+        invalidarNotificaciones(usuario.nombre);
+        await actualizarContador();
+    }, NOTIFICACIONES_POLL_MS);
+}
+
+function claveNotificaciones(nombre){
+    return String(nombre || "").trim().toLowerCase();
+}
+
+function invalidarNotificaciones(nombre){
+    const clave = claveNotificaciones(nombre);
+    if(clave) _notificacionesCache.delete(clave);
+}
 
 async function obtenerNotificaciones(nombre){
 
-    try{
-        const resp = await fetch("/api/content?action=notifications&username=" + encodeURIComponent(nombre));
-        const datos = await resp.json();
-        if(!datos || !datos.success) return [];
+    const clave = claveNotificaciones(nombre);
+    if(!clave) return [];
 
-        return datos.notificaciones.map(n => ({
-            id: n.id,
-            titulo: n.titulo,
-            mensaje: n.mensaje,
-            leida: n.leida,
-            fecha: new Date(n.created_at).toLocaleString("es-AR")
-        }));
-    }catch(error){
-        console.warn("MacroReborn: no se pudieron cargar las notificaciones.", error);
-        return [];
+    const ahora = Date.now();
+    const cache = _notificacionesCache.get(clave);
+    if(cache && (ahora - cache.at) < NOTIFICACIONES_CACHE_TTL){
+        return cache.data;
     }
 
+    if(_notificacionesInflight.has(clave)){
+        return _notificacionesInflight.get(clave);
+    }
+
+    const solicitud = (async ()=>{
+        try{
+            const resp = await fetch("/api/content?action=notifications&username=" + encodeURIComponent(nombre));
+            const datos = await resp.json();
+            if(!datos || !datos.success) return [];
+
+            const lista = datos.notificaciones.map(n => ({
+                id: n.id,
+                titulo: n.titulo,
+                mensaje: n.mensaje,
+                leida: n.leida,
+                fecha: new Date(n.created_at).toLocaleString("es-AR")
+            }));
+
+            _notificacionesCache.set(clave, { at: Date.now(), data: lista });
+            return lista;
+        }catch(error){
+            console.warn("MacroReborn: no se pudieron cargar las notificaciones.", error);
+            return [];
+        }finally{
+            _notificacionesInflight.delete(clave);
+        }
+    })();
+
+    _notificacionesInflight.set(clave, solicitud);
+    return solicitud;
 }
+
+// Compartido con la navbar cuando este módulo está cargado.
+window.MRNotifications = {
+    get: obtenerNotificaciones,
+    invalidate: invalidarNotificaciones
+};
 
 
 // ---------- CREAR ----------
@@ -52,6 +111,7 @@ function crearNotificacion(nombre, titulo, mensaje, origenNombre){
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: nombre, titulo, mensaje, origenNombre })
     }).then(()=>{
+        invalidarNotificaciones(nombre);
         // Si la notificación es para quien está mirando esta página
         // ahora mismo, refrescamos el contador y la lista.
         if(obtenerUsuarioNotificaciones() && obtenerUsuarioNotificaciones().nombre === nombre){
@@ -249,6 +309,7 @@ document.getElementById("marcarLeidas")?.addEventListener("click", async ()=>{
         console.warn("MacroReborn: no se pudieron marcar las notificaciones como leídas.", error);
     }
 
+    invalidarNotificaciones(obtenerUsuarioNotificaciones()?.nombre);
     renderNotificaciones();
 
 });
@@ -272,6 +333,7 @@ document.getElementById("borrarTodas")?.addEventListener("click", async ()=>{
         console.warn("MacroReborn: no se pudieron borrar las notificaciones.", error);
     }
 
+    invalidarNotificaciones(obtenerUsuarioNotificaciones()?.nombre);
     renderNotificaciones();
 
 });
@@ -290,8 +352,10 @@ document.querySelectorAll('[data-notif-filtro]').forEach(boton => {
 
 window.addEventListener("focus",()=>{
 
-    actualizarContador();
+    const usuario = obtenerUsuarioNotificaciones();
+    if(usuario && usuario.nombre) invalidarNotificaciones(usuario.nombre);
 
+    actualizarContador();
     renderNotificaciones();
 
 });
@@ -306,8 +370,12 @@ renderNotificaciones();
 
 if (window.MRSession && typeof MRSession.subscribe === "function") {
     MRSession.subscribe(() => {
+        const usuario = obtenerUsuarioNotificaciones();
+        if(usuario && usuario.nombre) invalidarNotificaciones(usuario.nombre);
         actualizarContador();
         renderNotificaciones();
         renderNotificacionesDropdown();
     });
 }
+
+programarPollingNotificaciones();

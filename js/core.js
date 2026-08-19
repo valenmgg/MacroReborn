@@ -252,6 +252,7 @@ function normalizarAvatar(valor){
 // y un getter sincrónico (obtenerAvatarCacheado) para usar en el HTML.
 
 const _cacheAvatares = {};
+const _peticionesAvatares = {};
 
 function obtenerAvatarCacheado(nombre){
   return Object.prototype.hasOwnProperty.call(_cacheAvatares, nombre)
@@ -263,16 +264,30 @@ async function cargarAvatarUsuario(nombre){
 
   if(!nombre) return null;
 
-  try{
-    const resp = await fetch("/api/users?username=" + encodeURIComponent(nombre));
-    const datos = await resp.json();
-    const avatar = (datos && datos.success) ? normalizarAvatar(datos.user.avatar) : null;
-    _cacheAvatares[nombre] = avatar;
-    return avatar;
-  }catch(error){
-    console.warn("MacroReborn: no se pudo cargar el avatar.", error);
-    return _cacheAvatares[nombre] || null;
+  if(Object.prototype.hasOwnProperty.call(_cacheAvatares, nombre)){
+    return _cacheAvatares[nombre];
   }
+
+  if(_peticionesAvatares[nombre]){
+    return _peticionesAvatares[nombre];
+  }
+
+  _peticionesAvatares[nombre] = (async function(){
+    try{
+      const resp = await fetch("/api/users?username=" + encodeURIComponent(nombre));
+      const datos = await resp.json();
+      const avatar = (datos && datos.success) ? normalizarAvatar(datos.user.avatar) : null;
+      _cacheAvatares[nombre] = avatar;
+      return avatar;
+    }catch(error){
+      console.warn("MacroReborn: no se pudo cargar el avatar.", error);
+      return _cacheAvatares[nombre] || null;
+    }finally{
+      delete _peticionesAvatares[nombre];
+    }
+  })();
+
+  return _peticionesAvatares[nombre];
 
 }
 

@@ -31,7 +31,10 @@ async function renderFavoritosPerfil(){
     let favoritos = [];
 
     try{
-        const resp = await fetch("/api/content?action=favorites&username=" + encodeURIComponent(usuarioActivoFavoritos.nombre));
+        const url = "/api/content?action=favorites&username=" + encodeURIComponent(usuarioActivoFavoritos.nombre);
+        const resp = (window.MRApi && typeof MRApi.requestShared === "function")
+            ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
+            : await fetch(url);
         const datos = await resp.json();
         favoritos = (datos && datos.success) ? datos.favoritos : [];
     }catch(error){

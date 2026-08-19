@@ -128,7 +128,9 @@ const activo = obtenerActivo();
 
 try{
 
-  const respuesta = await fetch("/api/users?username=" + encodeURIComponent(nombreBuscado));
+  const respuesta = await (window.MRApi && typeof window.MRApi.requestShared === "function"
+    ? window.MRApi.requestShared("GET", "/api/users?username=" + encodeURIComponent(nombreBuscado), { credentials: "same-origin" })
+    : fetch("/api/users?username=" + encodeURIComponent(nombreBuscado)));
   const datos = await respuesta.json();
 
   if(datos && datos.success){

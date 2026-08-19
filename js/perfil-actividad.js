@@ -86,7 +86,10 @@ async function renderActividadAmigos(){
 
   let misFavoritos = [];
   try{
-    const resp = await fetch("/api/social?action=favoriteFriends&username=" + encodeURIComponent(usuarioActual.nombre));
+    const url = "/api/social?action=favoriteFriends&username=" + encodeURIComponent(usuarioActual.nombre);
+    const resp = (window.MRApi && typeof MRApi.requestShared === "function")
+      ? await MRApi.requestShared("GET", url, { credentials: "same-origin" })
+      : await fetch(url);
     const datos = await resp.json();
     misFavoritos = (datos && datos.success) ? datos.favoritos : [];
   }catch(error){

@@ -113,10 +113,59 @@
     return leerRespuesta(respuesta, url.toString());
   }
 
+  // Deduplica únicamente peticiones idénticas que están EN VUELO.
+  // No conserva respuestas terminadas, por lo que no introduce datos
+  // obsoletos: dos módulos que piden exactamente lo mismo al mismo tiempo
+  // comparten la misma Promise y el servidor recibe una sola petición.
+  const solicitudesCompartidas = new Map();
+
+  async function requestShared(metodo, path, opciones) {
+    const opts = opciones || {};
+    const metodoNormalizado = String(metodo || "GET").toUpperCase();
+
+    // Solo aplicamos la deduplicación a GET sin cuerpo.
+    if (metodoNormalizado !== "GET" || (opts && opts.body != null)) {
+      return request(metodoNormalizado, path, opts);
+    }
+
+    let url;
+    try {
+      url = new URL(path, window.location.origin);
+    } catch (_) {
+      return request(metodoNormalizado, path, opts);
+    }
+
+    const query = construirQuery(opts.query);
+    query.forEach((valor, clave) => url.searchParams.append(clave, valor));
+
+    const headers = new Headers(opts.headers || {});
+    const key = [
+      metodoNormalizado,
+      url.toString(),
+      headers.get("Authorization") || "",
+      headers.get("Accept") || "",
+      opts.credentials || "same-origin"
+    ].join("\n");
+
+    const existente = solicitudesCompartidas.get(key);
+    if (existente) return existente;
+
+    const promise = request(metodoNormalizado, path, opts)
+      .finally(() => {
+        if (solicitudesCompartidas.get(key) === promise) {
+          solicitudesCompartidas.delete(key);
+        }
+      });
+
+    solicitudesCompartidas.set(key, promise);
+    return promise;
+  }
+
   const cliente = {
     Error: MRApiError,
 
     request,
+    requestShared,
 
     get(path, query, opciones) {
       return request("GET", path, {
