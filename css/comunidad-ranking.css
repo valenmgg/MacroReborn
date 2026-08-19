@@ -13,77 +13,9 @@
    identidad púrpura.
    ========================================================================== */
 
-:root {
-  --bg-deep: var(--bg-deep);
-  --bg-base: var(--bg-base);
-  --bg-panel: var(--bg-panel);
-  --bg-panel-alt: var(--bg-panel-alt);
-  --line: var(--line);
-  --line-hover: var(--line-hover);
-  --navbar-bg: rgba(21, 10, 40, 0.92);
-
-  --gold: var(--gold);
-  --gold-bright: var(--gold-bright);
-  --gold-deep: var(--gold-deep);
-  --cyan: var(--cyan);
-  --green: var(--green);
-
-  --text-main: var(--text-main);
-  --text-muted: var(--text-muted);
-  --text-secondary: var(--text-secondary);
-  --text-placeholder: var(--text-placeholder);
-
-  --danger: var(--danger);
-  --danger-light: var(--danger-light);
-  --success-light: var(--success-light);
-
-  --podio-plata: #dbe3ee;
-  --podio-bronce: #e3a374;
-
-  --sombra-suave: 0 14px 30px rgba(0, 0, 0, 0.45);
-  --chip-bg: rgba(36, 17, 69, 0.6);
-
-  --clasico-borde: #6d3fd1;
-  --clasico-plate: linear-gradient(180deg, #5b3aa0 0%, #2a1150 100%);
-  --clasico-header: linear-gradient(180deg, var(--bg-panel-alt) 0%, var(--bg-panel) 100%);
-  --clasico-avatar-fondo: linear-gradient(180deg, #1f0f3d 0%, var(--bg-deep) 100%);
-}
-
-html[data-tema="claro"] {
-  --bg-deep: #ece7f5;
-  --bg-base: #f6f3fb;
-  --bg-panel: #ffffff;
-  --bg-panel-alt: #f1ecfa;
-  --line: #ddd0f0;
-  --line-hover: #c7b3e8;
-  --navbar-bg: rgba(255, 255, 255, 0.92);
-
-  --gold: #92600a;
-  --gold-bright: #b8790d;
-  --gold-deep: #7a5108;
-  --cyan: #0284c7;
-  --green: #15803d;
-
-  --text-main: var(--bg-panel);
-  --text-muted: #6d5a94;
-  --text-secondary: #4a3a72;
-  --text-placeholder: #9484b8;
-
-  --danger: #dc2626;
-  --danger-light: #b91c1c;
-  --success-light: #15803d;
-
-  --podio-plata: #7c6a9c;
-  --podio-bronce: #b45309;
-
-  --sombra-suave: 0 10px 26px rgba(60, 30, 90, 0.12);
-  --chip-bg: rgba(255, 255, 255, 0.75);
-
-  --clasico-borde: var(--accent-color);
-  --clasico-plate: linear-gradient(180deg, #8b6fd1 0%, #5b3aa0 100%);
-  --clasico-header: linear-gradient(180deg, #f3eefb 0%, #e0d3f7 100%);
-  --clasico-avatar-fondo: linear-gradient(180deg, #ede4fa 0%, #c9adf0 100%);
-}
+/* Los tokens visuales pertenecen a MRTheme / css/inicio.css.
+   Esta página ya no redefine --bg-*, --text-* ni --gold-* localmente,
+   evitando recursiones y desincronización con las paletas globales. */
 
 .mr-root {
   background: var(--bg-base);
@@ -112,7 +44,7 @@ html[data-tema="claro"] {
   padding: 40px 24px 56px;
   background:
     radial-gradient(ellipse 900px 460px at 50% -10%, rgba(240, 180, 41, 0.16), transparent 60%),
-    linear-gradient(160deg, #2a1150 0%, var(--bg-base) 55%, var(--bg-base) 100%);
+    linear-gradient(160deg, var(--bg-panel-alt) 0%, var(--bg-base) 55%, var(--bg-base) 100%);
 }
 
 .rk-hero::before {
@@ -1109,4 +1041,4 @@ html[data-tema="claro"] {
 }
 
 /* Tanda 4 — competición y retención */
-.rk-kicker{display:inline-block;font-size:11px;letter-spacing:.16em;font-weight:900;color:var(--cyan);margin-bottom:5px}.rk-subtitulo-hero{margin:7px 0 0;color:var(--rk-texto-muted);font-size:14px;max-width:650px}.rk-acciones-hero{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.rk-mi-posicion{font-size:13px;font-weight:800;color:var(--rk-texto-muted);padding:9px 12px;border:1px solid var(--rk-panel-borde);border-radius:999px;background:rgba(255,255,255,.03)}.rk-modos{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 auto 20px}.rk-modo{border:1px solid var(--rk-panel-borde);background:rgba(255,255,255,.035);color:var(--rk-texto-muted);border-radius:999px;padding:10px 15px;font:inherit;font-weight:800;cursor:pointer}.rk-modo:hover,.rk-modo.activo{color:#fff;border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.12)}.rk-evento{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1180px;margin:0 auto 28px;padding:18px 20px;border:1px solid rgba(34,211,238,.2);border-radius:18px;background:linear-gradient(100deg,rgba(34,211,238,.08),rgba(124,58,237,.08));box-shadow:0 12px 35px rgba(0,0,0,.12)}.rk-evento h2{margin:5px 0 4px;font-size:18px;color:#fff}.rk-evento p{margin:0;color:var(--rk-texto-muted);font-size:13px}.rk-evento-badge{font-size:10px;font-weight:900;letter-spacing:.12em;color:var(--cyan)}.rk-evento-cta{flex:none;padding:10px 14px;border-radius:10px;text-decoration:none;font-weight:900;color:#08121d;background:var(--cyan)}@media (max-width:760px){.rk-evento{align-items:flex-start;flex-direction:column}.rk-acciones-hero{justify-content:flex-start}.rk-subtitulo-hero{font-size:13px}}
+.rk-kicker{display:inline-block;font-size:11px;letter-spacing:.16em;font-weight:900;color:var(--cyan);margin-bottom:5px}.rk-subtitulo-hero{margin:7px 0 0;color:var(--rk-texto-muted);font-size:14px;max-width:650px}.rk-acciones-hero{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.rk-mi-posicion{font-size:13px;font-weight:800;color:var(--rk-texto-muted);padding:9px 12px;border:1px solid var(--rk-panel-borde);border-radius:999px;background:rgba(255,255,255,.03)}.rk-modos{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 auto 20px}.rk-modo{border:1px solid var(--rk-panel-borde);background:rgba(255,255,255,.035);color:var(--rk-texto-muted);border-radius:999px;padding:10px 15px;font:inherit;font-weight:800;cursor:pointer}.rk-modo:hover,.rk-modo.activo{color:var(--text-main);border-color:var(--accent);background:var(--warning-bg)}.rk-evento{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:1180px;margin:0 auto 28px;padding:18px 20px;border:1px solid var(--line-hover);border-radius:18px;background:linear-gradient(100deg,var(--warning-bg),var(--focus-ring));box-shadow:0 12px 35px rgba(0,0,0,.12)}.rk-evento h2{margin:5px 0 4px;font-size:18px;color:var(--text-main)}.rk-evento p{margin:0;color:var(--rk-texto-muted);font-size:13px}.rk-evento-badge{font-size:10px;font-weight:900;letter-spacing:.12em;color:var(--cyan)}.rk-evento-cta{flex:none;padding:10px 14px;border-radius:10px;text-decoration:none;font-weight:900;color:var(--text-on-accent);background:var(--accent-color)}@media (max-width:760px){.rk-evento{align-items:flex-start;flex-direction:column}.rk-acciones-hero{justify-content:flex-start}.rk-subtitulo-hero{font-size:13px}}

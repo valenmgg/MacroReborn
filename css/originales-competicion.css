@@ -1,11 +1,11 @@
 :root {
-  --mr-bg: #0d0b17;
-  --mr-card: rgba(255,255,255,.06);
-  --mr-border: rgba(255,255,255,.11);
-  --mr-text: #f7f3ff;
-  --mr-muted: #b9b0c9;
-  --mr-accent: #a56cff;
-  --mr-gold: #ffd46a;
+  --mr-bg: var(--bg-deep);
+  --mr-card: var(--bg-panel);
+  --mr-border: var(--line);
+  --mr-text: var(--text-main);
+  --mr-muted: var(--text-muted);
+  --mr-accent: var(--accent-color);
+  --mr-gold: var(--gold-bright);
 }
 
 * { box-sizing: border-box; }
