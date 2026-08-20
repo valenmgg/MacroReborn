@@ -1753,13 +1753,13 @@ body.macro-consolidado .navbar {
   margin: 0;
   padding: 0 12px;
   display: grid !important;
-  grid-template-columns: auto auto minmax(170px, 420px) minmax(0, 1fr);
+  grid-template-columns: 145px 112px 178px minmax(0, 1fr);
   grid-template-rows: 41px 31px;
   grid-template-areas:
     "logo community search actions"
     "categories categories categories categories";
   align-items: stretch;
-  gap: 0 10px;
+  gap: 0 11px;
   position: sticky;
   top: 0;
   z-index: 5000;
@@ -2161,11 +2161,13 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 .navbar #navBuscador.nav-buscador {
   grid-area: search;
   align-self: center;
-  justify-self: stretch;
+  justify-self: start;
   display: flex;
   align-items: stretch;
   position: relative;
-  min-width: 0;
+  width: 178px;
+  min-width: 178px;
+  max-width: 178px;
   height: 25px;
   margin: 0;
   padding: 0;
@@ -2175,8 +2177,9 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 .navbar #navBuscador .buscador-caja {
   display: flex;
   align-items: stretch;
-  width: 100%;
-  min-width: 0;
+  width: 178px;
+  min-width: 178px;
+  max-width: 178px;
   height: 25px;
   margin: 0;
   padding: 0;
@@ -2229,6 +2232,29 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 
 .navbar #navBuscador .buscador-submit:hover {
   filter: brightness(1.06);
+}
+.navbar #navBuscador .buscador-submit::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  position: relative;
+  box-sizing: border-box;
+  transform: translateY(1px);
+}
+
+.navbar #navBuscador .buscador-submit::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 2px;
+  background: #fff;
+  transform: rotate(45deg);
+  right: 10px;
+  top: 15px;
+  border-radius: 2px;
 }
 
 .navbar #navBuscador .buscador-panel {
@@ -2303,5 +2329,16 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 }
 
 @media (max-width: 900px) {
+  .navbar #navBuscador.nav-buscador {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    justify-self: stretch;
+  }
+  .navbar #navBuscador .buscador-caja {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
   .navbar #navBuscador .buscador-submit { flex-basis: 40px; width: 40px; }
 }

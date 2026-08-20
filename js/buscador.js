@@ -113,10 +113,17 @@
           type="text"
           id="inputBuscadorGlobal"
           class="buscador-input"
-          placeholder="Buscar juegos, usuarios y noticias..."
+          placeholder="Buscar"
           autocomplete="off"
           aria-label="Buscar juegos, usuarios y noticias"
         >
+        <button
+          type="button"
+          id="buscadorSubmit"
+          class="buscador-submit"
+          aria-label="Buscar"
+          title="Buscar"
+        ></button>
       </div>
       <div class="buscador-panel" id="buscadorPanel" role="listbox"></div>
     `;
