@@ -2451,13 +2451,20 @@ body.macro-consolidado .navbar {
 }
 
 /* =====================================================================
-   CORRECCIÓN FINAL DEL WORDMARK DE LA NAVBAR
-   Mantener un único branding: MACRO / REBORN + 1.0.
-   El antiguo texto nodal "MacroReborn" y el PNG quedan ocultos.
+   WORDMARK RETRO — referencia MacroJuegos, adaptado a MacroReborn.
+   Un solo branding: MACRO / REBORN + 1.0.
    ===================================================================== */
 .navbar .nav-logo,
 body.mr-root .navbar .nav-logo,
 body.macro-consolidado .navbar .nav-logo {
+  position: relative !important;
+  width: 158px !important;
+  min-width: 158px !important;
+  height: 72px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   font-size: 0 !important;
@@ -2470,59 +2477,99 @@ body.mr-root .navbar .nav-logo img,
 body.macro-consolidado .navbar .nav-logo img {
   display: none !important;
   visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
-  max-width: 0 !important;
-  max-height: 0 !important;
 }
 
-.navbar .nav-logo::before {
-  content: "MACRO\A REBORN" !important;
+/* El wordmark ocupa el bloque como en la referencia: MACRO arriba,
+   REBORN abajo, letras gruesas, condensadas, inclinación suave y
+   relieve/sombra marcado. */
+.navbar .nav-logo::before,
+body.mr-root .navbar .nav-logo::before,
+body.macro-consolidado .navbar .nav-logo::before {
+  content: "MACRO\\A REBORN" !important;
   display: block !important;
   position: absolute !important;
-  left: 5px !important;
-  top: 0 !important;
+  left: 6px !important;
+  top: 2px !important;
   width: 150px !important;
-  height: 38px !important;
+  height: 54px !important;
   margin: 0 !important;
+  padding: 0 !important;
   white-space: pre !important;
   overflow: visible !important;
   text-align: left !important;
   font-family: Impact, Haettenschweiler, "Arial Black", Arial, Helvetica, sans-serif !important;
-  font-size: 22px !important;
-  line-height: 18px !important;
-  letter-spacing: -1.2px !important;
+  font-size: 31px !important;
+  line-height: 27px !important;
   font-weight: 900 !important;
-  background: linear-gradient(180deg, #ffffff 0%, #e8edf8 49%, #ffdd4f 50%, #f5a51b 100%) !important;
+  font-stretch: condensed !important;
+  letter-spacing: -1.9px !important;
+  transform: skewX(-6deg) !important;
+  transform-origin: left top !important;
+  background: linear-gradient(
+      180deg,
+      #f7fbff 0%,
+      #c9d0dc 45%,
+      #8c95a7 49%,
+      #ffd84a 51%,
+      #f2ae19 78%,
+      #9a6504 100%
+  ) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
-  text-shadow: 1px 1px 0 rgba(0,0,0,.58), -1px -1px 0 rgba(255,255,255,.08), 0 2px 3px rgba(0,0,0,.35) !important;
+  -webkit-text-stroke: .65px rgba(8,12,25,.55) !important;
+  text-shadow:
+      1px 1px 0 rgba(0,0,0,.72),
+      2px 2px 0 rgba(0,0,0,.42),
+      0 3px 4px rgba(0,0,0,.32) !important;
   z-index: 3 !important;
   pointer-events: none !important;
 }
 
-.navbar .nav-logo::after {
+/* Etiqueta de versión, con el mismo aspecto pequeño que el indicador de la foto. */
+.navbar .nav-logo::after,
+body.mr-root .navbar .nav-logo::after,
+body.macro-consolidado .navbar .nav-logo::after {
   content: "1.0" !important;
   display: inline-flex !important;
   position: absolute !important;
-  left: 7px !important;
+  left: 10px !important;
   bottom: 4px !important;
   width: 28px !important;
-  height: 16px !important;
+  height: 17px !important;
   align-items: center !important;
   justify-content: center !important;
   box-sizing: border-box !important;
-  border: 1px solid #8792ad !important;
+  border: 1px solid #7f8ca4 !important;
   border-radius: 2px !important;
-  background: linear-gradient(180deg, #f0f3f8 0%, #b9c0ce 100%) !important;
-  color: #31406e !important;
-  -webkit-text-fill-color: #31406e !important;
-  font: 800 10px/14px Arial, Helvetica, sans-serif !important;
+  background: linear-gradient(180deg, #f8fafc 0%, #bec6d3 100%) !important;
+  color: #31416c !important;
+  -webkit-text-fill-color: #31416c !important;
+  font: 800 10px/15px Arial, Helvetica, sans-serif !important;
   letter-spacing: -.1px !important;
-  text-shadow: 0 1px 0 rgba(255,255,255,.8) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.85) !important;
   box-shadow: 0 1px 0 rgba(0,0,0,.35) !important;
   z-index: 4 !important;
   pointer-events: none !important;
+}
+
+@media (max-width: 650px) {
+  .navbar .nav-logo,
+  body.mr-root .navbar .nav-logo,
+  body.macro-consolidado .navbar .nav-logo {
+    width: 158px !important;
+    min-width: 158px !important;
+    height: 72px !important;
+  }
+
+  .navbar .nav-logo::before,
+  body.mr-root .navbar .nav-logo::before,
+  body.macro-consolidado .navbar .nav-logo::before {
+    left: 6px !important;
+    top: 2px !important;
+    font-size: 31px !important;
+    line-height: 27px !important;
+    letter-spacing: -1.9px !important;
+  }
 }
