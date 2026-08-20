@@ -650,3 +650,155 @@ if(navbar && nav){
         if(window.innerWidth > 768) cerrar();
     });
 })();
+
+// ================================================================
+// NAVBAR MÓVIL V5 — panel único y completo
+// ----------------------------------------------------------------
+// En teléfonos no dependemos de que .nav-links y .nav-categorias
+// queden visualmente apilados. Creamos un único panel con TODAS las
+// secciones globales y algunos accesos de cuenta/servicio.
+// ================================================================
+(function construirPanelMovilCompleto(){
+    const navBar = document.querySelector('.navbar');
+    if(!navBar || navBar.querySelector('.nav-mobile-menu')) return;
+
+    const categorias = navBar.querySelector('.nav-categorias');
+    if(!categorias) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'nav-mobile-menu';
+    panel.setAttribute('aria-label', 'Navegación móvil');
+
+    const links = Array.from(categorias.querySelectorAll('a'));
+    const vistos = new Set();
+
+    function agregarLink(link){
+        const href = link.getAttribute('href') || '';
+        const texto = (link.textContent || '').trim();
+        const clave = href + '|' + texto;
+        if(vistos.has(clave)) return;
+        vistos.add(clave);
+
+        const a = document.createElement('a');
+        a.href = href;
+        a.textContent = texto;
+        a.className = 'nav-mobile-item' + (link.classList.contains('activa-nav') ? ' activa-nav' : '');
+        if(link.target) a.target = link.target;
+        panel.appendChild(a);
+    }
+
+    // 1) Todas las secciones de la navbar, en el mismo orden que desktop.
+    links.forEach(agregarLink);
+
+    // 2) Accesos complementarios que en desktop viven a la derecha.
+    const cuenta = document.createElement('div');
+    cuenta.className = 'nav-mobile-separador';
+    cuenta.textContent = 'Cuenta y herramientas';
+
+    let agregoCuenta = false;
+
+    const notif = navBar.querySelector('#notifBellWrap a, a[href="notificaciones.html"]');
+    if(notif){
+        const a = document.createElement('a');
+        a.href = notif.getAttribute('href') || 'notificaciones.html';
+        a.textContent = '🔔 Notificaciones';
+        a.className = 'nav-mobile-item nav-mobile-secondary';
+        panel.appendChild(cuenta);
+        panel.appendChild(a);
+        agregoCuenta = true;
+    }
+
+    const usuarioBoton = navBar.querySelector('#botonUsuarioMenu');
+    const usuarioHref = 'perfil.html';
+    if(usuarioBoton){
+        if(!agregoCuenta){ panel.appendChild(cuenta); agregoCuenta = true; }
+        const a = document.createElement('a');
+        a.href = usuarioHref;
+        a.textContent = '👤 Mi perfil';
+        a.className = 'nav-mobile-item nav-mobile-secondary';
+        panel.appendChild(a);
+    }
+
+    const admin = navBar.querySelector('#enlacePanelAdmin');
+    if(admin){
+        if(!agregoCuenta){ panel.appendChild(cuenta); agregoCuenta = true; }
+        const a = document.createElement('a');
+        a.href = admin.getAttribute('href') || 'admin.html';
+        a.textContent = (admin.textContent || '🛠️ Panel Admin').trim();
+        a.className = 'nav-mobile-item nav-mobile-secondary';
+        panel.appendChild(a);
+    }
+
+    const tema = navBar.querySelector('.boton-tema');
+    if(tema){
+        if(!agregoCuenta){ panel.appendChild(cuenta); agregoCuenta = true; }
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'nav-mobile-item nav-mobile-secondary nav-mobile-theme';
+        b.textContent = tema.getAttribute('aria-label') || 'Cambiar tema';
+        b.addEventListener('click', () => tema.click());
+        panel.appendChild(b);
+    }
+
+    navBar.appendChild(panel);
+
+    // El panel siempre parte de arriba al abrir; nunca hereda un scroll previo.
+    function abrirPanel(){ panel.classList.add('abierto'); panel.scrollTop = 0; }
+    function cerrarPanel(){ panel.classList.remove('abierto'); panel.scrollTop = 0; }
+
+    const boton = navBar.querySelector('.nav-toggle');
+    if(boton){
+        boton.addEventListener('click', () => {
+            requestAnimationFrame(() => {
+                if(boton.getAttribute('aria-expanded') === 'true') abrirPanel();
+                else cerrarPanel();
+            });
+        });
+
+        // Acceso directo al perfil en móvil.
+        // Se mantiene separado del menú hamburguesa para que el usuario
+        // nunca tenga que abrir la navegación para encontrar su perfil.
+        if(!navBar.querySelector('.nav-mobile-user')){
+            const sesion = (window.MRSession && typeof MRSession.get === 'function')
+                ? MRSession.get()
+                : leerJSON(localStorage.getItem('usuarioActivo') || 'null');
+
+            const usuarioBtn = document.createElement('a');
+            usuarioBtn.className = 'nav-mobile-user';
+            usuarioBtn.href = sesion ? 'perfil.html' : 'login.html';
+            usuarioBtn.setAttribute('aria-label', sesion ? 'Abrir mi perfil' : 'Iniciar sesión');
+            usuarioBtn.title = sesion
+                ? `Mi perfil: ${sesion.nombre || sesion.username || 'usuario'}`
+                : 'Iniciar sesión';
+
+            const avatar = document.createElement('span');
+            avatar.className = 'nav-mobile-user-icon';
+            avatar.setAttribute('aria-hidden', 'true');
+            avatar.textContent = sesion ? '👤' : '🔑';
+
+            const texto = document.createElement('span');
+            texto.className = 'nav-mobile-user-label';
+            texto.textContent = sesion ? 'Mi perfil' : 'Entrar';
+
+            usuarioBtn.append(avatar, texto);
+
+            // El orden móvil queda: Logo → Comunidad → Menú → Perfil.
+            if(boton.nextSibling){
+                navBar.insertBefore(usuarioBtn, boton.nextSibling);
+            }else{
+                navBar.appendChild(usuarioBtn);
+            }
+        }
+    }
+
+    panel.addEventListener('click', (event) => {
+        if(event.target.closest('a')){
+            cerrarPanel();
+            const navCategorias = navBar.querySelector('.nav-categorias');
+            const navLinks = navBar.querySelector('.nav-links');
+            navCategorias?.classList.remove('nav-abierto');
+            navLinks?.classList.remove('nav-abierto');
+            navBar.classList.remove('nav-menu-abierto');
+        }
+    });
+})();
