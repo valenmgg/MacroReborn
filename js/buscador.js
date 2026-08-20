@@ -99,36 +99,37 @@
 
   function crearBuscador() {
     const nav = document.querySelector(".navbar");
+    if (!nav) return null;
 
-    if (!nav || document.getElementById("navBuscador")) return null;
+    // navbar.js crea primero esta única barra para que conserve el
+    // aspecto retro. Acá solamente reutilizamos su input/panel y le
+    // damos las funciones completas del buscador global.
+    const existente = document.getElementById("navBuscador");
+    if (existente) return existente;
 
+    // Fallback para páginas muy antiguas que todavía no ejecuten
+    // navbar.js o que tengan una navbar sin la barra nueva.
     const wrapper = document.createElement("div");
-    wrapper.className = "nav-buscador";
+    wrapper.className = "nav-retro-busqueda nav-buscador";
     wrapper.id = "navBuscador";
-
+    wrapper.setAttribute("role", "search");
     wrapper.innerHTML = `
-      <div class="buscador-caja">
-        <span class="buscador-icono" aria-hidden="true">🔍</span>
-        <input
-          type="text"
-          id="inputBuscadorGlobal"
-          class="buscador-input"
-          placeholder="Buscar juegos, usuarios y noticias..."
-          autocomplete="off"
-          aria-label="Buscar juegos, usuarios y noticias"
-        >
-      </div>
+      <input
+        type="search"
+        id="inputBuscadorGlobal"
+        name="q"
+        class="buscador-input"
+        placeholder="Buscar"
+        autocomplete="off"
+        aria-label="Buscar juegos, usuarios y noticias"
+      >
+      <button type="submit" aria-label="Buscar">🔍</button>
       <div class="buscador-panel" id="buscadorPanel" role="listbox"></div>
     `;
 
     const links = nav.querySelector(".nav-links");
-
-    if (links) {
-      nav.insertBefore(wrapper, links);
-    } else {
-      nav.appendChild(wrapper);
-    }
-
+    if (links) nav.insertBefore(wrapper, links);
+    else nav.appendChild(wrapper);
     return wrapper;
   }
 
@@ -272,6 +273,26 @@
     panelEl = document.getElementById("buscadorPanel");
 
     let temporizador = null;
+
+    const botonBuscar = wrapperEl.querySelector("button[type=\"submit\"]");
+    const ejecutarBusquedaCompleta = () => {
+      const q = String(inputEl?.value || "").trim();
+      if (q) {
+        window.location.href = "juegos.html?q=" + encodeURIComponent(q);
+      }
+    };
+
+    botonBuscar?.addEventListener("click", (e) => {
+      e.preventDefault();
+      ejecutarBusquedaCompleta();
+    });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        ejecutarBusquedaCompleta();
+      }
+    });
 
     inputEl.addEventListener("input", () => {
       const valor = inputEl.value;

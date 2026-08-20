@@ -40,20 +40,37 @@
     // ----------------------------------------------------------
     // 2) Buscador de la foto.
     // ----------------------------------------------------------
-    if (!nav.querySelector("#navRetroBusqueda")) {
-      const form = document.createElement("form");
-      form.id = "navRetroBusqueda";
-      form.className = "nav-retro-busqueda";
-      form.setAttribute("role", "search");
-      form.innerHTML = `
-        <input id="navRetroBusquedaInput" name="q" type="search" autocomplete="off" placeholder="Buscar" aria-label="Buscar">
+    if (!nav.querySelector("#navBuscador")) {
+      const wrapper = document.createElement("div");
+      wrapper.id = "navBuscador";
+      wrapper.className = "nav-retro-busqueda nav-buscador";
+      wrapper.setAttribute("role", "search");
+      wrapper.innerHTML = `
+        <input
+          id="inputBuscadorGlobal"
+          name="q"
+          type="search"
+          autocomplete="off"
+          placeholder="Buscar"
+          aria-label="Buscar juegos, usuarios y noticias"
+        >
         <button type="submit" aria-label="Buscar">🔍</button>
+        <div class="buscador-panel" id="buscadorPanel" role="listbox"></div>
       `;
-      nav.insertBefore(form, linksOriginales || categorias);
-      form.addEventListener("submit", function (e) {
-        e.preventDefault();
-        const q = String(form.querySelector("input")?.value || "").trim();
-        window.location.href = q ? "juegos.html?q=" + encodeURIComponent(q) : "juegos.html";
+      nav.insertBefore(wrapper, linksOriginales || categorias);
+
+      const input = wrapper.querySelector("#inputBuscadorGlobal");
+      const button = wrapper.querySelector("button");
+      const submit = () => {
+        const q = String(input?.value || "").trim();
+        if (q) window.location.href = "juegos.html?q=" + encodeURIComponent(q);
+      };
+      button?.addEventListener("click", submit);
+      input?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submit();
+        }
       });
     }
 
