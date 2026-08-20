@@ -648,3 +648,198 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     border-color: #2e67b8 !important;
   }
 }
+
+/* ================================================================
+   10. MOBILE HEADER — corrección final para teléfonos
+   ----------------------------------------------------------------
+   El problema visual anterior era que la búsqueda seguía compitiendo
+   con el logo/comunidad en la primera fila. En móvil la estructura
+   queda en dos niveles: fila superior + buscador; la navegación se
+   abre debajo con el botón Menú.
+   ================================================================ */
+@media (max-width: 768px) {
+  .navbar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    align-content: flex-start !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .navbar .nav-logo {
+    order: 0 !important;
+    flex: 0 0 auto !important;
+    width: 118px !important;
+    min-width: 118px !important;
+    height: 45px !important;
+    background-size: 118px 45px !important;
+    margin: 0 !important;
+  }
+
+  .navbar .nav-boton-comunidad {
+    order: 1 !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 7px 12px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+  }
+
+  .navbar .nav-toggle {
+    display: inline-flex !important;
+    order: 2 !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    min-width: 78px !important;
+    height: 36px !important;
+    margin-left: auto !important;
+    padding: 0 10px !important;
+    border: 1px solid #3f69b8 !important;
+    border-radius: 6px !important;
+    background: #214488 !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+  }
+
+  .navbar .nav-toggle-icon {
+    font-size: 16px !important;
+    line-height: 1 !important;
+  }
+
+  .navbar .nav-buscador {
+    order: 3 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .navbar .nav-buscador .buscador-caja {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    height: 38px !important;
+  }
+
+  /* Utilidades de sesión: permanecen escondidas hasta abrir Menú. */
+  .navbar > .nav-links,
+  .navbar > .nav-categorias {
+    order: 4 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .navbar > .nav-links:not(.nav-abierto),
+  .navbar > .nav-categorias:not(.nav-abierto) {
+    display: none !important;
+  }
+
+  /* Cuando se abre: una sola lista visual, cómoda para dedos. */
+  .navbar.nav-menu-abierto > .nav-links,
+  .navbar.nav-menu-abierto > .nav-categorias {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    background: #16264d !important;
+    border: 1px solid #35528f !important;
+    border-radius: 8px !important;
+    overflow: visible !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-categorias {
+    margin-top: -7px !important;
+    border-top: 0 !important;
+    border-radius: 0 0 8px 8px !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-links {
+    border-radius: 8px 8px 0 0 !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-links > *,
+  .navbar.nav-menu-abierto > .nav-categorias > a {
+    width: 100% !important;
+    min-height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important;
+    padding: 10px 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,.09) !important;
+    border-radius: 4px !important;
+    color: #edf3ff !important;
+    background: transparent !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-links > *:last-child,
+  .navbar.nav-menu-abierto > .nav-categorias > a:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-links > a:hover,
+  .navbar.nav-menu-abierto > .nav-categorias > a:hover {
+    background: rgba(255,255,255,.08) !important;
+    color: #fff !important;
+  }
+
+  .navbar.nav-menu-abierto > .nav-categorias > .nav-retro-todos,
+  .navbar.nav-menu-abierto > .nav-categorias > .activa-nav {
+    background: linear-gradient(180deg, #ff9a3d 0%, #ed741d 100%) !important;
+    color: #fff !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .navbar {
+    padding: 7px 8px !important;
+    gap: 7px !important;
+  }
+
+  .navbar .nav-logo {
+    width: 104px !important;
+    min-width: 104px !important;
+    height: 40px !important;
+    background-size: 104px 40px !important;
+  }
+
+  .navbar .nav-boton-comunidad {
+    padding: 6px 9px !important;
+    font-size: 10px !important;
+  }
+
+  .navbar .nav-toggle {
+    min-width: 70px !important;
+    height: 34px !important;
+    font-size: 12px !important;
+  }
+}

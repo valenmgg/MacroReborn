@@ -577,3 +577,76 @@ if(navbar && nav){
     }
 
 }
+// ================================================================
+// NAVBAR MÓVIL — control global desde navbar.js
+// ----------------------------------------------------------------
+// Se integra aquí para que funcione en todas las páginas que ya
+// cargan navbar.js, sin depender de agregar otro <script> a cada HTML.
+// ================================================================
+(function inicializarNavbarMovil(){
+    const navBar = document.querySelector('.navbar');
+    if(!navBar) return;
+
+    const navLinks = navBar.querySelector('.nav-links');
+    const navCategorias = navBar.querySelector('.nav-categorias');
+    if(!navLinks && !navCategorias) return;
+
+    // Si otra capa ya creó el botón móvil, no lo duplicamos.
+    let boton = navBar.querySelector('.nav-toggle');
+
+    if(!boton){
+        boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'nav-toggle';
+        boton.setAttribute('aria-expanded', 'false');
+        boton.setAttribute('aria-label', 'Abrir menú de navegación');
+        boton.innerHTML = '<span class="nav-toggle-icon" aria-hidden="true">☰</span><span class="nav-toggle-label">Menú</span>';
+
+        // Se ubica entre Comunidad y el buscador para formar la fila superior.
+        const referencia = navBar.querySelector('.nav-boton-comunidad');
+        if(referencia && referencia.nextSibling){
+            navBar.insertBefore(boton, referencia.nextSibling);
+        }else{
+            navBar.insertBefore(boton, navBar.firstChild);
+        }
+    }
+
+    const cerrar = () => {
+        navBar.classList.remove('nav-menu-abierto');
+        if(navLinks) navLinks.classList.remove('nav-abierto');
+        if(navCategorias) navCategorias.classList.remove('nav-abierto');
+        boton.setAttribute('aria-expanded', 'false');
+        boton.setAttribute('aria-label', 'Abrir menú de navegación');
+    };
+
+    const abrir = () => {
+        navBar.classList.add('nav-menu-abierto');
+        if(navLinks) navLinks.classList.add('nav-abierto');
+        if(navCategorias) navCategorias.classList.add('nav-abierto');
+        boton.setAttribute('aria-expanded', 'true');
+        boton.setAttribute('aria-label', 'Cerrar menú de navegación');
+    };
+
+    boton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        navBar.classList.contains('nav-menu-abierto') ? cerrar() : abrir();
+    });
+
+    navBar.addEventListener('click', (event) => {
+        if(event.target.closest('.nav-toggle')) return;
+        if(event.target.closest('.nav-categorias a, .nav-links a')) cerrar();
+    });
+
+    document.addEventListener('click', (event) => {
+        if(!navBar.contains(event.target)) cerrar();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if(event.key === 'Escape') cerrar();
+    });
+
+    window.addEventListener('resize', () => {
+        if(window.innerWidth > 768) cerrar();
+    });
+})();
