@@ -246,16 +246,21 @@ async function reclamar(req, res, auth) {
   }
 
   // Aplicamos XP + monedas en la misma actualización lógica.
-  // El cálculo de nivel sigue la misma regla que /api/users?action=xp
-  // para que las recompensas de misión respeten el sistema existente.
+  // El cálculo de nivel sigue la misma idea que /api/users?action=xp,
+  // pero en bucle: las recompensas de misión (hasta 400 XP de una
+  // sola vez) pueden superar de sobra el umbral de más de un nivel,
+  // algo que no pasa con el pulso normal (siempre +10). Si se subiera
+  // un solo nivel y se descartara el resto como hacía el pulso normal,
+  // el sobrante de XP se perdería en vez de acreditarse. Acá se sube
+  // de a un nivel por vez, restando el umbral en lugar de resetear a
+  // 0, hasta que el XP que queda ya no alcance para el siguiente nivel.
   let level = Math.max(1, Number(usuarioActual[0].level) || 1);
   let xp = Math.max(0, Number(usuarioActual[0].xp) || 0) + Number(mission.xp);
   let subioNivel = false;
-  const necesario = xpNecesaria(level);
 
-  if (xp >= necesario) {
+  while (xp >= xpNecesaria(level)) {
+    xp -= xpNecesaria(level);
     level += 1;
-    xp = 0;
     subioNivel = true;
   }
 

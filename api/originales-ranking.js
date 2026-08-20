@@ -119,7 +119,7 @@ async function misPuntuaciones(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  setCors(req, res);
+  setCors(res, "GET, POST, OPTIONS");
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
