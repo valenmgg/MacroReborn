@@ -985,3 +985,76 @@ html[data-tema="claro"] .admin-avatar-png-preview img {
 html[data-tema="claro"] .admin-avatar-png-estado {
   color: #6d7f8e !important;
 }
+
+/* ======================================================================
+   MENÚ DE PESTAÑAS — AJUSTE FINAL MACROJUEGOS CLARO
+   ----------------------------------------------------------------------
+   Esta regla queda al final de la hoja para ganar a perfil.css y evitar
+   que el texto original de cada <button> se duplique con ::after.
+   ====================================================================== */
+html[data-tema="claro"] .menu-perfil {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #0c569d !important;
+  border-radius: 2px !important;
+  background: linear-gradient(to bottom, #4aa3df 0%, #167ac6 55%, #0d5da8 100%) !important;
+  box-shadow: none !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab {
+  flex: 0 0 auto !important;
+  min-height: 29px !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255,255,255,.22) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #fff !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 0 !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22) !important;
+  box-shadow: none !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab:hover {
+  background: rgba(255,255,255,.12) !important;
+  color: #fff !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab.activa {
+  background: #0d5da8 !important;
+  color: #fff !important;
+  box-shadow: inset 0 -2px 0 #ffd23f !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab::after {
+  font: 700 10px/1.1 Arial, Helvetica, sans-serif !important;
+  color: inherit !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,.22) !important;
+}
+
+html[data-tema="claro"] .menu-perfil .tab:nth-child(1)::after { content: "Inicio"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(2)::after { content: "Actividad amigos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(3)::after { content: "Actividad reciente"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(4)::after { content: "Comentarios"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(5)::after { content: "Favoritos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(6)::after { content: "Últimos jugados"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(7)::after { content: "Amigos"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(8)::after { content: "Avatar"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(9)::after { content: "Logros"; }
+html[data-tema="claro"] .menu-perfil .tab:nth-child(10)::after { content: "Configurar"; }
+
+@media (max-width: 640px) {
+  html[data-tema="claro"] .menu-perfil .tab {
+    font-size: 0 !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
