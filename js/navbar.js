@@ -2,7 +2,7 @@
 // NAVBAR - MacroReborn
 // ==============================
 
-const navbar = document.querySelector(".navbar") || document.querySelector("nav");
+const navbar = document.querySelector(".navbar");
 const nav = navbar ? (navbar.querySelector(".nav-links") || navbar) : null;
 
 // MRApp coordina el arranque común (equivalente conceptual a Layout.js de Morpho).
@@ -86,48 +86,43 @@ function _inyectarEstilosNotifDropdown(){
 
 if(navbar && nav){
 
-    // La barra retro separa navegación, búsqueda y acciones sin tocar
-    // los componentes funcionales que ya existen (tema, permisos, sesión).
+    // ------------------------------------------------------------
+    // Estructura visual retro: solo movemos los enlaces de navegación
+    // que ya venían en .nav-links. Los elementos funcionales que otros
+    // módulos inyectan (.sesion-extra, tema, permisos) permanecen en
+    // .nav-links para no romperlos.
+    // ------------------------------------------------------------
     const navCategorias = navbar.querySelector(".nav-categorias");
-    const navLinks = nav;
 
     if(navCategorias && !navbar.dataset.retroPreparada){
-        const enlacesBase = Array.from(navLinks.querySelectorAll(":scope > a:not(.sesion-extra)")).filter(a => !a.classList.contains("nav-app-grid"));
-        enlacesBase.reverse().forEach(enlace => navCategorias.insertBefore(enlace, navCategorias.firstChild));
+        const enlacesBase = Array.from(nav.querySelectorAll(":scope > a:not(.sesion-extra):not(.boton-tema):not(#enlacePanelAdmin)"));
+        enlacesBase.reverse().forEach((enlace) => {
+            navCategorias.insertBefore(enlace, navCategorias.firstChild);
+        });
 
         if(!navCategorias.querySelector(".nav-retro-todos")){
-            navCategorias.insertAdjacentHTML("afterbegin", '<a class="nav-retro-todos" href="juegos.html">Ver Todos</a>');
-        }
-
-        if(!navbar.querySelector("#navBuscador")){
-            const formularioBusqueda = document.createElement("div");
-            formularioBusqueda.id = "navBuscador";
-            formularioBusqueda.className = "nav-retro-busqueda nav-buscador";
-            formularioBusqueda.setAttribute("role", "search");
-            formularioBusqueda.innerHTML = `
-                <div class="buscador-caja">
-                    <span class="buscador-icono" aria-hidden="true">🔍</span>
-                    <input id="inputBuscadorGlobal" class="buscador-input" type="search" autocomplete="off" placeholder="Buscar" aria-label="Buscar juegos, usuarios y noticias">
-                </div>
-                <div class="buscador-panel" id="buscadorPanel" role="listbox"></div>
-            `;
-            const community = navbar.querySelector(".nav-boton-comunidad");
-            if(community) community.insertAdjacentElement("afterend", formularioBusqueda);
-            else navbar.appendChild(formularioBusqueda);
-        }
-
-        if(!navLinks.querySelector(".nav-app-grid")){
-            navLinks.insertAdjacentHTML("beforeend", '<a class="nav-app-grid" href="index.html" aria-label="Inicio" title="Inicio">▦</a>');
+            const todos = document.createElement("a");
+            todos.className = "nav-retro-todos";
+            todos.href = "juegos.html";
+            todos.textContent = "Ver Todos";
+            navCategorias.insertBefore(todos, navCategorias.firstChild);
         }
 
         navbar.dataset.retroPreparada = "1";
     }
 
-    // Evitar duplicados de los componentes que esta capa crea.
-    // NO borrar .sesion-extra de terceros: permisos.js inyecta el panel
-    // de administración y tema.js inyecta el botón claro/oscuro.
-    document.querySelectorAll("#userMenuWrap, #userGuestWrap, #notifBellWrap, #navMonedas, .nav-ayuda")
-    .forEach(e=>e.remove());
+    // El buscador lo crea js/buscador.js. No lo recreamos acá para que
+    // exista una sola barra y conserve TODAS sus funciones originales.
+
+    // Evitar solo duplicados creados por ESTA capa.
+    // Nunca borramos .sesion-extra en general: permisos.js agrega el
+    // Panel Admin/Moderación y tema.js agrega el botón claro/oscuro
+    // dentro de .nav-links.
+    document.getElementById("userMenuWrap")?.remove();
+    document.getElementById("userGuestWrap")?.remove();
+    document.getElementById("notifBellWrap")?.remove();
+    document.getElementById("navMonedas")?.remove();
+    nav.querySelectorAll(":scope > .nav-ayuda").forEach(e => e.remove());
 
     if(usuarioNav){
 
@@ -157,9 +152,12 @@ if(navbar && nav){
             </div>
 
             <div class="user-guest-wrap" id="userMenuWrap">
-                <button type="button" class="sesion-extra user-guest-boton" id="botonUsuarioMenu" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="sesion-extra user-guest-boton sesion-activa" id="botonUsuarioMenu" aria-haspopup="true" aria-expanded="false">
                     <span class="user-guest-avatar">👤</span>
-                    <span class="user-guest-nombre">${usuarioNav.nombre}</span>
+                    <span class="user-guest-nombre">
+                        <span>${usuarioNav.nombre}</span>
+                        <span class="user-guest-nivel" id="navNivelUsuario">Nivel ${Number(usuarioNav.nivel ?? usuarioNav.level ?? 1)}</span>
+                    </span>
                 </button>
 
                 <div class="user-guest-dropdown" id="dropdownUsuarioMenu">
@@ -361,6 +359,7 @@ if(navbar && nav){
                 const nombreEl = document.querySelector("#botonUsuarioMenu .user-guest-nombre");
                 const tituloEl = document.querySelector("#dropdownUsuarioMenu .user-guest-dropdown-header");
                 const monedasEl = document.getElementById("navMonedas");
+                const nivelEl = document.getElementById("navNivelUsuario");
 
                 if(!usuarioActual){
                     return;
@@ -368,9 +367,15 @@ if(navbar && nav){
 
                 const nombreActual = usuarioActual.nombre || usuarioActual.username;
                 if(nombreActual){
-                    if(nombreEl) nombreEl.textContent = nombreActual;
+                    if(nombreEl) {
+                        const spanNombre = nombreEl.querySelector(":scope > span:first-child");
+                        if(spanNombre) spanNombre.textContent = nombreActual;
+                        else nombreEl.textContent = nombreActual;
+                    }
                     if(tituloEl) tituloEl.textContent = nombreActual;
                 }
+                const nivelActual = Number(usuarioActual.nivel ?? usuarioActual.level);
+                if(nivelEl && Number.isFinite(nivelActual)) nivelEl.textContent = "Nivel " + Math.max(1, nivelActual);
 
                 // Si la sesión ya trae el saldo nuevo (por ejemplo, después
                 // de un pulso de XP), lo pintamos directamente. Solo

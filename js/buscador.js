@@ -99,28 +99,36 @@
 
   function crearBuscador() {
     const nav = document.querySelector(".navbar");
-    if (!nav) return null;
 
-    // Reutiliza EXCLUSIVAMENTE la barra que crea navbar.js. Así no se
-    // generan dos buscadores y esta capa conserva toda la funcionalidad
-    // del buscador global sobre la barra visual de la navbar retro.
-    const existente = document.getElementById("navBuscador");
-    if (existente) return existente;
+    if (!nav || document.getElementById("navBuscador")) return null;
 
     const wrapper = document.createElement("div");
-    wrapper.className = "nav-retro-busqueda nav-buscador";
+    wrapper.className = "nav-buscador";
     wrapper.id = "navBuscador";
-    wrapper.setAttribute("role", "search");
+
     wrapper.innerHTML = `
       <div class="buscador-caja">
         <span class="buscador-icono" aria-hidden="true">🔍</span>
-        <input type="search" id="inputBuscadorGlobal" class="buscador-input" placeholder="Buscar" autocomplete="off" aria-label="Buscar juegos, usuarios y noticias">
+        <input
+          type="text"
+          id="inputBuscadorGlobal"
+          class="buscador-input"
+          placeholder="Buscar juegos, usuarios y noticias..."
+          autocomplete="off"
+          aria-label="Buscar juegos, usuarios y noticias"
+        >
       </div>
       <div class="buscador-panel" id="buscadorPanel" role="listbox"></div>
     `;
-    const community = nav.querySelector(".nav-boton-comunidad");
-    if (community) community.insertAdjacentElement("afterend", wrapper);
-    else nav.appendChild(wrapper);
+
+    const links = nav.querySelector(".nav-links");
+
+    if (links) {
+      nav.insertBefore(wrapper, links);
+    } else {
+      nav.appendChild(wrapper);
+    }
+
     return wrapper;
   }
 
@@ -262,6 +270,15 @@
 
     inputEl = document.getElementById("inputBuscadorGlobal");
     panelEl = document.getElementById("buscadorPanel");
+    const submitEl = document.getElementById("buscadorSubmit");
+
+    const ejecutarBusqueda = () => {
+      const termino = String(inputEl?.value || "").trim();
+      if (!termino) return;
+      window.location.href = "juegos.html?q=" + encodeURIComponent(termino);
+    };
+
+    submitEl?.addEventListener("click", ejecutarBusqueda);
 
     let temporizador = null;
 
@@ -284,6 +301,13 @@
         if (inputEl.value !== valor) return;
         renderResultados(panelEl, resultados, valor);
       }, 120);
+    });
+
+    inputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        ejecutarBusqueda();
+      }
     });
 
     inputEl.addEventListener("focus", () => {
