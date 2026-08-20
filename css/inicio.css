@@ -1780,18 +1780,53 @@ body.macro-consolidado .navbar {
   justify-self: start;
   display: flex !important;
   align-items: center;
+  justify-content: flex-start;
   gap: 0;
-  width: 136px;
+  width: 158px;
   height: 41px;
-  padding: 0;
+  padding: 0 0 0 0;
+  position: relative;
   color: transparent !important;
   font-size: 0 !important;
   line-height: 0;
   overflow: hidden;
   white-space: nowrap;
+  text-decoration: none !important;
 }
 
 .navbar .nav-logo { position: relative; }
+
+/* Nuevo wordmark de la navbar: sustituye el PNG original por texto,
+   manteniendo la composición visual tipo MacroJuegos.com de la referencia. */
+.navbar .nav-logo::before {
+  content: "MACRO\A REBORN";
+  position: absolute;
+  left: 5px;
+  top: -1px;
+  width: 150px;
+  height: 38px;
+  display: block;
+  white-space: pre;
+  text-align: left;
+  text-transform: uppercase;
+  font-family: Impact, Haettenschweiler, "Arial Black", Arial, Helvetica, sans-serif;
+  font-size: 22px;
+  line-height: 18px;
+  letter-spacing: -1.2px;
+  font-weight: 900;
+  background: linear-gradient(180deg, #ffffff 0%, #e8edf8 49%, #ffdd4f 50%, #f5a51b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,.58),
+    -1px -1px 0 rgba(255,255,255,.08),
+    0 2px 3px rgba(0,0,0,.35);
+  z-index: 1;
+  pointer-events: none;
+}
+
 .navbar .nav-logo::after {
   content: "1.0";
   position: absolute;
@@ -1816,11 +1851,7 @@ body.macro-consolidado .navbar {
 }
 
 .navbar .nav-logo img {
-  width: 43px !important;
-  height: 43px !important;
-  max-width: none !important;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
+  display: none !important;
 }
 
 .navbar .nav-boton-comunidad {
@@ -2147,7 +2178,7 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
     grid-template-columns: auto auto minmax(120px,1fr) auto;
     padding: 0 8px;
   }
-  .navbar .nav-logo { width: 72px; }
+  .navbar .nav-logo { width: 158px; }
   .navbar .nav-boton-comunidad { min-width: 82px; padding: 0 8px !important; }
   .navbar .nav-monedas { display: none !important; }
   .navbar .user-guest-boton { min-width: 132px; }
@@ -2160,8 +2191,8 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
     grid-template-rows: 43px 31px;
     gap: 0 6px;
   }
-  .navbar .nav-logo { width: 54px; }
-  .navbar .nav-logo img { width: 40px !important; height: 40px !important; }
+  .navbar .nav-logo { width: 146px; }
+  .navbar .nav-logo::before { font-size: 20px; line-height: 17px; }
   .navbar .nav-boton-comunidad { min-width: 76px; font-size: 11px !important; }
   .navbar .nav-retro-busqueda { min-width: 90px; }
   .navbar .nav-retro-busqueda input { font-size: 11px; }
