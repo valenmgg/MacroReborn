@@ -487,411 +487,136 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
   }
 }
 
-
 /* ================================================================
-   9. NAVBAR GLOBAL — MENÚ MÓVIL SIMPLE
+   MOBILE — CAPA AISLADA DE NAVEGACIÓN
    ----------------------------------------------------------------
-   En escritorio no cambia la navbar existente. En móvil, la segunda
-   barra se reemplaza visualmente por un único botón "☰ Menú" y el
-   contenido completo se despliega en una lista vertical cómoda para
-   tocar. No se eliminan enlaces ni se modifica su destino.
+   Importante: este bloque NO modifica la navbar de escritorio.
+   El panel y el acceso de perfil existen visualmente solo en móvil.
    ================================================================ */
+.nav-mobile-menu,
+.nav-mobile-user {
+  display: none !important;
+}
 
 @media (max-width: 768px) {
-  /* El botón representa específicamente la navegación global. */
-  .nav-toggle {
+  /* Los contenedores originales siguen existiendo para la lógica de la
+     aplicación, pero su representación visual móvil la controla el panel. */
+  .navbar > .nav-links,
+  .navbar > .nav-categorias {
+    display: none !important;
+  }
+
+  .navbar .nav-mobile-menu {
+    display: none !important;
+    position: relative !important;
+    order: 30 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: min(72vh, 520px) !important;
+    margin: 2px 0 0 !important;
+    padding: 7px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #16264d !important;
+    border: 1px solid #35528f !important;
+    border-radius: 9px !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,.32) !important;
+    z-index: 120 !important;
+  }
+
+  .navbar .nav-mobile-menu.abierto {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  /* Evita que los paneles antiguos aparezcan detrás o antes del nuevo. */
+  .navbar .nav-links.nav-abierto,
+  .navbar .nav-categorias.nav-abierto {
+    display: none !important;
+  }
+
+  .navbar .nav-mobile-item {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,.08) !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: #edf3ff !important;
+    text-decoration: none !important;
+    font: 700 14px/1.2 Arial, Helvetica, sans-serif !important;
+    white-space: nowrap !important;
+  }
+
+  .navbar .nav-mobile-item:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .navbar .nav-mobile-item:hover,
+  .navbar .nav-mobile-item:focus-visible {
+    background: rgba(255,255,255,.08) !important;
+    color: #fff !important;
+    outline: none !important;
+  }
+
+  .navbar .nav-mobile-item.activa-nav {
+    background: linear-gradient(180deg, #ff9a45 0%, #e86e18 100%) !important;
+    color: #fff !important;
+  }
+
+  .navbar .nav-mobile-separador {
+    margin: 7px 4px 2px !important;
+    padding: 7px 8px 6px !important;
+    border-top: 1px solid rgba(255,255,255,.15) !important;
+    color: #9fb4e8 !important;
+    font: 700 10px/1.2 Arial, Helvetica, sans-serif !important;
+    text-transform: uppercase !important;
+    letter-spacing: .45px !important;
+  }
+
+  .navbar .nav-mobile-user {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
-    width: auto !important;
-    min-width: 92px !important;
-    height: 38px !important;
-    padding: 0 14px !important;
-    margin-left: auto !important;
-    background: #1d3f86 !important;
+    gap: 6px !important;
+    order: 4 !important;
+    flex: 0 0 auto !important;
+    min-width: 42px !important;
+    height: 36px !important;
+    padding: 0 9px !important;
+    box-sizing: border-box !important;
     border: 1px solid #3f69b8 !important;
-    border-radius: 6px !important;
+    border-radius: 7px !important;
+    background: #1d3f86 !important;
     color: #fff !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.10) !important;
-    font: inherit !important;
-    font-weight: 800 !important;
-    font-size: 14px !important;
-    line-height: 1 !important;
-    cursor: pointer !important;
-    order: 2 !important;
+    text-decoration: none !important;
+    font: 800 12px/1 Arial, Helvetica, sans-serif !important;
   }
 
-  .nav-toggle:hover,
-  .nav-toggle:focus-visible {
+  .navbar .nav-mobile-user:hover,
+  .navbar .nav-mobile-user:focus-visible {
     background: #274d99 !important;
     border-color: #5b84cf !important;
     outline: none !important;
   }
 
-  .nav-toggle-label {
-    display: inline-block !important;
-    letter-spacing: .15px !important;
-  }
-
-  .nav-toggle-barra,
-  .nav-toggle-barra::before,
-  .nav-toggle-barra::after {
-    width: 17px !important;
-  }
-
-  /* El bloque desplegable es único visualmente, aunque siga formado por
-     .nav-links y .nav-categorias para conservar toda la lógica existente. */
-  .nav-links.nav-abierto,
-  .nav-categorias.nav-abierto {
-    width: 100% !important;
-    box-sizing: border-box !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 2px !important;
-    background: #f7f9fc !important;
-    border-left: 1px solid #cbd5e1 !important;
-    border-right: 1px solid #cbd5e1 !important;
-    box-shadow: none !important;
-  }
-
-  .nav-links.nav-abierto {
-    margin-top: 8px !important;
-    padding: 8px !important;
-    border-top: 1px solid #cbd5e1 !important;
-    border-bottom: 0 !important;
-    border-radius: 8px 8px 0 0 !important;
-  }
-
-  .nav-categorias.nav-abierto {
-    margin-top: 0 !important;
-    padding: 0 8px 8px !important;
-    border-top: 0 !important;
-    border-bottom: 1px solid #cbd5e1 !important;
-    border-radius: 0 0 8px 8px !important;
-    background: #f7f9fc !important;
-  }
-
-  .nav-links.nav-abierto > a,
-  .nav-links.nav-abierto > button,
-  .nav-categorias.nav-abierto > a {
-    width: 100% !important;
-    min-height: 44px !important;
-    box-sizing: border-box !important;
-    justify-content: flex-start !important;
-    text-align: left !important;
-    padding: 11px 13px !important;
-    border-radius: 6px !important;
-    color: #1e3a69 !important;
-    background: transparent !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    border: 0 !important;
-    border-bottom: 1px solid #e5e7eb !important;
-  }
-
-  .nav-links.nav-abierto > a:last-child,
-  .nav-links.nav-abierto > button:last-child,
-  .nav-categorias.nav-abierto > a:last-child {
-    border-bottom: 0 !important;
-  }
-
-  .nav-links.nav-abierto > a:hover,
-  .nav-links.nav-abierto > button:hover,
-  .nav-categorias.nav-abierto > a:hover {
-    color: #123b83 !important;
-    background: #eaf1ff !important;
-  }
-
-  .nav-categorias.nav-abierto a.activa-nav {
-    color: #fff !important;
-    background: linear-gradient(135deg, #f97316, #ea580c) !important;
-    border-bottom: 0 !important;
-  }
-
-  /* Tema, usuario y acciones inyectadas también se comportan como ítems. */
-  .nav-links.nav-abierto .nav-monedas,
-  .nav-links.nav-abierto .notif-bell-wrap,
-  .nav-links.nav-abierto .user-guest-wrap,
-  .nav-links.nav-abierto .nav-ayuda {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Estado claro: el menú sigue perteneciendo a la navbar clásica, pero
-     el desplegable sí usa superficie clara para no quedar como un bloque
-     oscuro aislado sobre el perfil claro. */
-  html[data-tema="oscuro"] .nav-links.nav-abierto,
-  html[data-tema="oscuro"] .nav-categorias.nav-abierto {
-    background: #16264d !important;
-    border-color: #2f4f8d !important;
-  }
-
-  html[data-tema="oscuro"] .nav-links.nav-abierto > a,
-  html[data-tema="oscuro"] .nav-links.nav-abierto > button,
-  html[data-tema="oscuro"] .nav-categorias.nav-abierto > a {
-    color: #e8eefc !important;
-    border-bottom-color: rgba(255,255,255,.10) !important;
-  }
-
-  html[data-tema="oscuro"] .nav-links.nav-abierto > a:hover,
-  html[data-tema="oscuro"] .nav-links.nav-abierto > button:hover,
-  html[data-tema="oscuro"] .nav-categorias.nav-abierto > a:hover {
-    background: rgba(255,255,255,.08) !important;
-    color: #fff !important;
-  }
-
-  /* En claro, el botón mantiene la identidad azul MacroJuegos. */
-  html[data-tema="claro"] .nav-toggle {
-    background: #1d4f96 !important;
-    border-color: #2e67b8 !important;
-  }
-}
-
-/* ================================================================
-   10. MOBILE HEADER — corrección final para teléfonos
-   ----------------------------------------------------------------
-   El problema visual anterior era que la búsqueda seguía compitiendo
-   con el logo/comunidad en la primera fila. En móvil la estructura
-   queda en dos niveles: fila superior + buscador; la navegación se
-   abre debajo con el botón Menú.
-   ================================================================ */
-@media (max-width: 768px) {
-  .navbar {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    align-content: flex-start !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    padding: 8px 10px !important;
-    gap: 8px !important;
-    overflow: visible !important;
-  }
-
-  .navbar .nav-logo {
-    order: 0 !important;
-    flex: 0 0 auto !important;
-    width: 118px !important;
-    min-width: 118px !important;
-    height: 45px !important;
-    background-size: 118px 45px !important;
-    margin: 0 !important;
-  }
-
-  .navbar .nav-boton-comunidad {
-    order: 1 !important;
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 7px 12px !important;
-    font-size: 11px !important;
-    white-space: nowrap !important;
-    border-radius: 6px !important;
-    margin: 0 !important;
-  }
-
-  .navbar .nav-toggle {
-    display: inline-flex !important;
-    order: 2 !important;
-    flex: 0 0 auto !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 6px !important;
-    min-width: 78px !important;
-    height: 36px !important;
-    margin-left: auto !important;
-    padding: 0 10px !important;
-    border: 1px solid #3f69b8 !important;
-    border-radius: 6px !important;
-    background: #214488 !important;
-    color: #fff !important;
-    font-size: 13px !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-    box-sizing: border-box !important;
-    cursor: pointer !important;
-  }
-
-  .navbar .nav-toggle-icon {
+  .navbar .nav-mobile-user-icon {
     font-size: 16px !important;
     line-height: 1 !important;
   }
 
-  .navbar .nav-buscador {
-    order: 3 !important;
-    flex: 1 0 100% !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .navbar .nav-buscador .buscador-caja {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    height: 38px !important;
-  }
-
-  /* Utilidades de sesión: permanecen escondidas hasta abrir Menú. */
-  .navbar > .nav-links,
-  .navbar > .nav-categorias {
-    order: 4 !important;
-    flex: 1 0 100% !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-
-  .navbar > .nav-links:not(.nav-abierto),
-  .navbar > .nav-categorias:not(.nav-abierto) {
-    display: none !important;
-  }
-
-  /* Cuando se abre: una sola lista visual, cómoda para dedos. */
-  .navbar.nav-menu-abierto > .nav-links,
-  .navbar.nav-menu-abierto > .nav-categorias {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 0 !important;
-    margin: 0 !important;
-    padding: 6px !important;
-    background: #16264d !important;
-    border: 1px solid #35528f !important;
-    border-radius: 8px !important;
-    overflow: visible !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-categorias {
-    margin-top: -7px !important;
-    border-top: 0 !important;
-    border-radius: 0 0 8px 8px !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-links {
-    border-radius: 8px 8px 0 0 !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-links > *,
-  .navbar.nav-menu-abierto > .nav-categorias > a {
-    width: 100% !important;
-    min-height: 42px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    box-sizing: border-box !important;
-    padding: 10px 12px !important;
-    border: 0 !important;
-    border-bottom: 1px solid rgba(255,255,255,.09) !important;
-    border-radius: 4px !important;
-    color: #edf3ff !important;
-    background: transparent !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    white-space: nowrap !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-links > *:last-child,
-  .navbar.nav-menu-abierto > .nav-categorias > a:last-child {
-    border-bottom: 0 !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-links > a:hover,
-  .navbar.nav-menu-abierto > .nav-categorias > a:hover {
-    background: rgba(255,255,255,.08) !important;
-    color: #fff !important;
-  }
-
-  .navbar.nav-menu-abierto > .nav-categorias > .nav-retro-todos,
-  .navbar.nav-menu-abierto > .nav-categorias > .activa-nav {
-    background: linear-gradient(180deg, #ff9a3d 0%, #ed741d 100%) !important;
-    color: #fff !important;
-  }
-}
-
-@media (max-width: 380px) {
-  .navbar {
-    padding: 7px 8px !important;
-    gap: 7px !important;
-  }
-
-  .navbar .nav-logo {
-    width: 104px !important;
-    min-width: 104px !important;
-    height: 40px !important;
-    background-size: 104px 40px !important;
-  }
-
-  .navbar .nav-boton-comunidad {
-    padding: 6px 9px !important;
-    font-size: 10px !important;
-  }
-
-  .navbar .nav-toggle {
-    min-width: 70px !important;
-    height: 34px !important;
-    font-size: 12px !important;
-  }
-}
-
-
-/* ================================================================
-   ACCESO RÁPIDO A PERFIL — móvil
-   ----------------------------------------------------------------
-   El perfil queda visible fuera del menú hamburguesa. En desktop no
-   altera la navbar existente.
-   ================================================================ */
-.nav-mobile-user {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .navbar .nav-mobile-user {
-    order: 4 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 5px !important;
-    min-width: 82px !important;
-    height: 34px !important;
-    box-sizing: border-box !important;
-    padding: 6px 10px !important;
-    border: 1px solid rgba(255,255,255,.18) !important;
-    border-radius: 6px !important;
-    background: rgba(255,255,255,.08) !important;
-    color: #fff !important;
-    font: 700 11px/1 Arial, Helvetica, sans-serif !important;
-    text-decoration: none !important;
-    white-space: nowrap !important;
-    cursor: pointer !important;
-  }
-
-  .navbar .nav-mobile-user:hover,
-  .navbar .nav-mobile-user:focus-visible {
-    background: rgba(255,255,255,.16) !important;
-    border-color: rgba(255,255,255,.32) !important;
-    color: #fff !important;
-    outline: none !important;
-  }
-
-  .navbar .nav-mobile-user-icon {
-    font-size: 15px !important;
-    line-height: 1 !important;
-  }
-
   .navbar .nav-mobile-user-label {
+    max-width: 70px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 }
 
@@ -904,101 +629,5 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
 
   .navbar .nav-mobile-user-label {
     display: none !important;
-  }
-}
-
-/* ================================================================
-   NAVBAR MÓVIL V5 — un único panel completo
-   ----------------------------------------------------------------
-   Evita que la navegación se parta entre .nav-links y .nav-categorias.
-   Todos los enlaces globales se muestran en un solo panel, desde
-   "Ver Todos" hasta "Noticias", y los accesos de cuenta quedan debajo.
-   ================================================================ */
-@media (max-width: 768px) {
-  .navbar .nav-mobile-menu {
-    display: none !important;
-    order: 50 !important;
-    flex: 1 1 100% !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: calc(100dvh - 125px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-    margin: 0 !important;
-    padding: 6px !important;
-    background: #16264d !important;
-    border: 1px solid #35528f !important;
-    border-radius: 8px !important;
-    box-shadow: 0 10px 24px rgba(0,0,0,.28) !important;
-    scrollbar-width: thin !important;
-    overscroll-behavior: contain !important;
-    z-index: 40 !important;
-  }
-
-  .navbar .nav-mobile-menu.abierto {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 0 !important;
-  }
-
-  /* Los dos contenedores antiguos dejan de renderizarse en móvil.
-     Siguen existiendo para no romper navbar.js ni el escritorio. */
-  .navbar > .nav-links,
-  .navbar > .nav-categorias {
-    display: none !important;
-  }
-
-  .navbar .nav-mobile-item {
-    width: 100% !important;
-    min-height: 43px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    box-sizing: border-box !important;
-    padding: 10px 12px !important;
-    margin: 0 !important;
-    border: 0 !important;
-    border-bottom: 1px solid rgba(255,255,255,.09) !important;
-    border-radius: 4px !important;
-    background: transparent !important;
-    color: #edf3ff !important;
-    font: 700 14px/1.2 Arial, Helvetica, sans-serif !important;
-    text-decoration: none !important;
-    white-space: nowrap !important;
-    cursor: pointer !important;
-  }
-
-  .navbar .nav-mobile-item:hover,
-  .navbar .nav-mobile-item:focus-visible {
-    background: rgba(255,255,255,.09) !important;
-    color: #fff !important;
-    outline: none !important;
-  }
-
-  .navbar .nav-mobile-item.activa-nav {
-    background: linear-gradient(180deg, #ff963c 0%, #e76913 100%) !important;
-    color: #fff !important;
-    border-bottom-color: transparent !important;
-  }
-
-  .navbar .nav-mobile-item:last-child {
-    border-bottom-color: transparent !important;
-  }
-
-  .navbar .nav-mobile-separador {
-    margin: 7px 4px 3px !important;
-    padding: 8px 8px 5px !important;
-    border-top: 1px solid rgba(255,255,255,.16) !important;
-    color: #9fb4e8 !important;
-    font: 700 11px/1.2 Arial, Helvetica, sans-serif !important;
-    text-transform: uppercase !important;
-    letter-spacing: .5px !important;
-  }
-
-  .navbar .nav-mobile-secondary {
-    color: #d8e2fb !important;
-    font-size: 13px !important;
   }
 }
