@@ -1,0 +1,406 @@
+/* ================================================================
+   NAVBAR — Referencia visual MacroJuegos
+   ----------------------------------------------------------------
+   Este archivo es SOLO CSS. No toca JS, API, sesión ni Neon.
+   Cargarlo al final del <head>, DESPUÉS de theme-canonical.css.
+   ================================================================ */
+
+
+/* ================================================================
+   1. TOP BAR — fondo, estructura y espaciado
+   ================================================================ */
+
+.navbar {
+  background: linear-gradient(180deg, #1e0c3a 0%, #150a28 100%);
+  border-bottom: 1px solid #3a1f70;
+  padding: 0 28px;        /* sin padding vertical: cada hijo lo maneja */
+  gap: 0 12px;
+  flex-wrap: wrap;
+  align-items: stretch;   /* hijos se estiran en altura */
+}
+
+/* Espaciado interno de los ítems de la fila principal */
+.nav-logo,
+.nav-boton-comunidad {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  align-self: center;
+}
+
+
+/* ================================================================
+   2. LOGO
+   ================================================================ */
+
+.nav-logo {
+  color: #f4f1fb;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.3px;
+  gap: 10px;
+}
+
+.nav-logo img {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 6px rgba(200, 160, 255, 0.45));
+}
+
+
+/* ================================================================
+   3. BOTÓN "COMUNIDAD" → pink/magenta (referencia MacroJuegos)
+   ================================================================ */
+
+.nav-boton-comunidad {
+  background: linear-gradient(135deg, #e91e8c 0%, #c2185b 100%) !important;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 999px;
+  box-shadow: 0 2px 14px rgba(233, 30, 140, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nav-boton-comunidad:hover {
+  background: linear-gradient(135deg, #f525a0 0%, #d81b60 100%) !important;
+  box-shadow: 0 4px 20px rgba(233, 30, 140, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+
+/* ================================================================
+   4. BUSCADOR (inyectado por buscador.js)
+   ================================================================ */
+
+.nav-buscador {
+  flex: 1;
+  max-width: 300px;
+  position: relative;
+  align-self: center;
+  padding: 11px 0;
+}
+
+/* Caja de búsqueda: campo + botón */
+.buscador-caja {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.buscador-caja:focus-within {
+  border-color: rgba(255, 255, 255, 0.30);
+  background: rgba(255, 255, 255, 0.13);
+}
+
+/* Ícono lupa (izquierda del input) */
+.buscador-icono {
+  flex-shrink: 0;
+  padding: 0 6px 0 10px;
+  color: rgba(200, 180, 255, 0.40);
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Campo de texto */
+.buscador-input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #f4f1fb !important;
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 0 6px !important;
+  height: 100%;
+}
+
+.buscador-input::placeholder {
+  color: rgba(200, 180, 255, 0.38) !important;
+}
+
+/* Botón naranja de búsqueda (referencia: MacroJuegos) */
+.buscador-submit {
+  flex-shrink: 0;
+  width: 42px;
+  height: 100%;
+  background: #f97316 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  cursor: pointer;
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+/* El <button> no tiene texto: el ícono viene de acá */
+.buscador-submit:empty::before {
+  content: "🔍";
+  font-size: 13px;
+  line-height: 1;
+}
+
+.buscador-submit:hover {
+  background: #ea6c0c !important;
+}
+
+/* Panel de resultados — sin cambios funcionales, solo fondo */
+.buscador-panel {
+  background: #1e0e3e !important;
+  border: 1px solid #3d2166 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55) !important;
+  z-index: 300 !important;
+}
+
+
+/* ================================================================
+   5. NAV-LINKS (fila derecha: monedas, 🔔, menú usuario)
+   ================================================================ */
+
+.nav-links {
+  align-self: center;
+  padding: 11px 0;
+}
+
+/* Monedas (🪙 XXXX) */
+.nav-monedas {
+  background: rgba(240, 180, 41, 0.10) !important;
+  border: 1px solid rgba(240, 180, 41, 0.32) !important;
+  color: #ffd060 !important;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 999px;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Botón de ayuda ❔ */
+.nav-ayuda {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #c8b8e0;
+  background: rgba(255, 255, 255, 0.05);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 13px;
+}
+
+.nav-ayuda:hover {
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #f4f1fb;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* Botón de usuario (invitado o logueado) */
+.user-guest-boton {
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 999px !important;
+  color: #f4f1fb !important;
+  gap: 8px;
+  padding: 5px 13px 5px 5px !important;
+}
+
+.user-guest-boton:hover {
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+}
+
+/* Badge "1" del usuario temporal */
+.user-guest-badge {
+  background: var(--green) !important;
+  color: #06280f !important;
+  font-size: 9px;
+  font-weight: 900;
+  border: 2px solid #1e0c3a !important;
+}
+
+
+/* ================================================================
+   6. BARRA INFERIOR DE CATEGORÍAS — strip plano (referencia MJ)
+   ================================================================ */
+
+/* Contenedor: strip oscuro sin bordes redondeados */
+.nav-categorias {
+  flex: 1 0 100%;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+
+  /* Fondo ligeramente más oscuro que el top bar */
+  background: rgba(6, 2, 16, 0.55) !important;
+
+  /* Sin tarjeta: borde redondeado y borde exterior eliminados */
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0 !important;
+
+  /* Sangrar hasta los bordes del navbar (padding = 28px) */
+  margin: 0 -28px !important;
+  padding: 0 28px !important;
+
+  /* Scroll horizontal sin scrollbar visible */
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;   /* Firefox */
+  -ms-overflow-style: none !important; /* IE 11 */
+}
+
+.nav-categorias::-webkit-scrollbar {
+  display: none !important; /* Chrome / Safari */
+}
+
+/* Links de la barra inferior */
+.nav-categorias a {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 10px 13px !important;
+  border-radius: 0 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #bfaedd !important;
+  white-space: nowrap !important;
+  border-bottom: 3px solid transparent !important;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.nav-categorias a:hover {
+  color: #f4f1fb !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-bottom-color: #f97316 !important;
+}
+
+/* Ítem activo */
+.nav-categorias a.activa-nav {
+  background: none !important;
+  color: #fff !important;
+  border-bottom-color: #f97316 !important;
+}
+
+.nav-categorias a.activa-nav:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+/* "Ver Todos" — primer ítem creado por navbar.js */
+.nav-retro-todos {
+  font-weight: 700 !important;
+  color: #e0d4f8 !important;
+  padding-right: 16px !important;
+}
+
+.nav-retro-todos:hover {
+  color: #fff !important;
+}
+
+
+/* ================================================================
+   7. MODO CLARO — mantener navbar y bottom bar siempre oscuros
+   ================================================================ */
+
+html[data-tema="claro"] .navbar {
+  background: linear-gradient(180deg, #1e0c3a 0%, #150a28 100%) !important;
+  border-bottom-color: #3a1f70 !important;
+}
+
+html[data-tema="claro"] .nav-logo {
+  color: #f4f1fb !important;
+}
+
+html[data-tema="claro"] .nav-categorias {
+  background: rgba(6, 2, 16, 0.60) !important;
+  border-top-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-tema="claro"] .nav-categorias a {
+  color: #bfaedd !important;
+}
+
+html[data-tema="claro"] .nav-categorias a:hover {
+  color: #f4f1fb !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-bottom-color: #f97316 !important;
+}
+
+html[data-tema="claro"] .nav-categorias a.activa-nav {
+  color: #fff !important;
+  border-bottom-color: #f97316 !important;
+}
+
+
+/* ================================================================
+   8. RESPONSIVE — comportamiento mobile (nav-toggle.js)
+   ================================================================ */
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 10px 16px 10px 16px !important;
+    gap: 10px 10px !important;
+  }
+
+  /* En mobile el hamburguesa toma el control:
+     restaurar el padding vertical de los ítems */
+  .nav-logo,
+  .nav-boton-comunidad,
+  .nav-buscador,
+  .nav-links {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-self: center !important;
+  }
+
+  /* Bottom bar: vuelve al panel vertical del hamburguesa */
+  .nav-categorias {
+    margin: 0 -16px !important;
+    padding: 8px !important;
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    background: var(--bg-panel, #241145) !important;
+    border: 1px solid var(--line, #3d2166) !important;
+    border-top: 1px solid var(--line, #3d2166) !important;
+    border-radius: 0 0 12px 12px !important;
+  }
+
+  .nav-categorias a {
+    border-bottom: none !important;
+    border-radius: 8px !important;
+    padding: 13px 14px !important;
+    font-size: 15px !important;
+    color: var(--text-secondary, #d8cff0) !important;
+  }
+
+  .nav-categorias a.activa-nav {
+    background: linear-gradient(135deg, #fb923c, #ea580c) !important;
+    color: #fff !important;
+    border-bottom: none !important;
+  }
+
+  .nav-buscador {
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+    padding: 6px 0 !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .navbar {
+    gap: 10px 10px !important;
+  }
+}
