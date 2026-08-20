@@ -1753,13 +1753,13 @@ body.macro-consolidado .navbar {
   margin: 0;
   padding: 0 12px;
   display: grid !important;
-  grid-template-columns: 145px 112px 178px minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(170px, 420px) minmax(0, 1fr);
   grid-template-rows: 41px 31px;
   grid-template-areas:
     "logo community search actions"
     "categories categories categories categories";
   align-items: stretch;
-  gap: 0 11px;
+  gap: 0 10px;
   position: sticky;
   top: 0;
   z-index: 5000;
@@ -1780,19 +1780,15 @@ body.macro-consolidado .navbar {
   justify-self: start;
   display: flex !important;
   align-items: center;
-  gap: 7px;
-  width: 155px;
+  gap: 0;
+  width: 136px;
   height: 41px;
   padding: 0;
-  color: #f5f7ff !important;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-  line-height: 1;
-  text-decoration: none !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0;
   overflow: hidden;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0,0,0,.65);
 }
 
 .navbar .nav-logo img {
@@ -2161,13 +2157,11 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 .navbar #navBuscador.nav-buscador {
   grid-area: search;
   align-self: center;
-  justify-self: start;
+  justify-self: stretch;
   display: flex;
   align-items: stretch;
   position: relative;
-  width: 178px;
-  min-width: 178px;
-  max-width: 178px;
+  min-width: 0;
   height: 25px;
   margin: 0;
   padding: 0;
@@ -2177,9 +2171,8 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 .navbar #navBuscador .buscador-caja {
   display: flex;
   align-items: stretch;
-  width: 178px;
-  min-width: 178px;
-  max-width: 178px;
+  width: 100%;
+  min-width: 0;
   height: 25px;
   margin: 0;
   padding: 0;
@@ -2232,29 +2225,6 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 
 .navbar #navBuscador .buscador-submit:hover {
   filter: brightness(1.06);
-}
-.navbar #navBuscador .buscador-submit::before {
-  content: "";
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  position: relative;
-  box-sizing: border-box;
-  transform: translateY(1px);
-}
-
-.navbar #navBuscador .buscador-submit::after {
-  content: "";
-  position: absolute;
-  width: 6px;
-  height: 2px;
-  background: #fff;
-  transform: rotate(45deg);
-  right: 10px;
-  top: 15px;
-  border-radius: 2px;
 }
 
 .navbar #navBuscador .buscador-panel {
@@ -2329,16 +2299,98 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
 }
 
 @media (max-width: 900px) {
-  .navbar #navBuscador.nav-buscador {
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    justify-self: stretch;
-  }
-  .navbar #navBuscador .buscador-caja {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
   .navbar #navBuscador .buscador-submit { flex-basis: 40px; width: 40px; }
+}
+
+
+/* ================================================================
+   LOGO / CABECERA — acomodo de referencia MacroJuegos
+   El bloque del logo ocupa las dos filas de la navbar. Se conserva
+   el logo original de MacroReborn y el texto "MacroReborn".
+   ================================================================ */
+.navbar,
+body.mr-root .navbar,
+body.macro-consolidado .navbar {
+  grid-template-columns: 158px 110px minmax(170px, 420px) minmax(0, 1fr);
+  grid-template-rows: 41px 31px;
+  grid-template-areas:
+    "logo community search actions"
+    "logo categories categories categories";
+}
+
+.navbar .nav-logo {
+  grid-area: logo;
+  align-self: stretch;
+  justify-self: start;
+  width: 158px !important;
+  height: 72px !important;
+  min-width: 158px;
+  padding: 0 6px 0 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  color: #f5f7ff !important;
+  font: 800 14px/1 Arial, Helvetica, sans-serif !important;
+  letter-spacing: -.15px;
+  text-decoration: none !important;
+}
+
+.navbar .nav-logo img {
+  flex: 0 0 48px;
+  width: 48px !important;
+  height: 48px !important;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
+}
+
+@media (max-width: 900px) {
+  .navbar,
+  body.mr-root .navbar,
+  body.macro-consolidado .navbar {
+    grid-template-columns: 136px 94px minmax(130px, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "logo community search actions"
+      "logo categories categories categories";
+  }
+
+  .navbar .nav-logo {
+    width: 136px !important;
+    min-width: 136px;
+  }
+}
+
+@media (max-width: 650px) {
+  .navbar,
+  body.mr-root .navbar,
+  body.macro-consolidado .navbar {
+    grid-template-columns: 92px auto minmax(90px, 1fr) auto;
+    grid-template-rows: 43px 31px;
+    grid-template-areas:
+      "logo community search actions"
+      "logo categories categories categories";
+  }
+
+  .navbar .nav-logo {
+    width: 92px !important;
+    min-width: 92px;
+    height: 74px !important;
+    gap: 4px;
+    padding-right: 3px !important;
+    font-size: 10px !important;
+  }
+
+  .navbar .nav-logo img {
+    flex-basis: 40px;
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+  }
 }
