@@ -1214,3 +1214,36 @@ html[data-tema="claro"] [data-mr-paleta] {
   background: #fff !important;
   border-color: var(--mj-blue-light) !important;
 }
+
+
+/* ================================================================
+   PERFORMANCE + MOBILE — parche global
+   ================================================================ */
+
+/* Evita scroll horizontal en mobile (causado por elementos más anchos
+   que la viewport, como grids o cards con min-width fijo). */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Reduce el número de propiedades animadas en la regla global:
+   solo cambia background-color y color (las más comunes al cambiar tema).
+   Quitar border-color y box-shadow de la transición global mejora
+   el rendimiento de hover/focus en páginas con muchos elementos. */
+.mr-root,
+.mr-root * {
+  transition-property: background-color, color !important;
+}
+
+/* Las tarjetas, bordes y sombras que SÍ necesitan animación las
+   declaran su propia transition local más abajo; así no pagamos
+   el costo de reanimar todo el DOM en cada interacción. */
+.mr-root a,
+.mr-root button {
+  transition: background-color 0.15s ease, color 0.15s ease,
+    opacity 0.15s ease, transform 0.15s ease !important;
+}

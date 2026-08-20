@@ -404,3 +404,85 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     gap: 10px 10px !important;
   }
 }
+
+
+/* ================================================================
+   MOBILE EXTRA — correcciones para pantallas pequeñas
+   ================================================================ */
+
+/* Evitar que la bottom bar empuje contenido fuera del viewport */
+@media (max-width: 768px) {
+  .navbar {
+    flex-wrap: wrap !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+  }
+
+  /* El menú abierto no debe causar scroll horizontal */
+  .nav-links.nav-abierto,
+  .nav-categorias.nav-abierto {
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Barra de categorías cerrada: oculta fuera del hamburguesa */
+  .nav-categorias:not(.nav-abierto) {
+    display: none !important;
+  }
+
+  /* El nav-toggle (hamburguesa) debe ser visible y en el lugar correcto */
+  .nav-toggle {
+    display: flex !important;
+    order: 2 !important;
+    margin-left: auto !important;
+  }
+
+  /* Logo siempre primero */
+  .nav-logo {
+    order: 0 !important;
+  }
+
+  /* Botón Comunidad después del logo */
+  .nav-boton-comunidad {
+    order: 1 !important;
+  }
+
+  /* Buscador debajo en mobile */
+  .nav-buscador {
+    order: 10 !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* nav-links y categorias al fondo del stack mobile */
+  .nav-links,
+  .nav-categorias {
+    order: 20 !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* Hacer el menú de usuario accesible en pantallas pequeñas */
+  .user-guest-dropdown {
+    right: 0 !important;
+    left: auto !important;
+    max-width: 92vw !important;
+  }
+}
+
+/* Pantallas muy pequeñas (< 380px) */
+@media (max-width: 380px) {
+  .nav-boton-comunidad {
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+  }
+
+  .nav-logo {
+    font-size: 14px !important;
+  }
+
+  .nav-logo img {
+    width: 26px !important;
+    height: 26px !important;
+  }
+}
