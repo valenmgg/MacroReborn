@@ -486,3 +486,165 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     height: 26px !important;
   }
 }
+
+
+/* ================================================================
+   9. NAVBAR GLOBAL — MENÚ MÓVIL SIMPLE
+   ----------------------------------------------------------------
+   En escritorio no cambia la navbar existente. En móvil, la segunda
+   barra se reemplaza visualmente por un único botón "☰ Menú" y el
+   contenido completo se despliega en una lista vertical cómoda para
+   tocar. No se eliminan enlaces ni se modifica su destino.
+   ================================================================ */
+
+@media (max-width: 768px) {
+  /* El botón representa específicamente la navegación global. */
+  .nav-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    min-width: 92px !important;
+    height: 38px !important;
+    padding: 0 14px !important;
+    margin-left: auto !important;
+    background: #1d3f86 !important;
+    border: 1px solid #3f69b8 !important;
+    border-radius: 6px !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.10) !important;
+    font: inherit !important;
+    font-weight: 800 !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    order: 2 !important;
+  }
+
+  .nav-toggle:hover,
+  .nav-toggle:focus-visible {
+    background: #274d99 !important;
+    border-color: #5b84cf !important;
+    outline: none !important;
+  }
+
+  .nav-toggle-label {
+    display: inline-block !important;
+    letter-spacing: .15px !important;
+  }
+
+  .nav-toggle-barra,
+  .nav-toggle-barra::before,
+  .nav-toggle-barra::after {
+    width: 17px !important;
+  }
+
+  /* El bloque desplegable es único visualmente, aunque siga formado por
+     .nav-links y .nav-categorias para conservar toda la lógica existente. */
+  .nav-links.nav-abierto,
+  .nav-categorias.nav-abierto {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 2px !important;
+    background: #f7f9fc !important;
+    border-left: 1px solid #cbd5e1 !important;
+    border-right: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+  }
+
+  .nav-links.nav-abierto {
+    margin-top: 8px !important;
+    padding: 8px !important;
+    border-top: 1px solid #cbd5e1 !important;
+    border-bottom: 0 !important;
+    border-radius: 8px 8px 0 0 !important;
+  }
+
+  .nav-categorias.nav-abierto {
+    margin-top: 0 !important;
+    padding: 0 8px 8px !important;
+    border-top: 0 !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    border-radius: 0 0 8px 8px !important;
+    background: #f7f9fc !important;
+  }
+
+  .nav-links.nav-abierto > a,
+  .nav-links.nav-abierto > button,
+  .nav-categorias.nav-abierto > a {
+    width: 100% !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding: 11px 13px !important;
+    border-radius: 6px !important;
+    color: #1e3a69 !important;
+    background: transparent !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    border: 0 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  .nav-links.nav-abierto > a:last-child,
+  .nav-links.nav-abierto > button:last-child,
+  .nav-categorias.nav-abierto > a:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .nav-links.nav-abierto > a:hover,
+  .nav-links.nav-abierto > button:hover,
+  .nav-categorias.nav-abierto > a:hover {
+    color: #123b83 !important;
+    background: #eaf1ff !important;
+  }
+
+  .nav-categorias.nav-abierto a.activa-nav {
+    color: #fff !important;
+    background: linear-gradient(135deg, #f97316, #ea580c) !important;
+    border-bottom: 0 !important;
+  }
+
+  /* Tema, usuario y acciones inyectadas también se comportan como ítems. */
+  .nav-links.nav-abierto .nav-monedas,
+  .nav-links.nav-abierto .notif-bell-wrap,
+  .nav-links.nav-abierto .user-guest-wrap,
+  .nav-links.nav-abierto .nav-ayuda {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Estado claro: el menú sigue perteneciendo a la navbar clásica, pero
+     el desplegable sí usa superficie clara para no quedar como un bloque
+     oscuro aislado sobre el perfil claro. */
+  html[data-tema="oscuro"] .nav-links.nav-abierto,
+  html[data-tema="oscuro"] .nav-categorias.nav-abierto {
+    background: #16264d !important;
+    border-color: #2f4f8d !important;
+  }
+
+  html[data-tema="oscuro"] .nav-links.nav-abierto > a,
+  html[data-tema="oscuro"] .nav-links.nav-abierto > button,
+  html[data-tema="oscuro"] .nav-categorias.nav-abierto > a {
+    color: #e8eefc !important;
+    border-bottom-color: rgba(255,255,255,.10) !important;
+  }
+
+  html[data-tema="oscuro"] .nav-links.nav-abierto > a:hover,
+  html[data-tema="oscuro"] .nav-links.nav-abierto > button:hover,
+  html[data-tema="oscuro"] .nav-categorias.nav-abierto > a:hover {
+    background: rgba(255,255,255,.08) !important;
+    color: #fff !important;
+  }
+
+  /* En claro, el botón mantiene la identidad azul MacroJuegos. */
+  html[data-tema="claro"] .nav-toggle {
+    background: #1d4f96 !important;
+    border-color: #2e67b8 !important;
+  }
+}

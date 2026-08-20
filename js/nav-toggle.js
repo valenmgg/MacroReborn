@@ -32,7 +32,7 @@
     boton.setAttribute("aria-label", "Abrir menú de navegación");
     boton.setAttribute("aria-expanded", "false");
     boton.setAttribute("aria-controls", links.id);
-    boton.innerHTML = '<span class="nav-toggle-barra"></span>';
+    boton.innerHTML = '<span class="nav-toggle-barra" aria-hidden="true"></span><span class="nav-toggle-label">Menú</span>';
 
     nav.insertBefore(boton, links);
 
