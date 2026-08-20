@@ -85,6 +85,46 @@ function _inyectarEstilosNotifDropdown(){
 
 if(nav){
 
+    // La barra retro necesita separar la navegación general (fila inferior)
+    // de las acciones de cuenta (fila superior). Reutilizamos los enlaces
+    // que ya existen en cada HTML, sin duplicarlos ni cambiar sus destinos.
+    const navCategorias = nav.querySelector(".nav-categorias");
+    const navLinks = nav.querySelector(".nav-links");
+
+    if(navCategorias && navLinks && !nav.dataset.retroPreparada){
+        const enlacesBase = Array.from(navLinks.querySelectorAll(":scope > a:not(.sesion-extra)"));
+        enlacesBase.reverse().forEach(enlace => navCategorias.insertBefore(enlace, navCategorias.firstChild));
+
+        if(!navCategorias.querySelector(".nav-retro-todos")){
+            navCategorias.insertAdjacentHTML("afterbegin", '<a class="nav-retro-todos" href="juegos.html">Ver Todos</a>');
+        }
+
+        if(!nav.querySelector("#navRetroBusqueda")){
+            const formularioBusqueda = document.createElement("form");
+            formularioBusqueda.id = "navRetroBusqueda";
+            formularioBusqueda.className = "nav-retro-busqueda";
+            formularioBusqueda.setAttribute("role", "search");
+            formularioBusqueda.innerHTML = `
+                <input id="navRetroBusquedaInput" type="search" autocomplete="off" placeholder="Buscar" aria-label="Buscar en MacroReborn">
+                <button type="submit" aria-label="Buscar">🔍</button>
+            `;
+            nav.insertBefore(formularioBusqueda, navLinks);
+
+            formularioBusqueda.addEventListener("submit", function(evento){
+                evento.preventDefault();
+                const termino = String(formularioBusqueda.querySelector("input")?.value || "").trim();
+                const destino = termino ? "juegos.html?q=" + encodeURIComponent(termino) : "juegos.html";
+                window.location.href = destino;
+            });
+        }
+
+        if(!navLinks.querySelector(".nav-app-grid")){
+            navLinks.insertAdjacentHTML("beforeend", '<a class="nav-app-grid" href="index.html" aria-label="Inicio" title="Inicio">▦</a>');
+        }
+
+        nav.dataset.retroPreparada = "1";
+    }
+
     // Evitar duplicados
     document.querySelectorAll(".sesion-extra")
     .forEach(e=>e.remove());
