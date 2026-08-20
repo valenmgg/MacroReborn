@@ -1780,15 +1780,19 @@ body.macro-consolidado .navbar {
   justify-self: start;
   display: flex !important;
   align-items: center;
-  gap: 0;
-  width: 136px;
+  gap: 7px;
+  width: 155px;
   height: 41px;
   padding: 0;
-  color: transparent !important;
-  font-size: 0 !important;
-  line-height: 0;
+  color: #f5f7ff !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1;
+  text-decoration: none !important;
   overflow: hidden;
   white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,.65);
 }
 
 .navbar .nav-logo img {
