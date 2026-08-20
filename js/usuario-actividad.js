@@ -84,6 +84,10 @@ function avatarMiniActividadUsuario(nombre){
     return `<img src="imagenes/avatar.png" class="avatar-comentario" alt="" loading="lazy">`;
   }
 
+  if(avatarEsPNG(avatar)){
+    return `<img src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
+  }
+
   let capas = "";
   let rutasCapas = [];
   ORDEN_CAPAS.forEach(tipo=>{

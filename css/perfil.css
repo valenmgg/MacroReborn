@@ -2858,3 +2858,37 @@ html[data-tema="claro"] .mr-identidad-loading {
     padding-right: 7px;
   }
 }
+
+
+/* ==============================
+   AVATAR PNG ESPECIAL DE ADMINISTRADOR
+   ============================== */
+.admin-avatar-png-box {
+  margin: 14px 0 18px;
+  padding: 14px;
+  border: 1px solid #8b6b1f;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(245, 190, 40, .10), rgba(245, 190, 40, .04));
+}
+.admin-avatar-png-titulo {
+  font-weight: 800;
+  color: #ffd54a;
+  margin-bottom: 6px;
+}
+.admin-avatar-png-box p { margin: 0 0 10px; color: #cbd5e1; font-size: 13px; }
+.admin-avatar-png-controles { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.admin-avatar-png-controles input[type="file"] { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+.admin-avatar-png-label,
+#guardarAdminAvatarPng,
+#quitarAdminAvatarPng {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:34px; padding:7px 11px; border-radius:7px; border:1px solid #4b5c80;
+  background:#131d31; color:#f8fafc; cursor:pointer; font-weight:700; font-size:12px;
+}
+.admin-avatar-png-label:hover,
+#guardarAdminAvatarPng:hover,
+#quitarAdminAvatarPng:hover { background:#1c2942; }
+#guardarAdminAvatarPng { border-color:#7a5611; background:linear-gradient(#edbf3c,#c99114); color:#15110a; }
+.admin-avatar-png-preview { margin-top:12px; min-height:56px; display:flex; align-items:center; gap:10px; }
+.admin-avatar-png-preview img { width:96px; height:96px; object-fit:contain; background:#0b1020; border:1px solid #34405f; border-radius:8px; }
+.admin-avatar-png-estado { margin-top:8px; min-height:18px; font-size:12px; color:#9fb0c9; }

@@ -62,6 +62,10 @@
       return `<img src="imagenes/avatar.png" class="resena-avatar-simple" alt="${escaparHTML(nombre)}" loading="lazy">`;
     }
 
+    if(avatarEsPNG(avatar)){
+      return `<img src="${avatarPNGData(avatar)}" class="resena-avatar-simple avatar-png-personalizado" alt="${escaparHTML(nombre)}" loading="lazy">`;
+    }
+
     let capas = "";
     let rutasCapas = [];
     ORDEN_CAPAS_RESENA.forEach((tipo) => {

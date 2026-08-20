@@ -126,6 +126,14 @@ window.MRProfileContext = {
 
 document.getElementById("nombreUsuario").textContent=usuario.nombre;
 
+// Carga las insignias del usuario propio antes de mostrar las opciones
+// exclusivas del administrador. La comprobación real también existe en
+// /api/users?action=update-admin-avatar-png, así que ocultar este bloque
+// en el cliente nunca se usa como mecanismo de seguridad.
+const insigniasPerfilPropioListas = typeof cargarInsignias === "function"
+  ? cargarInsignias(usuario.nombre)
+  : Promise.resolve([]);
+
 // ---------- INSIGNIAS OFICIALES ----------
 // Se muestran debajo del nombre. Son manuales (no se otorgan por
 // logros): si el usuario no tiene ninguna, el contenedor queda oculto.
@@ -270,6 +278,9 @@ function actualizarPerfilDesdeSesion(detalle){
   pintarUltimaConexion();
   if(typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
   if(typeof renderLogros === "function") renderLogros();
+  if(typeof actualizarAvatarPrincipal === "function" && actualizado.avatar !== undefined){
+    actualizarAvatarPrincipal();
+  }
 }
 
 function suscribirPerfilSesion(){
@@ -978,7 +989,7 @@ async function guardarAvatar(avatar){
     if(!respuesta.ok){
       datosUsuario.avatar = avatarAnterior;
       console.warn("MacroReborn: el servidor no confirmó el cambio de avatar.");
-      return;
+      return false;
     }
 
     // Neon confirmó el cambio: recién ahora actualizamos el estado global
@@ -989,14 +1000,184 @@ async function guardarAvatar(avatar){
       localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
     }
 
+    return true;
+
   }catch(error){
 
     datosUsuario.avatar = avatarAnterior;
     console.warn("MacroReborn: no se pudo guardar el avatar en el servidor.", error);
+    return false;
 
   }
 
 }
+
+// ---------- AVATAR PNG EXCLUSIVO DE ADMINISTRADOR ----------
+
+async function guardarAvatarPngAdmin(dataUrl){
+  const respuesta = await fetch("/api/users?action=update-admin-avatar-png", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: datosUsuario.nombre,
+      avatarPng: dataUrl,
+      avatarAnterior: (datosUsuario.avatar && !avatarEsPNG(datosUsuario.avatar)) ? datosUsuario.avatar : null
+    })
+  });
+
+  let datos = null;
+  try { datos = await respuesta.json(); } catch (_) {}
+
+  if(!respuesta.ok || !datos || !datos.success){
+    throw new Error((datos && datos.error) || "No se pudo guardar el PNG.");
+  }
+
+  datosUsuario.avatar = datos.user.avatar;
+  if(window.MRSession && typeof MRSession.update === "function") {
+    MRSession.update({ avatar: datos.user.avatar });
+  } else {
+    localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
+  }
+
+  actualizarAvatarPrincipal();
+  return datos.user;
+}
+
+function prepararPanelAvatarAdminPng(){
+  const box = document.getElementById("adminAvatarPngBox");
+  const input = document.getElementById("adminAvatarPngInput");
+  const btnGuardar = document.getElementById("guardarAdminAvatarPng");
+  const btnQuitar = document.getElementById("quitarAdminAvatarPng");
+  const preview = document.getElementById("adminAvatarPngPreview");
+  const estado = document.getElementById("adminAvatarPngEstado");
+
+  if(!box || !input || !btnGuardar || !btnQuitar || !preview || !estado) return;
+
+  const mostrarPreviewActual = ()=>{
+    const avatar = cargarAvatar();
+    const src = typeof avatarPNGData === "function" ? avatarPNGData(avatar) : null;
+    if(src){
+      preview.innerHTML = `<img src="${src}" alt="Avatar PNG actual">`;
+      estado.textContent = "Este PNG es tu avatar actual.";
+    }else{
+      preview.innerHTML = "";
+      estado.textContent = "Todavía no tenés un avatar PNG personalizado.";
+    }
+  };
+
+  input.addEventListener("change", async ()=>{
+    const archivo = input.files && input.files[0];
+    if(!archivo) return;
+
+    estado.textContent = "Validando PNG…";
+    preview.innerHTML = "";
+
+    if(archivo.type !== "image/png" && !archivo.name.toLowerCase().endsWith(".png")){
+      input.value = "";
+      estado.textContent = "Solo se permiten archivos .png";
+      return;
+    }
+
+    if(archivo.size > 1024 * 1024){
+      input.value = "";
+      estado.textContent = "El PNG no puede superar 1 MB.";
+      return;
+    }
+
+    try{
+      const bytes = new Uint8Array(await archivo.arrayBuffer());
+      const firma = [137,80,78,71,13,10,26,10];
+      if(firma.some((v, i)=>bytes[i] !== v)){
+        throw new Error("El archivo no tiene una firma PNG válida.");
+      }
+
+      const lector = new FileReader();
+      lector.onload = ()=>{
+        preview.innerHTML = `<img src="${lector.result}" alt="Vista previa del PNG">`;
+        estado.textContent = "PNG listo. Pulsá “Usar este PNG” para convertirlo en tu avatar.";
+      };
+      lector.onerror = ()=>{ estado.textContent = "No se pudo leer el archivo."; };
+      lector.readAsDataURL(archivo);
+    }catch(error){
+      input.value = "";
+      estado.textContent = error.message || "PNG inválido.";
+    }
+  });
+
+  btnGuardar.addEventListener("click", async ()=>{
+    const archivo = input.files && input.files[0];
+    if(!archivo){
+      estado.textContent = "Seleccioná primero un archivo PNG.";
+      return;
+    }
+
+    try{
+      const lector = new FileReader();
+      lector.onload = async ()=>{
+        try{
+          estado.textContent = "Guardando avatar PNG…";
+          btnGuardar.disabled = true;
+          await guardarAvatarPngAdmin(lector.result);
+          estado.textContent = "Avatar PNG guardado correctamente.";
+          mostrarPreviewActual();
+          const actual = cargarAvatar();
+          if(actual && typeof avatarPNGData === "function" && avatarPNGData(actual)){
+            estado.textContent = "Avatar PNG guardado correctamente. Este es tu avatar activo.";
+          }
+        }catch(error){
+          estado.textContent = error.message || "No se pudo guardar el avatar PNG.";
+        }finally{
+          btnGuardar.disabled = false;
+        }
+      };
+      lector.onerror = ()=>{ estado.textContent = "No se pudo leer el PNG."; };
+      lector.readAsDataURL(archivo);
+    }catch(error){
+      estado.textContent = error.message || "No se pudo preparar el PNG.";
+    }
+  });
+
+  btnQuitar.addEventListener("click", async ()=>{
+    const avatar = cargarAvatar();
+    if(!avatar || !avatarEsPNG(avatar)){
+      estado.textContent = "Ya estás usando el avatar normal.";
+      return;
+    }
+
+    const normal = (avatar && avatar.restaurar && !avatarEsPNG(avatar.restaurar))
+      ? { ...avatar.restaurar }
+      : { ...editorCapas };
+    if(!normal.modelo || normal.modelo === "ninguno") normal.modelo = "tora";
+    ORDEN_CAPAS.forEach(tipo=>{ if(!Object.prototype.hasOwnProperty.call(normal, tipo)) normal[tipo] = "ninguno"; });
+
+    btnQuitar.disabled = true;
+    estado.textContent = "Volviendo al avatar normal…";
+    try{
+      const ok = await guardarAvatar(normal);
+      if(!ok) throw new Error("No se pudo guardar el avatar normal.");
+      actualizarAvatarPrincipal();
+      input.value = "";
+      mostrarPreviewActual();
+      estado.textContent = "Volviste al avatar normal del editor.";
+    }catch(error){
+      estado.textContent = error.message || "No se pudo volver al avatar normal.";
+    }finally{
+      btnQuitar.disabled = false;
+    }
+  });
+
+  mostrarPreviewActual();
+}
+
+insigniasPerfilPropioListas.then(lista=>{
+  if(Array.isArray(lista) && lista.includes("administrador")){
+    const box = document.getElementById("adminAvatarPngBox");
+    if(box){
+      box.style.display = "block";
+      prepararPanelAvatarAdminPng();
+    }
+  }
+});
 
 
 // ---------- CENTRO DE AVATARES (tienda) ----------
@@ -1087,6 +1268,12 @@ function actualizarAvatarPrincipal(){
 
   if(!avatar){
     avatarWrapper.innerHTML='<img id="avatarPrincipal" src="imagenes/avatar.png" alt="Tu avatar en MacroReborn">';
+    return;
+  }
+
+  if(avatarEsPNG(avatar)){
+    const src = avatarPNGData(avatar);
+    avatarWrapper.innerHTML = `<img id="avatarPrincipal" class="avatar-png-personalizado" src="${src}" alt="Avatar PNG personalizado">`;
     return;
   }
 
@@ -1198,7 +1385,7 @@ catBotones.forEach(btn=>{
 
 document.getElementById("botonCrearAvatar")?.addEventListener("click",()=>{
   const guardado=cargarAvatar();
-  if(guardado) editorCapas={...guardado};
+  if(guardado && !avatarEsPNG(guardado)) editorCapas={...guardado};
 
   document.getElementById("editorAvatar").style.display="block";
 

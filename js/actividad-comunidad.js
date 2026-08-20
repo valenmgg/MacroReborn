@@ -15,7 +15,14 @@
   function isOnline(user) { if (!user?.lastLogin) return false; const t = new Date(user.lastLogin).getTime(); return Number.isFinite(t) && (Date.now()-t) <= 10*60*1000; }
 
   function avatarHTML(user) {
-    if (!user?.avatar || typeof user.avatar === 'string') return '<span>👤</span>';
+    if (!user?.avatar) return '<span>👤</span>';
+    const avatar = typeof normalizarAvatar === "function" ? normalizarAvatar(user.avatar) : user.avatar;
+    if(typeof avatarPNGData === "function" && avatarPNGData(avatar)){
+      return `<img src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">`;
+    }
+    if(typeof avatarMiniaturaHTML === "function"){
+      return avatarMiniaturaHTML(avatar);
+    }
     return '<span>👤</span>';
   }
 

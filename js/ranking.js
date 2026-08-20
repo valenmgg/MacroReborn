@@ -55,6 +55,13 @@ function obtenerAvatar(nombre, avatarCrudo){
 
     }
 
+    if(avatarEsPNG(avatar)){
+        return `
+        <div class="avatar-mini-ranking">
+            <img src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">
+        </div>
+        `;
+    }
 
 
     const capas = [

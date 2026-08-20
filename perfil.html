@@ -199,6 +199,19 @@
     <h2>👤 Mi avatar</h2>
     <p class="subtitulo-avatares">Creá y editá tu avatar personal.</p>
 
+    <div id="adminAvatarPngBox" class="admin-avatar-png-box" style="display:none;">
+      <div class="admin-avatar-png-titulo">👑 Avatar especial de administrador</div>
+      <p>Los administradores pueden usar una imagen PNG propia como avatar, distinta del editor normal.</p>
+      <div class="admin-avatar-png-controles">
+        <label class="admin-avatar-png-label" for="adminAvatarPngInput">🖼️ Seleccionar PNG</label>
+        <input id="adminAvatarPngInput" type="file" accept=".png,image/png">
+        <button type="button" id="guardarAdminAvatarPng">✅ Usar este PNG</button>
+        <button type="button" id="quitarAdminAvatarPng">↩️ Volver al avatar normal</button>
+      </div>
+      <div id="adminAvatarPngPreview" class="admin-avatar-png-preview" aria-live="polite"></div>
+      <div id="adminAvatarPngEstado" class="admin-avatar-png-estado"></div>
+    </div>
+
     <button id="botonCrearAvatar">✨ Crear / Editar avatar</button>
 
     <div id="editorAvatar" class="editor-avatar" style="display:none;">

@@ -219,10 +219,87 @@ async function listarUsuarios(req, res) {
 async function updateAvatar(req, res) {
   const auth = requerirAuth(req, res);
   if (!auth) return;
-  const { username, avatar } = req.body;
+  const { username, avatar } = req.body || {};
   if (String(auth.username).toLowerCase() !== String(username || '').toLowerCase()) {
     return res.status(403).json({ success: false, error: "No podés modificar otro usuario" });
   }
+
+  // Los PNG personalizados son un privilegio exclusivo del administrador.
+  // El editor normal sigue usando exactamente el formato de capas de siempre.
+  if (avatar && typeof avatar === "object" && avatar.tipo === "png") {
+    return res.status(403).json({ success: false, error: "El avatar PNG personalizado solo puede guardarse mediante el panel de administrador." });
+  }
+
+  const user = await sql`
+    UPDATE users
+    SET avatar = ${JSON.stringify(avatar)}
+    WHERE username = ${username}
+    RETURNING id, username, avatar;
+  `;
+
+  if (user.length === 0) {
+    return res.status(404).json({ success: false, error: "Usuario no encontrado" });
+  }
+
+  return res.status(200).json({ success: true, user: user[0] });
+}
+
+async function updateAdminAvatarPng(req, res) {
+  const auth = requerirAuth(req, res);
+  if (!auth) return;
+
+  const { username, avatarPng, avatarAnterior } = req.body || {};
+
+  if (String(auth.username).toLowerCase() !== String(username || '').toLowerCase()) {
+    return res.status(403).json({ success: false, error: "No podés modificar otro usuario" });
+  }
+
+  const admin = await sql`
+    SELECT 1
+    FROM badges
+    WHERE user_id = ${auth.sub} AND badge_id = 'administrador'
+    LIMIT 1;
+  `;
+
+  if (!admin.length) {
+    return res.status(403).json({ success: false, error: "Solo un administrador puede usar avatares PNG personalizados" });
+  }
+
+  const texto = typeof avatarPng === "string" ? avatarPng : "";
+  const match = texto.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/);
+
+  if (!match) {
+    return res.status(400).json({ success: false, error: "El avatar debe ser un PNG válido" });
+  }
+
+  const base64 = match[1];
+  const padding = (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0);
+  const bytes = Math.floor(base64.length * 3 / 4) - padding;
+
+  // Limite defensivo para no guardar blobs enormes dentro de users.avatar.
+  if (bytes <= 0 || bytes > 1024 * 1024) {
+    return res.status(400).json({ success: false, error: "El PNG no puede superar 1 MB" });
+  }
+
+  let binario;
+  try {
+    binario = Buffer.from(base64, "base64");
+  } catch (_) {
+    return res.status(400).json({ success: false, error: "El PNG está corrupto" });
+  }
+
+  const firmaPNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (binario.length < firmaPNG.length || !firmaPNG.every((byte, i) => binario[i] === byte)) {
+    return res.status(400).json({ success: false, error: "El archivo no tiene una firma PNG válida" });
+  }
+
+  const avatar = {
+    tipo: "png",
+    src: texto,
+    restaurar: (avatarAnterior && typeof avatarAnterior === "object" && avatarAnterior.tipo !== "png")
+      ? avatarAnterior
+      : null
+  };
 
   const user = await sql`
     UPDATE users
@@ -476,6 +553,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === "POST") {
       if (action === "update-avatar") return await updateAvatar(req, res);
+      if (action === "update-admin-avatar-png") return await updateAdminAvatarPng(req, res);
       if (action === "update-bio") return await updateBio(req, res);
       if (action === "heartbeat") return await heartbeat(req, res);
       if (action === "xp") return await sumarXp(req, res);

@@ -97,63 +97,38 @@ return "imagenes/"+partes[0]+"/"+partes.slice(1).join("_")+".png";
 
 function htmlAvatarMini(avatarCrudo){
 
-
 const avatar = normalizarAvatar(avatarCrudo);
 
-
 const div=document.createElement("div");
-
 div.className="amigo-avatar";
 
-
-
-if(!avatar){
-
-let img=document.createElement("img");
-
-img.src="imagenes/avatar.png";
-
-div.appendChild(img);
-
-return div;
-
+if(avatarEsPNG(avatar)){
+  let img=document.createElement("img");
+  img.src=avatarPNGData(avatar);
+  img.loading="lazy";
+  div.appendChild(img);
+  return div;
 }
 
-
+if(!avatar){
+  let img=document.createElement("img");
+  img.src="imagenes/avatar.png";
+  div.appendChild(img);
+  return div;
+}
 
 let rutasCapas = [];
 
 ORDEN_CAPAS.forEach(tipo=>{
-
-
-const ruta=rutaImagenCapa(
-avatar[tipo]
-);
-
-
-
-if(ruta){
-
-
-let img=document.createElement("img");
-
-img.src=ruta;
-
-img.className="capa-amigo";
-
-
-div.appendChild(img);
-
-rutasCapas.push(ruta);
-
-
-}
-
-
-
+  const ruta=rutaImagenCapa(avatar[tipo]);
+  if(ruta){
+    let img=document.createElement("img");
+    img.src=ruta;
+    img.className="capa-amigo";
+    div.appendChild(img);
+    rutasCapas.push(ruta);
+  }
 });
-
-
 
 div.classList.add("avatar-compuesto");
 div.setAttribute("data-capas", rutasCapas.join("|"));
@@ -162,8 +137,6 @@ div.setAttribute("data-capa-class", "capa-amigo");
 return div;
 
 }
-
-
 
 
 // ---------- RENDER AMIGOS ----------

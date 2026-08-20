@@ -234,6 +234,28 @@ function normalizarAvatar(valor){
   return valor;
 }
 
+// Avatar especial exclusivo de administradores. Viaja como un objeto
+// compacto { tipo:"png", src:"data:image/png;base64,..." } dentro de
+// users.avatar, por lo que funciona igual en perfiles, ranking, chat,
+// buscador y actividad sin depender del sistema de capas.
+function avatarPNGData(avatarCrudo){
+  const avatar = normalizarAvatar(avatarCrudo);
+  if(!avatar || avatar.tipo !== "png" || typeof avatar.src !== "string") return null;
+  return /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(avatar.src) ? avatar.src : null;
+}
+
+function avatarEsPNG(avatarCrudo){
+  return !!avatarPNGData(avatarCrudo);
+}
+
+function avatarPNGImgHTML(avatarCrudo, clase="", alt="") {
+  const src = avatarPNGData(avatarCrudo);
+  if(!src) return "";
+  const cls = clase ? ` class="${clase}"` : "";
+  const altSeguro = String(alt || "").replace(/[&<>"]/g, caracter => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[caracter]));
+  return `<img${cls} src="${src}" alt="${altSeguro}" loading="lazy">`;
+}
+
 
 
 
@@ -397,6 +419,10 @@ function rutaCapaAvatar(valor){
 
 function avatarMiniaturaHTML(avatarCrudo){
   const avatar = normalizarAvatar(avatarCrudo);
+  if(avatarEsPNG(avatar)){
+    const src = avatarPNGData(avatar);
+    return `<img class="avatar-png-personalizado" src="${src}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;">`;
+  }
   const avatarPorDefecto =
     `<img src="imagenes/avatar.png" alt="" loading="lazy" ` +
     `style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;

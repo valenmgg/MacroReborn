@@ -379,6 +379,10 @@ if (!usuario) {
 
 if (avatar && caja) {
 
+  if(avatarEsPNG(avatar)){
+    caja.innerHTML = `<img src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="Avatar PNG" style="width:100%;height:100%;object-fit:contain;">`;
+  } else {
+
   caja.innerHTML = "";
 
   let contenedorAvatar = document.createElement("div");
@@ -417,6 +421,7 @@ if (avatar && caja) {
 
   caja.appendChild(contenedorAvatar);
 
+  }
 }
 
 
@@ -702,6 +707,9 @@ function escaparHTML(texto) {
     const av = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
     if (!av) {
       return `<img src="imagenes/avatar.png" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f0b429;" alt="" loading="lazy">`;
+    }
+    if(avatarEsPNG(av)){
+      return `<img src="${avatarPNGData(av)}" style="width:40px;height:40px;border-radius:50%;object-fit:contain;border:2px solid #f0b429;" class="avatar-png-personalizado" alt="" loading="lazy">`;
     }
     let capas = "";
     let rutasCapas = [];

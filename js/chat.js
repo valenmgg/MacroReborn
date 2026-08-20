@@ -95,6 +95,10 @@ function obtenerAvatarHTML(nombre){
         return `<img src="imagenes/avatar.png" class="avatar-chat" alt="" loading="lazy">`;
     }
 
+    if(avatarEsPNG(avatar)){
+        return `<img src="${avatarPNGData(avatar)}" class="avatar-chat avatar-png-personalizado" alt="" loading="lazy">`;
+    }
+
     let capas = "";
     let rutasCapas = [];
 
