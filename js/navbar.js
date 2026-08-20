@@ -2,7 +2,7 @@
 // NAVBAR - MacroReborn
 // ==============================
 
-const nav = document.querySelector(".nav-links") || document.querySelector("nav");
+const nav = document.querySelector(".navbar") || document.querySelector("nav");
 
 // MRApp coordina el arranque común (equivalente conceptual a Layout.js de Morpho).
 // Navbar mantiene su inicialización actual; solo marca que el shell está disponible.
@@ -135,7 +135,7 @@ if(nav){
 
         _inyectarEstilosNotifDropdown();
 
-        nav.insertAdjacentHTML("beforeend",`
+        nav.querySelector(".nav-links")?.insertAdjacentHTML("beforeend",`
 
             <a class="sesion-extra nav-ayuda" href="chat.html" title="¿Necesitás ayuda? Preguntá en el chat">❔</a>
 
@@ -408,7 +408,7 @@ if(nav){
 
     }else{
 
-        nav.insertAdjacentHTML("beforeend",`
+        nav.querySelector(".nav-links")?.insertAdjacentHTML("beforeend",`
 
             <a class="sesion-extra nav-ayuda" href="chat.html" title="¿Necesitás ayuda? Preguntá en el chat">❔</a>
 

@@ -2148,3 +2148,75 @@ html[data-tema="claro"] .navbar .nav-categorias a { color: #f3f5ff !important; }
   .navbar .user-guest-nombre { display: none; }
   .navbar .nav-ayuda { display: none !important; }
 }
+
+/* Ajuste final de la navbar retro para igualar la proporción de la referencia de escritorio. */
+@media (min-width: 901px) {
+  .navbar,
+  body.mr-root .navbar,
+  body.macro-consolidado .navbar {
+    min-height: 64px;
+    grid-template-columns: 150px 110px 178px minmax(0, 1fr);
+    grid-template-rows: 34px 30px;
+    grid-template-areas:
+      "logo community search actions"
+      "categories categories categories categories";
+    gap: 0 6px;
+    padding: 0 7px;
+  }
+
+  .navbar .nav-logo {
+    width: 150px;
+    height: 34px;
+  }
+
+  .navbar .nav-logo img {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .navbar .nav-boton-comunidad {
+    height: 23px;
+    min-width: 110px;
+    padding: 0 12px !important;
+  }
+
+  .navbar .nav-retro-busqueda,
+  .navbar .nav-retro-busqueda input,
+  .navbar .nav-retro-busqueda button {
+    height: 24px;
+  }
+
+  .navbar .nav-retro-busqueda button {
+    width: 45px;
+  }
+
+  .navbar .nav-categorias a.nav-retro-todos {
+    position: relative;
+    padding-right: 23px !important;
+  }
+
+  .navbar .nav-categorias a.nav-retro-todos::after {
+    content: "";
+    position: absolute;
+    right: 7px;
+    top: 12px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #fff;
+    opacity: .95;
+  }
+
+  .navbar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -8px;
+    height: 8px;
+    pointer-events: none;
+    background: linear-gradient(180deg, #2f0d72 0%, #14052e 100%);
+    box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  }
+}
