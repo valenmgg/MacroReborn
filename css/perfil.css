@@ -2614,69 +2614,15 @@ html[data-tema="claro"] .tarjeta-stats #textoXP {
 }
 
 /* Menú del perfil: barra horizontal azul clásica */
-html[data-tema="claro"] .perfil-principal {
-  min-width: 0;
-}
-
-html[data-tema="claro"] .menu-perfil {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid #0c569d;
-  border-radius: 2px;
-  background: linear-gradient(to bottom, #4aa3df 0%, #167ac6 55%, #0d5da8 100%);
-  box-shadow: none;
-}
-
-html[data-tema="claro"] .menu-perfil .tab {
-  flex: 0 0 auto;
-  min-height: 29px;
-  padding: 7px 10px;
-  margin: 0;
-  border: 0;
-  border-right: 1px solid rgba(255,255,255,.22);
-  border-radius: 0;
-  background: transparent;
-  color: #fff;
-  font: bold 10px Arial, Helvetica, sans-serif;
-  text-shadow: 0 1px 0 rgba(0,0,0,.22);
-  box-shadow: none;
-  transform: none !important;
-}
-
-html[data-tema="claro"] .menu-perfil .tab:hover {
-  background: rgba(255,255,255,.12);
-}
-
-html[data-tema="claro"] .menu-perfil .tab.activa {
-  color: #fff;
-  background: var(--mj-blue-dark);
-  box-shadow: inset 0 -2px 0 var(--mj-yellow);
-}
-
-/* Quitar los emojis del estilo moderno conservando exactamente los botones */
-html[data-tema="claro"] .menu-perfil .tab {
-  font-size: 0;
-}
-
-html[data-tema="claro"] .menu-perfil .tab::after {
-  font: bold 10px Arial, Helvetica, sans-serif;
-  content: "Sección";
-}
-
-html[data-tema="claro"] .menu-perfil .tab:nth-child(1)::after { content: "Inicio"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(2)::after { content: "Actividad amigos"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(3)::after { content: "Actividad reciente"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(4)::after { content: "Comentarios"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(5)::after { content: "Favoritos"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(6)::after { content: "Últimos jugados"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(7)::after { content: "Amigos"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(8)::after { content: "Avatar"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(9)::after { content: "Logros"; }
-html[data-tema="claro"] .menu-perfil .tab:nth-child(10)::after { content: "Configurar"; }
+/* NOTA: el layout/color real del menú de pestañas en modo claro lo
+   define css/perfil-macrojuegos-light.css (se carga después que este
+   archivo). El bloque que estaba acá duplicaba las mismas reglas con
+   otro diseño (texto oculto + contenido generado por ::after), y al
+   cargarse perfil-macrojuegos-light.css después, ese archivo volvía a
+   mostrar el texto original de los botones sin quitar el ::after de
+   acá, dejando cada pestaña con el texto repetido dos veces
+   ("HomeInicio", "FavoritosFavoritos", etc). Se eliminó para que solo
+   quede un único origen de verdad para el menú de pestañas. */
 
 /* Cabecera del usuario: no más pastilla púrpura */
 html[data-tema="claro"] .perfil-datos-cabecera {
