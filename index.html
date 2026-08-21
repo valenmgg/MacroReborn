@@ -1,481 +1,625 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<script src="js/tema.js"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MacroReborn - Comunidad y catálogo de juegos gratis online</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MacroReborn — En mantenimiento</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="imagenes/logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-<!-- SEO -->
-<meta name="description" content="Jugá gratis online sin instalar nada. Catálogo con variedad de juegos, ranking de jugadores, chat en vivo y perfiles personalizables. Sumate a MacroReborn.">
-<meta name="robots" content="index, follow">
-<link rel="canonical" href="https://www.macroreborn.com/">
-<meta name="theme-color" content="#0f172a">
-<link rel="icon" href="imagenes/logo.png" type="image/png">
-<link rel="apple-touch-icon" href="imagenes/logo.png">
+  <style>
+    /* ── Tokens del tema canónico de MacroReborn ── */
+    :root {
+      --bg-deep:     #0c0616;
+      --bg-base:     #150a28;
+      --bg-panel:    #241145;
+      --bg-panel-alt:#2f1a5c;
+      --line:        #3d2166;
+      --gold:        #f0b429;
+      --gold-bright: #ffd666;
+      --cyan:        #38bdf8;
+      --accent:      #7c3aed;
+      --accent-soft: #c084fc;
+      --text-main:   #f4f1fb;
+      --text-muted:  #b6a9d6;
+      --font-display:'Orbitron', Arial, sans-serif;
+      --font-body:   'Inter', 'Segoe UI', Arial, sans-serif;
+    }
 
-<!-- Open Graph -->
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="MacroReborn">
-<meta property="og:locale" content="es_AR">
-<meta property="og:title" content="MacroReborn - Comunidad y catálogo de juegos gratis online">
-<meta property="og:description" content="Jugá gratis online sin instalar nada. Catálogo con variedad de juegos, ranking de jugadores, chat en vivo y perfiles personalizables. Sumate a MacroReborn.">
-<meta property="og:url" content="https://www.macroreborn.com/">
-<meta property="og:image" content="https://www.macroreborn.com/imagenes/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="MacroReborn - Comunidad y catálogo de juegos gratis online">
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MacroReborn - Comunidad y catálogo de juegos gratis online">
-<meta name="twitter:description" content="Jugá gratis online sin instalar nada. Catálogo con variedad de juegos, ranking de jugadores, chat en vivo y perfiles personalizables. Sumate a MacroReborn.">
-<meta name="twitter:image" content="https://www.macroreborn.com/imagenes/og-image.png">
+    /* ── Fondo con estrellas animadas ── */
+    body {
+      min-height: 100vh;
+      background: var(--bg-deep);
+      font-family: var(--font-body);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    /* Canvas de partículas de fondo */
+    #starfield {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-<link rel="stylesheet" href="css/modal.css">
-<link rel="stylesheet" href="css/inicio.css">
-<link rel="stylesheet" href="css/buscador.css">
-<link rel="stylesheet" href="css/descubrimiento.css">
-<link rel="stylesheet" href="css/retos-diarios.css">
-<link rel="stylesheet" href="css/personalizacion.css">
+    /* Orbes de luz ambiental */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -150px; left: -150px; animation: drift 18s ease-in-out infinite alternate; }
+    .orb-2 { width: 400px; height: 400px; background: var(--gold);   bottom: -100px; right: -100px; animation: drift 22s ease-in-out infinite alternate-reverse; }
+    .orb-3 { width: 300px; height: 300px; background: var(--cyan);   top: 40%; left: 60%; animation: drift 14s ease-in-out infinite alternate; }
 
-<!-- Datos estructurados (Schema.org): identifican el sitio y la
-     organización ante los buscadores. Van solo acá (home) porque
-     describen a MacroReborn como un todo, no a esta página puntual. -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "MacroReborn",
-  "url": "https://www.macroreborn.com/",
-  "logo": "https://www.macroreborn.com/imagenes/logo.png",
-  "description": "Comunidad de juegos online gratuitos: catálogo de juegos para jugar sin instalar nada, ranking, chat y perfiles personalizables."
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "MacroReborn",
-  "url": "https://www.macroreborn.com/"
-}
-</script>
-    <link rel="stylesheet" href="css/finalizacion.css">
-  <link rel="stylesheet" href="css/macro-home-hub.css">
-  <link rel="stylesheet" href="css/macro-consolidacion.css">
-  <link rel="manifest" href="site.webmanifest">
-<link rel="stylesheet" href="css/theme-canonical.css">
-<link rel="stylesheet" href="css/navbar-macrojuegos.css">
+    @keyframes drift {
+      from { transform: translate(0, 0); }
+      to   { transform: translate(40px, 30px); }
+    }
+
+    /* ── Card principal ── */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(36, 17, 69, 0.85);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 52px 48px 44px;
+      max-width: 580px;
+      width: calc(100% - 32px);
+      text-align: center;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 0 0 1px rgba(140, 92, 246, 0.15),
+                  0 24px 60px rgba(0, 0, 0, 0.55),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: var(--bg-panel-alt);
+      border-radius: 50%;
+      border: 2px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .logo-wrap img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+    }
+    /* Fallback si el logo no carga */
+    .logo-fallback {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: -1px;
+    }
+
+    /* ── Badge de estado ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(240, 180, 41, 0.1);
+      border: 1px solid rgba(240, 180, 41, 0.3);
+      color: var(--gold-bright);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse-dot 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── Título ── */
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 5vw, 30px);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #f4f1fb 30%, var(--accent-soft));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Descripción ── */
+    p.desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 420px;
+      margin: 0 auto 32px;
+    }
+    p.desc strong {
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* ── Barra de progreso de migración ── */
+    .progress-wrap {
+      margin-bottom: 32px;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .progress-label span {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .progress-label .progress-pct {
+      color: var(--gold-bright);
+      font-family: var(--font-display);
+      font-size: 12px;
+    }
+    .progress-track {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--gold) 100%);
+      border-radius: 99px;
+      animation: fill-bar 3.5s cubic-bezier(.4,0,.2,1) forwards;
+      position: relative;
+    }
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 100%;
+      width: 30px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35));
+      animation: shimmer 1.5s linear infinite;
+    }
+    @keyframes fill-bar {
+      0%   { width: 0%; }
+      60%  { width: 62%; }
+      80%  { width: 68%; }
+      100% { width: 72%; }
+    }
+    @keyframes shimmer {
+      from { opacity: 0; transform: translateX(-10px); }
+      50%  { opacity: 1; }
+      to   { opacity: 0; transform: translateX(10px); }
+    }
+
+    /* ── Items de estado de tareas ── */
+    .tasks {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 36px;
+      text-align: left;
+    }
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .task-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .task.done   .task-icon { background: rgba(53, 212, 136, 0.15); color: #35d488; }
+    .task.active .task-icon { background: rgba(240, 180, 41, 0.15); color: var(--gold); animation: spin-slow 3s linear infinite; }
+    .task.pending .task-icon { background: rgba(255,255,255,0.05); color: #4a3f6b; }
+    .task.done   { color: var(--text-main); }
+    .task.active { color: var(--text-main); border-color: rgba(240, 180, 41, 0.25); }
+
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ── Formulario de notificación ── */
+    .notify-section {
+      border-top: 1px solid var(--line);
+      padding-top: 28px;
+      margin-top: 4px;
+    }
+    .notify-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .notify-sub {
+      font-size: 13px;
+      color: #6b5ba8;
+      margin-bottom: 16px;
+    }
+    .notify-row {
+      display: flex;
+      gap: 10px;
+    }
+    .notify-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 0;
+    }
+    .notify-input::placeholder { color: #4a3f6b; }
+    .notify-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+    }
+    .notify-input.error {
+      border-color: #ff6b6b;
+      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+    }
+    .notify-btn {
+      background: linear-gradient(135deg, var(--accent) 0%, #5b21b6 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.15s;
+      flex-shrink: 0;
+    }
+    .notify-btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .notify-btn:active:not(:disabled) { transform: translateY(0); }
+    .notify-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Estado de feedback */
+    .notify-feedback {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+      text-align: left;
+    }
+    .notify-feedback.show { display: flex; }
+    .notify-feedback.success {
+      background: rgba(53, 212, 136, 0.1);
+      border: 1px solid rgba(53, 212, 136, 0.25);
+      color: #35d488;
+    }
+    .notify-feedback.error-msg {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.25);
+      color: #ff6b6b;
+    }
+    .notify-feedback-icon { font-size: 16px; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    .footer {
+      position: relative;
+      z-index: 1;
+      margin-top: 28px;
+      font-size: 12px;
+      color: #4a3f6b;
+      text-align: center;
+    }
+    .footer a {
+      color: #6b5ba8;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer a:hover { color: var(--accent-soft); }
+
+    /* ── Responsive mobile ── */
+    @media (max-width: 480px) {
+      .card { padding: 36px 24px 32px; }
+      h1 { font-size: 20px; }
+    }
+
+    /* ── Respeto por prefers-reduced-motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      .progress-bar { animation: fill-bar 0.1s forwards; }
+      .progress-bar::after, .orb, .badge-dot, .task.active .task-icon { animation: none; }
+    }
+  </style>
 </head>
+<body>
 
-<body class="mr-root macro-consolidado">
+  <!-- Orbes de luz de fondo -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
 
-<!-- NAVBAR -->
-<nav class="navbar">
-  <a href="index.html" class="nav-logo">
-    <img src="imagenes/logo.png" alt="MacroReborn">
-    MacroReborn
-  </a>
-  <a href="comunidad-ranking.html" class="nav-boton-comunidad">Comunidad</a>
-  <div class="nav-links">
-    <a href="explorar.html">🧭 Explorar</a>
-    <a href="mi-dia.html">🔥 Mi día</a>
-    <a href="progreso.html">🎯 Progreso</a>
-    <a href="liga-global.html">🏆 Ligas</a>
-  </div>
-  <div class="nav-categorias">
-    <a href="chat.html">💬 Chat</a>
-    <a href="amigos.html">👥 Amigos</a>
-    <a href="juegos.html">🎮 Juegos</a>
-    <a href="noticias.html">📰 Noticias</a>
-  </div>
-</nav>
+  <!-- Estrellas animadas -->
+  <canvas id="starfield"></canvas>
 
+  <!-- Card principal -->
+  <main class="card" role="main">
 
-<!-- PORTAL DE JUEGOS 2.0
-     Bloque nuevo: no elimina el Hero ni las secciones originales.
-     Se coloca primero para que la portada funcione como portal de juegos
-     y las secciones existentes sigan intactas debajo. -->
-<section class="portal-home-header" aria-labelledby="portalHomeTitulo">
-  <div class="portal-home-grid" aria-hidden="true"></div>
-  <div class="portal-home-glow portal-home-glow-1" aria-hidden="true"></div>
-  <div class="portal-home-glow portal-home-glow-2" aria-hidden="true"></div>
-  <div class="portal-home-contenido">
-    <span class="portal-kicker">🎮 MACROREBORN · PORTAL DE JUEGOS</span>
-    <h1 id="portalHomeTitulo" class="portal-home-titulo">JUGÁ. SUBÍ DE NIVEL. COMPETÍ.</h1>
-    <p class="portal-home-subtitulo">Descubrí juegos nuevos, retomá tus favoritos, competí con la comunidad y convertí cada partida en progreso para tu perfil.</p>
-    <form class="portal-home-busqueda" id="portalHomeBusqueda" role="search">
-      <span aria-hidden="true">🔍</span>
-      <input id="portalHomeBusquedaInput" name="q" type="search" autocomplete="off" placeholder="Buscar juegos, categorías o clásicos..." aria-label="Buscar juegos, categorías o clásicos">
-      <button type="submit">Buscar</button>
-    </form>
-    <div class="portal-home-accesos" aria-label="Accesos rápidos">
-      <a href="juegos.html?orden=jugados">🔥 Más jugados</a>
-      <a href="juegos.html?orden=nuevos">🆕 Nuevos</a>
-      <a href="juegos.html?orden=valorados">⭐ Mejor valorados</a>
-      <a href="juegos.html?orden=trending">📈 Tendencias</a>
-      <a href="juegos.html?categoria=Acción">⚔️ Acción</a>
-      <a href="juegos.html?categoria=RPG">🧙 RPG</a>
-      <a href="juegos.html?categoria=Carreras">🏎️ Carreras</a>
-      <a href="juegos.html?categoria=Retro">👾 Retro</a>
-    </div>
-  </div>
-</section>
-
-<main class="portal-home-main" id="portalHomeMain">
-  <section class="portal-seccion" id="portalSeccionContinuar" hidden>
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">TU ACTIVIDAD</span><h2>▶ Continuar jugando</h2></div>
-      <a href="perfil.html">Ver mi historial →</a>
-    </div>
-    <div class="portal-juego-grid" id="homeContinuar"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">DESTACADOS</span><h2>🌟 Juegos que deberías probar</h2></div>
-      <a href="juegos.html">Ver catálogo →</a>
-    </div>
-    <div class="portal-juego-grid portal-juego-grid-feature" id="homeDestacados"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">AHORA MISMO</span><h2>🔥 Tendencias</h2></div>
-      <a href="juegos.html?orden=trending">Ver tendencias →</a>
-    </div>
-    <div class="portal-juego-grid" id="homeTrending"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">POPULARIDAD</span><h2>👑 Más jugados</h2></div>
-      <a href="juegos.html?orden=jugados">Ver ranking de juegos →</a>
-    </div>
-    <div class="portal-juego-grid" id="homeMasJugados"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">CATÁLOGO</span><h2>🆕 Recién llegados</h2></div>
-      <span class="portal-catalogo-total">Más de <b id="homeTotalJuegos">0</b> juegos disponibles</span>
-    </div>
-    <div class="portal-juego-grid" id="homeNuevos"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">COMUNIDAD</span><h2>⭐ Mejor valorados</h2></div>
-      <a href="juegos.html?orden=valorados">Ver todos →</a>
-    </div>
-    <div class="portal-juego-grid" id="homeMejorValorados"></div>
-  </section>
-
-  <section class="portal-seccion">
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">DESCUBRÍ</span><h2>🧭 Explorar por categoría</h2></div>
-      <a href="categoria.html">Todas las categorías →</a>
-    </div>
-    <div class="portal-categorias-grid" id="homeCategorias"></div>
-  </section>
-
-  <section class="portal-seccion portal-seccion-personal" id="portalSeccionPersonal" hidden>
-    <div class="portal-seccion-header">
-      <div><span class="portal-kicker">TU CUENTA</span><h2>🎮 Tu centro gamer</h2></div>
-      <a href="perfil.html">Abrir perfil →</a>
-    </div>
-    <div class="portal-dashboard" id="homeDashboard"></div>
-  </section>
-
-  <section class="macro-home-hub" aria-labelledby="macroHomeHubTitle">
-    <div class="macro-home-hub-heading">
-      <div>
-        <span class="portal-kicker">CENTRO MACROREBORN</span>
-        <h2 id="macroHomeHubTitle">🚀 Todo tu MacroReborn en un solo lugar</h2>
-        <p>Entrá a tus funciones principales sin salir de la portada: descubrí juegos, mantené tu racha, subí de nivel y competí con la comunidad.</p>
-      </div>
-      <a class="macro-home-hub-primary" href="explorar.html">🧭 Abrir Explorar</a>
+    <div class="logo-wrap">
+      <img src="imagenes/logo.png" alt="MacroReborn"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+      <span class="logo-fallback" style="display:none">MR</span>
     </div>
 
-    <div class="macro-home-hub-grid">
-      <a class="macro-home-hub-card" href="explorar.html">
-        <span class="macro-home-hub-icon">🧭</span>
-        <strong>Explorar</strong>
-        <span>Encuentra juegos por tendencias, novedades, valoración y categorías.</span>
-        <small>Descubrimiento →</small>
-      </a>
-      <a class="macro-home-hub-card" href="mi-dia.html">
-        <span class="macro-home-hub-icon">🔥</span>
-        <strong>Mi día</strong>
-        <span>Racha, misión diaria, misión semanal y desafío global.</span>
-        <small>Volver cada día →</small>
-      </a>
-      <a class="macro-home-hub-card" href="progreso.html">
-        <span class="macro-home-hub-icon">🎯</span>
-        <strong>Progreso</strong>
-        <span>Controla XP, nivel, monedas, retos y tu avance general.</span>
-        <small>Ver progreso →</small>
-      </a>
-      <a class="macro-home-hub-card" href="liga-global.html">
-        <span class="macro-home-hub-icon">🏆</span>
-        <strong>Ligas</strong>
-        <span>Compite por posición y descubre quién está subiendo.</span>
-        <small>Competir →</small>
-      </a>
-      <a class="macro-home-hub-card" href="actividad-comunidad.html">
-        <span class="macro-home-hub-icon">🌐</span>
-        <strong>Comunidad</strong>
-        <span>Mira actividad reciente, amigos y jugadores conectados.</span>
-        <small>Ver actividad →</small>
-      </a>
-      <a class="macro-home-hub-card" href="perfil.html">
-        <span class="macro-home-hub-icon">👤</span>
-        <strong>Mi perfil</strong>
-        <span>Tu identidad gamer: estadísticas, favoritos, amigos y progreso.</span>
-        <small>Ver perfil →</small>
-      </a>
-    </div>
-  </section>
-
-  <section class="portal-home-community" aria-label="Comunidad MacroReborn">
-    <div>
-      <span class="portal-kicker">COMUNIDAD VIVA</span>
-      <h2>👥 Tu partida también puede ser social</h2>
-      <p>Agregá amigos, mirá su actividad, competí en el ranking, desbloqueá logros y mantené tu identidad gamer creciendo mientras jugás.</p>
-    </div>
-    <div class="portal-community-actions">
-      <a href="comunidad-ranking.html">🏆 Ranking</a>
-      <a href="amigos.html">👥 Amigos</a>
-      <a href="chat.html">💬 Chat</a>
-      <a href="comunidad.html">🌐 Comunidad</a>
-    </div>
-  </section>
-</main>
-
-<!-- HERO -->
-<header class="hero" id="pantalla-inicio">
-  <div class="orbe orbe-1"></div>
-  <div class="orbe orbe-2"></div>
-  <div class="orbe orbe-3"></div>
-
-  <div class="hero-contenido">
-
-    <span class="eyebrow"><span class="punto"></span> Plataforma de juegos y comunidad</span>
-
-    <div class="logo-wrapper">
-      <img src="imagenes/logo.png" id="logo" alt="Logo MacroReborn">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Migración en curso
     </div>
 
-    <h1 class="titulo-principal">MacroReborn</h1>
+    <h1>Estamos preparando<br>algo mejor para vos</h1>
 
-    <p class="subtitulo">✦ El renacimiento ✦</p>
-
-    <p class="descripcion">
-      Una nueva comunidad de juegos.<br>
+    <p class="desc">
+      MacroReborn está en <strong>mantenimiento</strong> por una migración de servidores.
+      Pronto volvemos con todo el catálogo de juegos, la comunidad y tus partidas guardadas.
     </p>
 
-    <!-- Bienvenida dinámica: por defecto muestra opciones de invitado.       -->
-    <!-- Si hay una sesión activa, el script al final del body la reemplaza  -->
-    <!-- por un saludo personalizado, sin tocar el sistema de sesión real.   -->
-    <div id="bienvenidaInvitado" class="menu-inicio">
-      <a href="login.html" class="boton boton-primario">📝 Iniciar sesión</a>
-      <a href="registro.html" class="boton boton-secundario">✨ Registrarse</a>
-      <a href="juegos.html" class="boton boton-secundario">🎮 Ver juegos</a>
-    </div>
-
-    <div id="bienvenidaUsuario" class="bienvenida-usuario" style="display:none;">
-      <div id="avatarBienvenida" class="avatar-mini"><img src="imagenes/avatar.png" alt="Avatar"></div>
-      <div class="texto">
-        <div>¡Hola de nuevo, <b id="bienvenidaNombre">jugador</b>! 👋</div>
-        <span id="bienvenidaNivel"></span>
+    <!-- Barra de progreso -->
+    <div class="progress-wrap" aria-label="Progreso de la migración">
+      <div class="progress-label">
+        <span>Progreso de migración</span>
+        <span class="progress-pct" id="pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" id="bar"></div>
       </div>
     </div>
-    <div id="bienvenidaUsuarioAcciones" class="menu-inicio" style="display:none;">
-      <a href="juegos.html" class="boton boton-primario">🎮 Jugar ahora</a>
-      <a href="perfil.html" class="boton boton-secundario">👤 Mi perfil</a>
-      <a href="amigos.html" class="boton boton-secundario">👥 Mis amigos</a>
+
+    <!-- Tareas de migración -->
+    <ul class="tasks" aria-label="Estado de tareas">
+      <li class="task done">
+        <span class="task-icon" aria-hidden="true">✓</span>
+        Backup de base de datos completado
+      </li>
+      <li class="task done">
+        <span class="task-icon" aria-hidden="true">✓</span>
+        Archivos del catálogo transferidos
+      </li>
+      <li class="task active">
+        <span class="task-icon" aria-hidden="true">⚙</span>
+        Configurando nuevo servidor — en proceso
+      </li>
+      <li class="task pending">
+        <span class="task-icon" aria-hidden="true">○</span>
+        Pruebas finales y publicación
+      </li>
+    </ul>
+
+    <!-- Formulario de notificación -->
+    <div class="notify-section">
+      <p class="notify-label">Avisame cuando vuelva</p>
+      <p class="notify-sub">Te mandamos un mail en cuanto el sitio esté disponible.</p>
+
+      <div class="notify-row">
+        <input
+          class="notify-input"
+          id="notify-email"
+          type="email"
+          placeholder="tu@email.com"
+          autocomplete="email"
+          aria-label="Tu dirección de email"
+          maxlength="254"
+        >
+        <button class="notify-btn" id="notify-btn" type="button">
+          Avisame
+        </button>
+      </div>
+
+      <div class="notify-feedback" id="notify-success" role="alert">
+        <span class="notify-feedback-icon">✓</span>
+        <span>¡Listo! Te avisamos cuando MacroReborn esté de vuelta.</span>
+      </div>
+      <div class="notify-feedback error-msg" id="notify-error" role="alert">
+        <span class="notify-feedback-icon">!</span>
+        <span id="notify-error-text">Algo salió mal. Intentá de nuevo.</span>
+      </div>
     </div>
 
-    <p class="estado-servidor"><span class="punto"></span> Servidor en línea</p>
-  </div>
+  </main>
 
-  <div class="scroll-cue">⌄</div>
-</header>
+  <footer class="footer">
+    © 2025 MacroReborn — <a href="mailto:soporte@macroreborn.com">soporte@macroreborn.com</a>
+  </footer>
 
-<!-- ACCESOS RÁPIDOS -->
-<div class="accesos">
-  <a href="comunidad.html" class="acceso-card"><span class="icono">🌐</span><span>Comunidad</span></a>
-  <a href="juegos.html" class="acceso-card"><span class="icono">🎮</span><span>Juegos</span></a>
-  <a href="ranking.html" class="acceso-card"><span class="icono">🏆</span><span>Ranking</span></a>
-  <a href="amigos.html" class="acceso-card"><span class="icono">👥</span><span>Amigos</span></a>
-  <a href="chat.html" class="acceso-card"><span class="icono">💬</span><span>Chat</span></a>
-  <a href="noticias.html" class="acceso-card"><span class="icono">📰</span><span>Noticias</span></a>
-</div>
+  <script>
+    /* ── Contador de porcentaje sincronizado con la barra CSS ── */
+    (function () {
+      const pct   = document.getElementById('pct');
+      const bar   = document.getElementById('bar');
+      const target = 72;
+      const dur    = 3500;
+      const start  = performance.now();
 
-<div id="personalizacionHome"></div>
+      function ease(t) { return t < .5 ? 2*t*t : -1+(4-2*t)*t; }
 
-<!-- QUÉ OFRECE LA PLATAFORMA -->
-<section class="seccion macro-legacy-offer">
-  <div class="seccion-cabecera">
-    <span class="seccion-eyebrow">Un solo lugar para todo</span>
-    <h2>Qué te espera en MacroReborn</h2>
-  </div>
+      function tick(now) {
+        const t = Math.min((now - start) / dur, 1);
+        const v = Math.round(ease(t) * target);
+        pct.textContent = v + '%';
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
 
-  <div class="grid-ofrece">
-    <div class="card-ofrece mr-notched">
-      <div class="icono">🎮</div>
-      <h3>Juegos</h3>
-      <p>Un catálogo en crecimiento para jugar directo desde el navegador, sin instalar nada.</p>
-    </div>
-    <div class="card-ofrece mr-notched">
-      <div class="icono">🌐</div>
-      <h3>Comunidad</h3>
-      <p>Descubrí quién está conectado ahora mismo y conocé jugadores con tus mismos gustos.</p>
-    </div>
-    <div class="card-ofrece mr-notched">
-      <div class="icono">👥</div>
-      <h3>Amigos</h3>
-      <p>Agregá amigos, seguí su actividad y armá tu propio círculo dentro de la plataforma.</p>
-    </div>
-    <div class="card-ofrece mr-notched">
-      <div class="icono">💬</div>
-      <h3>Chat</h3>
-      <p>Charlá con la comunidad en tiempo real, sin salir de MacroReborn.</p>
-    </div>
-    <div class="card-ofrece mr-notched">
-      <div class="icono">🏆</div>
-      <h3>Ranking</h3>
-      <p>Sumá XP jugando, subí de nivel y escalá posiciones en la tabla general.</p>
-    </div>
-    <div class="card-ofrece mr-notched">
-      <div class="icono">🧑‍🎨</div>
-      <h3>Perfiles y avatares</h3>
-      <p>Personalizá tu avatar capa por capa y mostrá tu progreso en tu perfil público.</p>
-    </div>
-  </div>
-</section>
+    /* ── Formulario de notificación (Formspree) ── */
+    (function () {
+      // 👇 Reemplazá este ID con el tuyo de formspree.io (gratis)
+      const FORMSPREE_ID = 'TU_ID_AQUI';
 
-<!-- BANDA NOSTALGIA -->
-<div class="banda-nostalgia">
-  <p>Hecho por y para quienes crecimos jugando en la web · <b>MacroReborn</b> es ese renacimiento</p>
-</div>
+      const input    = document.getElementById('notify-email');
+      const btn      = document.getElementById('notify-btn');
+      const success  = document.getElementById('notify-success');
+      const errorBox = document.getElementById('notify-error');
+      const errorTxt = document.getElementById('notify-error-text');
 
-<!-- FOOTER -->
-<footer class="pie-footer">
-  <div class="pie-contenido">
-    <div class="pie-marca">
-      <a href="index.html" class="nav-logo">
-        <img src="imagenes/logo.png" alt="MacroReborn">
-        MacroReborn
-      </a>
-      <p>Una comunidad de juegos con nostalgia de portal clásico y alma moderna.</p>
-      <p class="estado-servidor"><span class="punto"></span> Servidor en línea</p>
-    </div>
+      function isValidEmail(v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+      }
 
-    <div class="pie-columna">
-      <h4>Plataforma</h4>
-      <a href="juegos.html">Juegos</a>
-      <a href="ranking.html">Ranking</a>
-      <a href="comunidad.html">Comunidad</a>
-      <a href="noticias.html">Noticias</a>
-    </div>
+      btn.addEventListener('click', async () => {
+        const email = input.value.trim();
 
-    <div class="pie-columna">
-      <h4>Cuenta</h4>
-      <a href="login.html">Iniciar sesión</a>
-      <a href="registro.html">Registrarse</a>
-      <a href="perfil.html">Mi perfil</a>
-      <a href="notificaciones.html">Notificaciones</a>
-    </div>
+        // Reset estado anterior
+        input.classList.remove('error');
+        success.classList.remove('show');
+        errorBox.classList.remove('show');
 
-    <div class="pie-columna">
-      <h4>Social</h4>
-      <a href="amigos.html">Amigos</a>
-      <a href="chat.html">Chat</a>
-    </div>
-  </div>
+        if (!email) {
+          input.classList.add('error');
+          input.focus();
+          errorTxt.textContent = 'Ingresá tu email para recibir el aviso.';
+          errorBox.classList.add('show');
+          return;
+        }
+        if (!isValidEmail(email)) {
+          input.classList.add('error');
+          input.focus();
+          errorTxt.textContent = 'El email no parece válido. Revisalo.';
+          errorBox.classList.add('show');
+          return;
+        }
 
-  <div class="pie-inferior">
-    <span>© 2026 MacroReborn. Todos los derechos reservados.</span>
-    <span>Hecho con 💛 para la vieja escuela de los juegos web.</span>
-  </div>
-</footer>
+        btn.disabled = true;
+        btn.textContent = 'Enviando…';
 
-<script defer src="js/core.js"></script>
-<script defer src="js/api-client.js"></script>
-<script defer src="js/session.js"></script>
-<script defer src="js/app-shell.js"></script>
+        try {
+          const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+            method:  'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ email, _subject: 'Nuevo aviso MacroReborn — mantenimiento' })
+          });
 
-<script defer src="js/modal.js"></script>
-<script defer src="js/motor/permisos.js"></script>
-<script defer src="js/notificaciones.js"></script>
-<script defer src="https://js.pusher.com/8.4/pusher.min.js"></script>
-<script defer src="js/realtime.js"></script>
-<script defer src="js/navbar.js"></script>
-<script defer src="js/datos-juegos.js"></script>
-<script defer src="js/home-portal.js"></script>
-<script defer src="js/buscador.js"></script>
-<script defer src="js/nav-toggle.js"></script>
-<script defer src="js/personalizacion.js"></script>
-<script defer src="js/descubrimiento.js"></script>
-<script defer src="js/retos-diarios.js"></script>
-<script defer src="js/portal-extra.js"></script>
+          if (res.ok) {
+            input.value = '';
+            input.style.display = 'none';
+            btn.style.display   = 'none';
+            success.classList.add('show');
+          } else {
+            const data = await res.json().catch(() => ({}));
+            errorTxt.textContent = data?.errors?.[0]?.message || 'Error al enviar. Intentá de nuevo.';
+            errorBox.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Avisame';
+          }
+        } catch (_) {
+          errorTxt.textContent = 'Sin conexión. Revisá tu internet e intentá de nuevo.';
+          errorBox.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = 'Avisame';
+        }
+      });
 
-<script>
-// ==============================================================
-// Bienvenida personalizada — puramente visual / de solo lectura.
-// No modifica localStorage ni ningún sistema existente: solo lee
-// "usuarioActivo" (igual que navbar.js) para decidir qué bloque
-// de bienvenida mostrar en el hero.
-// ==============================================================
-// NOTA RENDIMIENTO: los scripts externos de esta página ahora cargan
-// con el atributo "defer" (no bloquean el pintado inicial). Como este
-// bloque depende
-// de avatarMiniaturaHTML() de js/core.js, se espera a
-// "DOMContentLoaded" (momento en el que TODOS los scripts con defer
-// ya terminaron de ejecutarse) antes de correr, para no perder esa
-// dependencia.
-document.addEventListener("DOMContentLoaded", function () {
-(function () {
-  try {
-    var usuario = (window.MRSession && typeof MRSession.get === "function")
-      ? MRSession.get()
-      : JSON.parse(localStorage.getItem("usuarioActivo") || "null");
-    if (!usuario) return;
+      // También submit con Enter en el input
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') btn.click();
+      });
+    })();
 
-    var invitado = document.getElementById("bienvenidaInvitado");
-    var usuarioBox = document.getElementById("bienvenidaUsuario");
-    var usuarioAcciones = document.getElementById("bienvenidaUsuarioAcciones");
-    var nombreEl = document.getElementById("bienvenidaNombre");
-    var nivelEl = document.getElementById("bienvenidaNivel");
-    var avatarEl = document.getElementById("avatarBienvenida");
+    /* ── Starfield (canvas de estrellas) ── */
+    (function () {
+      const canvas = document.getElementById('starfield');
+      const ctx    = canvas.getContext('2d');
+      let stars    = [];
 
-    if (invitado) invitado.style.display = "none";
-    if (usuarioBox) usuarioBox.style.display = "flex";
-    if (usuarioAcciones) usuarioAcciones.style.display = "flex";
-    if (nombreEl) nombreEl.textContent = usuario.nombre || "jugador";
-    if (nivelEl && usuario.nivel) nivelEl.textContent = "⭐ Nivel " + usuario.nivel;
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+        init();
+      }
 
-    // FIX: acá siempre se quedaba el avatar por defecto
-    // (imagenes/avatar.png), nunca el avatar real armado por la
-    // persona en perfil.html. El avatar viaja embebido en
-    // "usuarioActivo" (users.avatar, Neon) desde que inició sesión, así
-    // que alcanza con reutilizar avatarMiniaturaHTML() de js/core.js
-    // (misma función que ya usan el buscador, comentarios, etc.) en
-    // vez de dejar el <img> estático del HTML.
-    if (avatarEl && typeof avatarMiniaturaHTML === "function") {
-      avatarEl.innerHTML = avatarMiniaturaHTML(usuario.avatar);
-    }
-  } catch (e) {
-    // Si algo falla, se mantiene la vista de invitado por defecto.
-  }
-})();
-});
-</script>
+      function init() {
+        stars = Array.from({ length: 120 }, () => ({
+          x:  Math.random() * canvas.width,
+          y:  Math.random() * canvas.height,
+          r:  Math.random() * 1.2 + 0.3,
+          a:  Math.random(),
+          da: (Math.random() * 0.003 + 0.001) * (Math.random() > .5 ? 1 : -1)
+        }));
+      }
 
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const s of stars) {
+          s.a += s.da;
+          if (s.a > 1 || s.a < 0) s.da *= -1;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(196, 181, 253, ${s.a})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      draw();
+    })();
+  </script>
 </body>
 </html>
