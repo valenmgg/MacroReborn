@@ -41,6 +41,7 @@ const monedasService = new MonedasService(sql);
 // GET  /api/content?action=activity&username=X
 // POST /api/content?action=activity          { username, tipo, detalle }
 // GET  /api/content?action=activity-friends&usernames=a,b,c
+// GET  /api/content?action=activity-mentions&username=X
 //
 // GET  /api/content?action=favorites&username=X
 // POST /api/content?action=favorites   { username, gameId }
@@ -623,6 +624,59 @@ async function activityFriends(req, res) {
       AND (
         a.tipo IN ('resena', 'like_juego', 'amigo', 'logro')
         OR (a.tipo = 'comentario' AND a.detalle ~ '@[A-Za-z0-9_]{3,20}')
+      )
+    ORDER BY a.id DESC
+    LIMIT 20;
+  `;
+
+  return res.status(200).json({ success: true, actividades: filas });
+}
+
+// ==============================
+// "Actividad reciente" del perfil PROPIO — mensajes que otros le
+// dejaron a este usuario (no lo que este usuario hizo). A diferencia
+// de activity()/activityFriends(), acá NO importa quién es el autor
+// (no hace falta ser amigo favorito) ni en qué perfil/chat se escribió:
+// se buscan comentarios y reseñas de CUALQUIER usuario cuyo texto lo
+// mencione con "@usuario" (límite de palabra vía \M, para que
+// "@juan" no matchee "@juancito"). Se devuelve el "detalle" completo,
+// sin recortar, para que el front pueda mostrar el mensaje entero.
+//
+// GET /api/content?action=activity-mentions&username=X
+// ==============================
+
+async function activityMentions(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ success: false, error: "Método no permitido" });
+  }
+
+  const { username, viewer } = req.query;
+  if (!validarViewer(req, res, viewer)) return;
+  if (!username) {
+    return res.status(400).json({ success: false, error: "Falta username" });
+  }
+
+  if (viewer) {
+    const permitido = await accesoPerfilPermitido(username, viewer);
+    if (!permitido) return res.status(200).json({ success: true, actividades: [] });
+  }
+
+  const userId = await getUserId(username);
+  if (!userId) {
+    return res.status(200).json({ success: true, actividades: [] });
+  }
+
+  const filas = await sql`
+    SELECT u.username, a.tipo, a.detalle, a.created_at
+    FROM activity_log a
+    JOIN users u ON u.id = a.user_id
+    WHERE a.tipo IN ('comentario', 'resena')
+      AND a.detalle ~* ('@' || ${username} || '\\M')
+      AND LOWER(u.username) <> LOWER(${username})
+      AND NOT EXISTS (
+        SELECT 1 FROM user_blocks b
+        WHERE (b.blocker_id = ${userId} AND b.blocked_id = a.user_id)
+           OR (b.blocker_id = a.user_id AND b.blocked_id = ${userId})
       )
     ORDER BY a.id DESC
     LIMIT 20;
@@ -1626,6 +1680,7 @@ module.exports = async function handler(req, res) {
     if (action === "notifications-mark-read") return await notificationsMarkRead(req, res);
     if (action === "activity") return await activity(req, res);
     if (action === "activity-friends") return await activityFriends(req, res);
+    if (action === "activity-mentions") return await activityMentions(req, res);
     if (action === "favorites") return await favorites(req, res);
     if (action === "game-history") return await gameHistory(req, res);
     if (action === "games-overview") return await gamesOverview(req, res);

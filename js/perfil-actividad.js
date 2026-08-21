@@ -45,6 +45,12 @@ function avatarMiniActividad(nombre){
 
 
 // ---------- ACTIVIDAD RECIENTE (propia) ----------
+// Ya no muestra lo que el dueño del perfil hizo (eso lo sigue mostrando
+// usuario.html, sin cambios, cuando alguien más visita este perfil):
+// acá se listan los mensajes que OTROS jugadores le dejaron
+// mencionándolo con "@usuario", con el texto completo — ver
+// obtenerMencionesRecibidas()/renderizarMencionRecibidaHTML() en
+// js/motor/actividad.js.
 
 async function renderActividadReciente(){
   const contenedor = document.getElementById("listaActividadReciente");
@@ -55,23 +61,23 @@ async function renderActividadReciente(){
     : ((window.MRSession && typeof MRSession.get === "function") ? MRSession.get() : datosUsuario);
   if(!usuarioActual || !usuarioActual.nombre) return;
 
-  const lista = await obtenerActividades(usuarioActual.nombre);
+  const lista = await obtenerMencionesRecibidas(usuarioActual.nombre);
 
   if(lista.length === 0){
-    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía no tenés actividad registrada.</p>`;
+    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía no te dejaron mensajes ni te mencionaron.</p>`;
     return;
   }
 
-  // FIX: avatarMiniActividad() lee el avatar de _cacheAvatares (js/core.js),
-  // una caché pensada para el avatar de OTROS usuarios (chat, comentarios,
-  // actividad de amigos). El propio nunca se guarda ahí, así que sin esta
-  // línea el nuevo encabezado con avatar (ver renderizarActividadHTML en
-  // js/motor/actividad.js) mostraría siempre el avatar por defecto en esta
-  // pestaña en vez del avatar real del dueño del perfil.
-  _cacheAvatares[usuarioActual.nombre] = normalizarAvatar(usuarioActual.avatar);
+  // avatarMiniActividad() lee el avatar de cada autor desde
+  // _cacheAvatares (js/core.js); acá los autores son OTROS usuarios
+  // (quienes mencionaron al dueño del perfil), así que sí hay que
+  // precargarlos, igual que en renderActividadAmigos().
+  if(typeof cargarAvataresDeVarios === "function"){
+    await cargarAvataresDeVarios(lista.map(a => a.autor));
+  }
 
   contenedor.innerHTML = lista.map(a =>
-    renderizarActividadHTML(usuarioActual.nombre, a.tipo, a.detalle, a.fecha, a.hora, avatarMiniActividad)
+    renderizarMencionRecibidaHTML(a.autor, a.mensaje, a.fecha, a.hora, avatarMiniActividad)
   ).join("");
 }
 

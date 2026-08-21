@@ -343,6 +343,68 @@ async function obtenerActividadesDe(nombres){
 }
 
 
+// ---------- MENSAJES RECIBIDOS (menciones que OTROS te hicieron) ----------
+// Para "Actividad reciente" del perfil PROPIO: ya no se muestra lo que
+// el dueño del perfil hizo (eso lo sigue mostrando usuario.html cuando
+// alguien más visita el perfil, vía obtenerActividades()), sino los
+// mensajes que otros jugadores le dejaron mencionándolo con
+// "@usuario", con el texto COMPLETO (sin el recorte de
+// previewComentario, que es para las tarjetas de "hiciste tal cosa").
+
+function _textoCompletoMencionRecibida(tipo, detalle){
+  if(tipo === "resena") return _desempaquetarJuego(detalle).texto || "";
+  return detalle || "";
+}
+
+async function obtenerMencionesRecibidas(nombre){
+  if(!nombre) return [];
+
+  try{
+    const resp = await fetch("/api/content?action=activity-mentions&username=" + encodeURIComponent(nombre));
+    const datos = await resp.json();
+    if(!datos || !datos.success) return [];
+
+    return datos.actividades.map(a=>{
+      const fechaObj = new Date(a.created_at);
+      return {
+        autor: a.username,
+        tipo: a.tipo,
+        mensaje: _actividadEscaparHTML(_textoCompletoMencionRecibida(a.tipo, a.detalle)),
+        fecha: fechaObj.toLocaleDateString("es-AR"),
+        hora: fechaObj.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: fechaObj.getTime()
+      };
+    });
+  }catch(error){
+    console.warn("MacroReborn: no se pudieron cargar los mensajes recibidos.", error);
+    return [];
+  }
+}
+
+// autor: quién te mencionó. mensaje: el texto completo ya escapado
+// (viene de obtenerMencionesRecibidas). avatarHTMLFn: igual que en
+// renderizarActividadHTML, cada pantalla arma su propio avatar.
+function renderizarMencionRecibidaHTML(autor, mensaje, fecha, hora, avatarHTMLFn){
+  const autorEscapado = _actividadEscaparHTML(autor);
+  const autorHref = _actividadEnlaceUsuario(autor);
+  const avatarHTML = typeof avatarHTMLFn === "function" ? avatarHTMLFn(autor) : "";
+
+  return `
+    <div class="actividad actividad-rica actividad-mensaje-recibido">
+      <div class="actividad-fila-principal">
+        <a href="${autorHref}" class="actividad-avatar-link" aria-label="Ver perfil de ${autorEscapado}">${avatarHTML}</a>
+        <div class="actividad-contenido">
+          <div class="actividad-linea"><a href="${autorHref}" class="actividad-nombre-autor">${autorEscapado}</a> te escribió:</div>
+          <div class="actividad-cita">
+            <span class="actividad-cita-texto">${mensaje}</span>
+          </div>
+          <div class="actividad-fecha">${fecha} · ${hora}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ==============================
 // RENDER ENRIQUECIDO (avatar + nombre del autor + mención clickeable
 // + tarjeta-cita) — agregado aparte, no reemplaza nada de arriba
