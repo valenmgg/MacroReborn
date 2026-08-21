@@ -7,6 +7,26 @@
 
 
 /* ================================================================
+   0. FIX ESTRUCTURAL MÓVIL — la navbar pierde el flex en mobile
+   ----------------------------------------------------------------
+   css/inicio.css trae una capa vieja ("NAVBAR RETRO / ESTILO
+   MACROJUEGOS") que fuerza `.navbar { display: grid !important; }`
+   con columnas fijas pensadas para escritorio, sin ningún @media
+   que las adapte a pantallas chicas. Como esta hoja se carga
+   después, reafirmamos acá el flex SOLO en mobile: así vuelven a
+   funcionar el order/flex-wrap de abajo (que ya estaban escritos
+   para flex) y el toggle deja de quedar cortado fuera de pantalla.
+   No toca nada del layout de escritorio (ese grid queda intacto). */
+@media (max-width: 768px) {
+  body.macro-consolidado .navbar,
+  body.mr-root .navbar,
+  .navbar {
+    display: flex !important;
+  }
+}
+
+
+/* ================================================================
    1. TOP BAR — fondo, estructura y espaciado
    ================================================================ */
 
@@ -519,8 +539,8 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     box-sizing: border-box !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    background: #16264d !important;
-    border: 1px solid #35528f !important;
+    background: #1e0e3e !important;
+    border: 1px solid #3d2166 !important;
     border-radius: 9px !important;
     box-shadow: 0 12px 28px rgba(0,0,0,.32) !important;
     z-index: 120 !important;
@@ -549,9 +569,9 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     border-bottom: 1px solid rgba(255,255,255,.08) !important;
     border-radius: 6px !important;
     background: transparent !important;
-    color: #edf3ff !important;
+    color: #f4f1fb !important;
     text-decoration: none !important;
-    font: 700 14px/1.2 Arial, Helvetica, sans-serif !important;
+    font: 700 14px/1.2 var(--font-body) !important;
     white-space: nowrap !important;
   }
 
@@ -575,8 +595,8 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     margin: 7px 4px 2px !important;
     padding: 7px 8px 6px !important;
     border-top: 1px solid rgba(255,255,255,.15) !important;
-    color: #9fb4e8 !important;
-    font: 700 10px/1.2 Arial, Helvetica, sans-serif !important;
+    color: #bfaedd !important;
+    font: 700 10px/1.2 var(--font-body) !important;
     text-transform: uppercase !important;
     letter-spacing: .45px !important;
   }
@@ -592,18 +612,18 @@ html[data-tema="claro"] .nav-categorias a.activa-nav {
     height: 36px !important;
     padding: 0 9px !important;
     box-sizing: border-box !important;
-    border: 1px solid #3f69b8 !important;
+    border: 1px solid #3d2166 !important;
     border-radius: 7px !important;
-    background: #1d3f86 !important;
-    color: #fff !important;
+    background: #241145 !important;
+    color: #f4f1fb !important;
     text-decoration: none !important;
-    font: 800 12px/1 Arial, Helvetica, sans-serif !important;
+    font: 800 12px/1 var(--font-body) !important;
   }
 
   .navbar .nav-mobile-user:hover,
   .navbar .nav-mobile-user:focus-visible {
-    background: #274d99 !important;
-    border-color: #5b84cf !important;
+    background: #2f1a5c !important;
+    border-color: #55348f !important;
     outline: none !important;
   }
 
