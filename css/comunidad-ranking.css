@@ -182,7 +182,7 @@
 
 .rk-podio-card[data-puesto="2"] .rk-podio-numero,
 .rk-podio-card[data-puesto="3"] .rk-podio-numero {
-  background: linear-gradient(135deg, #dbe3ee, #9fb0c9);
+  background: linear-gradient(135deg, var(--podio-plata), #9fb0c9);
 }
 
 .rk-podio-card[data-puesto="4"] .rk-podio-numero,

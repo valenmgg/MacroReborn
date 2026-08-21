@@ -1156,7 +1156,7 @@ html {
 
 .boton-primario {
   background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
-  color: #241804;
+  color: var(--text-on-accent);
   box-shadow: 0 6px 20px rgba(240, 180, 41, 0.28);
 }
 
@@ -1678,7 +1678,7 @@ html {
 .portal-juego-link:hover .portal-juego-imagen img { transform:scale(1.05); }
 .portal-juego-badge { position:absolute; top:7px; left:7px; max-width:calc(100% - 14px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:4px 7px; border-radius:999px; background:rgba(8,4,20,.76); border:1px solid rgba(255,255,255,.12); color:var(--gold-bright); font-size:9px; font-weight:800; }
 .portal-juego-overlay { position:absolute; inset:auto 8px 8px; display:flex; justify-content:center; opacity:0; transform:translateY(4px); transition:.18s ease; }
-.portal-juego-overlay span { padding:8px 18px; border-radius:999px; background:var(--gold); color:#241804; font-size:11px; font-weight:900; }
+.portal-juego-overlay span { padding:8px 18px; border-radius:999px; background:var(--gold); color:var(--text-on-accent); font-size:11px; font-weight:900; }
 .portal-juego-link:hover .portal-juego-overlay { opacity:1; transform:translateY(0); }
 .portal-juego-info { padding:10px 11px 11px; }
 .portal-juego-info h3 { margin:0 0 4px; color:var(--text-main); font-size:13px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
