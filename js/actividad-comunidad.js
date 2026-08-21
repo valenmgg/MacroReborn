@@ -29,7 +29,7 @@
   function activityText(item) {
     const username = escapeHTML(item.username || 'Jugador');
     let detail = item.detalle || '';
-    try { const parsed = JSON.parse(detail); if (parsed && typeof parsed === 'object' && parsed.juego) detail = `${parsed.juego}`; } catch (_) {}
+    try { const parsed = JSON.parse(detail); if (parsed && typeof parsed === 'object') { if (parsed.juego) detail = `${parsed.juego}`; else if ('texto' in parsed) detail = parsed.texto || ''; } } catch (_) {}
     const cleanDetail = escapeHTML(detail);
     switch (item.tipo) {
       case 'logro': return `🏅 <a href="usuario.html?usuario=${encodeURIComponent(item.username)}">${username}</a> desbloqueó un logro${cleanDetail ? `: <strong>${cleanDetail}</strong>` : ''}`;

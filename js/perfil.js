@@ -2206,7 +2206,10 @@ document.getElementById("botonComentar")?.addEventListener("click", async ()=>{
 
   // ACTIVIDAD RECIENTE - COMENTARIO
   if(usuarioActivo && typeof registrarActividad === "function"){
-    registrarActividad(usuarioActivo.nombre, "comentario", texto);
+    const detalleComentario = typeof empaquetarComentario === "function"
+      ? empaquetarComentario(datosUsuario.nombre, texto)
+      : texto;
+    registrarActividad(usuarioActivo.nombre, "comentario", detalleComentario);
     if(typeof renderActividadReciente === "function") renderActividadReciente();
   }
 });

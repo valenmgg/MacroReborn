@@ -117,6 +117,32 @@ function _desempaquetarJuego(detalle){
 }
 
 
+// ---------- EMPAQUETAR/DESEMPAQUETAR COMENTARIO EN "detalle" ----------
+// Mismo criterio que empaquetarJuego(): para tipo "comentario" ahora
+// también guardamos, junto con el texto, en qué perfil se dejó el
+// comentario ("perfil": el username del dueño de esa pared) — hace
+// falta para poder decir "...en un comentario dentro del perfil de
+// @X" en obtenerMencionesRecibidas(), ya que quien mencionó a alguien
+// puede haberlo hecho en SU PROPIO perfil, en el del mencionado, o en
+// el de un tercero. Si "detalle" no es JSON válido (comentarios viejos,
+// guardados antes de este cambio), se trata como texto plano sin
+// contexto de perfil (perfil: "").
+
+function empaquetarComentario(perfil, texto){
+  return JSON.stringify({ perfil: perfil || "", texto: texto || "" });
+}
+
+function _desempaquetarComentario(detalle){
+  try{
+    const obj = JSON.parse(detalle);
+    if(obj && typeof obj === "object" && "texto" in obj){
+      return { perfil: obj.perfil || "", texto: obj.texto || "" };
+    }
+  }catch(_e){ /* no era JSON: entradas viejas, es el texto plano */ }
+  return { perfil: "", texto: detalle || "" };
+}
+
+
 // ---------- TEXTOS ----------
 // "Propio": en 2da persona, para la pestaña "Actividad reciente" del dueño.
 // "Amigo": en 3ra persona, para la pestaña "Actividad de amigos".
@@ -134,8 +160,9 @@ function textoActividadPropia(tipo, detalle){
     case "amigo":
       return "🤝 Agregaste a " + detalle + " como amigo";
     case "comentario":{
-      const mencion = _primeraMencion(detalle);
-      const preview = previewComentario(detalle);
+      const infoComentario = _desempaquetarComentario(detalle);
+      const mencion = _primeraMencion(infoComentario.texto);
+      const preview = previewComentario(infoComentario.texto);
       if(mencion){
         return preview
           ? "📣 Mencionaste a @" + mencion + " en un comentario: \"" + preview + "\""
@@ -176,8 +203,9 @@ function textoActividadAmigo(nombreAmigo, tipo, detalle){
     case "amigo":
       return "🤝 " + nombreAmigo + " agregó a " + detalle + " como amigo";
     case "comentario":{
-      const mencion = _primeraMencion(detalle);
-      const preview = previewComentario(detalle);
+      const infoComentario = _desempaquetarComentario(detalle);
+      const mencion = _primeraMencion(infoComentario.texto);
+      const preview = previewComentario(infoComentario.texto);
       if(mencion){
         return preview
           ? "📣 " + nombreAmigo + " mencionó a @" + mencion + " en un comentario: \"" + preview + "\""
@@ -231,7 +259,7 @@ function destinoActividad(tipo, detalle){
     case "amigo":
       return detalle ? "usuario.html?usuario=" + encodeURIComponent(detalle) : null;
     case "comentario":{
-      const mencion = _primeraMencion(detalle);
+      const mencion = _primeraMencion(_desempaquetarComentario(detalle).texto);
       return mencion ? "usuario.html?usuario=" + encodeURIComponent(mencion) : null;
     }
     default:
@@ -350,10 +378,34 @@ async function obtenerActividadesDe(nombres){
 // mensajes que otros jugadores le dejaron mencionándolo con
 // "@usuario", con el texto COMPLETO (sin el recorte de
 // previewComentario, que es para las tarjetas de "hiciste tal cosa").
+//
+// El "contexto" (dónde pasó la mención) varía: quien te mencionó pudo
+// haberlo hecho en SU propio perfil, en el tuyo, o en el de un
+// tercero (tipo "comentario"), o en una reseña de un juego (tipo
+// "resena") — _contextoMencionRecibida() arma esa frase según cada caso.
 
 function _textoCompletoMencionRecibida(tipo, detalle){
   if(tipo === "resena") return _desempaquetarJuego(detalle).texto || "";
-  return detalle || "";
+  return _desempaquetarComentario(detalle).texto || "";
+}
+
+function _contextoMencionRecibida(tipo, detalle, targetNombre){
+  if(tipo === "resena"){
+    const juego = _actividadEscaparHTML(_desempaquetarJuego(detalle).juego);
+    return "en una reseña de " + juego;
+  }
+
+  // "comentario"
+  const perfil = _desempaquetarComentario(detalle).perfil;
+  if(!perfil) return "en un comentario"; // entradas viejas, guardadas sin contexto de perfil
+
+  if(targetNombre && perfil.toLowerCase() === targetNombre.toLowerCase()){
+    return "en un comentario dentro de tu perfil";
+  }
+
+  const perfilEscapado = _actividadEscaparHTML(perfil);
+  const perfilHref = _actividadEnlaceUsuario(perfil);
+  return `en un comentario dentro del perfil de <a href="${perfilHref}" class="actividad-nombre-mencion">@${perfilEscapado}</a>`;
 }
 
 async function obtenerMencionesRecibidas(nombre){
@@ -370,6 +422,7 @@ async function obtenerMencionesRecibidas(nombre){
         autor: a.username,
         tipo: a.tipo,
         mensaje: _actividadEscaparHTML(_textoCompletoMencionRecibida(a.tipo, a.detalle)),
+        contexto: _contextoMencionRecibida(a.tipo, a.detalle, nombre),
         fecha: fechaObj.toLocaleDateString("es-AR"),
         hora: fechaObj.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
         timestamp: fechaObj.getTime()
@@ -381,12 +434,17 @@ async function obtenerMencionesRecibidas(nombre){
   }
 }
 
-// autor: quién te mencionó. mensaje: el texto completo ya escapado
-// (viene de obtenerMencionesRecibidas). avatarHTMLFn: igual que en
-// renderizarActividadHTML, cada pantalla arma su propio avatar.
-function renderizarMencionRecibidaHTML(autor, mensaje, fecha, hora, avatarHTMLFn){
+// autor: quién te mencionó. targetNombre: vos (el dueño del perfil,
+// a quien mencionaron). contexto: HTML ya armado por
+// _contextoMencionRecibida (puede traer su propio link al perfil
+// donde pasó la mención). mensaje: el texto completo ya escapado.
+// avatarHTMLFn: igual que en renderizarActividadHTML, cada pantalla
+// arma su propio avatar.
+function renderizarMencionRecibidaHTML(autor, targetNombre, contexto, mensaje, fecha, hora, avatarHTMLFn){
   const autorEscapado = _actividadEscaparHTML(autor);
   const autorHref = _actividadEnlaceUsuario(autor);
+  const targetEscapado = _actividadEscaparHTML(targetNombre);
+  const targetHref = _actividadEnlaceUsuario(targetNombre);
   const avatarHTML = typeof avatarHTMLFn === "function" ? avatarHTMLFn(autor) : "";
 
   return `
@@ -394,7 +452,12 @@ function renderizarMencionRecibidaHTML(autor, mensaje, fecha, hora, avatarHTMLFn
       <div class="actividad-fila-principal">
         <a href="${autorHref}" class="actividad-avatar-link" aria-label="Ver perfil de ${autorEscapado}">${avatarHTML}</a>
         <div class="actividad-contenido">
-          <div class="actividad-linea"><a href="${autorHref}" class="actividad-nombre-autor">${autorEscapado}</a> te escribió:</div>
+          <div class="actividad-linea">
+            <a href="${autorHref}" class="actividad-nombre-autor">@${autorEscapado}</a>
+            ha mencionado a
+            <a href="${targetHref}" class="actividad-nombre-mencion">@${targetEscapado}</a>
+            ${contexto}
+          </div>
           <div class="actividad-cita">
             <span class="actividad-cita-texto">${mensaje}</span>
           </div>
@@ -448,8 +511,9 @@ function _partesActividad(tipo, detalle){
     case "amigo":
       return { accion: "🤝 agregó a", mencion: detalle, contexto: "como amigo" };
     case "comentario": {
-      const mencion = _primeraMencion(detalle);
-      const preview = previewComentario(detalle);
+      const infoComentario = _desempaquetarComentario(detalle);
+      const mencion = _primeraMencion(infoComentario.texto);
+      const preview = previewComentario(infoComentario.texto);
       if(mencion){
         return { accion: "📣 mencionó a", mencion, contexto: "en un comentario", cita: preview };
       }

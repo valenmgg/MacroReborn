@@ -77,7 +77,7 @@ async function renderActividadReciente(){
   }
 
   contenedor.innerHTML = lista.map(a =>
-    renderizarMencionRecibidaHTML(a.autor, a.mensaje, a.fecha, a.hora, avatarMiniActividad)
+    renderizarMencionRecibidaHTML(a.autor, usuarioActual.nombre, a.contexto, a.mensaje, a.fecha, a.hora, avatarMiniActividad)
   ).join("");
 }
 

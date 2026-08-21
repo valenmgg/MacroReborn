@@ -883,7 +883,10 @@ function escaparHTML(texto) {
 
       // ACTIVIDAD RECIENTE - COMENTARIO
       if (activo && typeof registrarActividad === "function") {
-        registrarActividad(activo.nombre, "comentario", texto);
+        const detalleComentario = typeof empaquetarComentario === "function"
+          ? empaquetarComentario(usuario.nombre, texto)
+          : texto;
+        registrarActividad(activo.nombre, "comentario", detalleComentario);
       }
     };
 
