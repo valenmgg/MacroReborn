@@ -122,6 +122,17 @@
       if (typeof renderActividadReciente === "function") renderActividadReciente();
     });
 
+    // "Actividad reciente" del perfil propio ahora es un buzón de
+    // menciones recibidas (ver js/perfil-actividad.js), no la propia
+    // actividad; "nueva-actividad" arriba se dispara en el canal del
+    // AUTOR (quien comentó/reseñó), no en el de la persona mencionada.
+    // "nueva-notificacion" sí llega al canal de la persona mencionada
+    // (api/_notifications.js), así que también se usa acá para
+    // refrescar la pestaña en vivo cuando a alguien lo mencionan.
+    canalActual.bind("nueva-notificacion", function () {
+      if (typeof renderActividadReciente === "function") renderActividadReciente();
+    });
+
     canalActual.bind("nuevo-historial", function () {
       if (typeof renderHistorialPerfil === "function") renderHistorialPerfil();
     });

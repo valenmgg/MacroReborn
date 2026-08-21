@@ -41,7 +41,7 @@ const monedasService = new MonedasService(sql);
 // GET  /api/content?action=activity&username=X
 // POST /api/content?action=activity          { username, tipo, detalle }
 // GET  /api/content?action=activity-friends&usernames=a,b,c
-// GET  /api/content?action=activity-mentions&username=X
+// GET  /api/content?action=mentions-received&username=X   (requiere sesión propia)
 //
 // GET  /api/content?action=favorites&username=X
 // POST /api/content?action=favorites   { username, gameId }
@@ -633,56 +633,76 @@ async function activityFriends(req, res) {
 }
 
 // ==============================
-// "Actividad reciente" del perfil PROPIO — mensajes que otros le
-// dejaron a este usuario (no lo que este usuario hizo). A diferencia
-// de activity()/activityFriends(), acá NO importa quién es el autor
-// (no hace falta ser amigo favorito) ni en qué perfil/chat se escribió:
-// se buscan comentarios y reseñas de CUALQUIER usuario cuyo texto lo
-// mencione con "@usuario" (límite de palabra vía \M, para que
-// "@juan" no matchee "@juancito"). Se devuelve el "detalle" completo,
-// sin recortar, para que el front pueda mostrar el mensaje entero.
-//
-// GET /api/content?action=activity-mentions&username=X
+// /api/content?action=mentions-received
 // ==============================
+// "Actividad reciente" del PROPIO perfil ya no muestra lo que el
+// dueño hizo (eso ahora es lo que ve un visitante en usuario.html):
+// muestra las menciones (@usuario) que OTROS le hicieron a él, con el
+// mensaje completo donde lo mencionaron (comentario de perfil o
+// reseña de un juego). Reutiliza activity_log — no crea tabla nueva —
+// pero acá la búsqueda es al revés de activity()/activityFriends():
+// en vez de filtrar por el autor, se busca en TODOS los autores algo
+// que mencione a "username".
+//
+// Requiere sesión propia (como notifications()): es el buzón de
+// menciones de alguien, no un dato público de su perfil.
 
-async function activityMentions(req, res) {
+const REGEX_MENCION_SERVIDOR = /@([a-zA-Z0-9_]{3,20})/g;
+
+function _textoParaBuscarMencion(tipo, detalle) {
+  if (tipo === "resena") {
+    try {
+      const obj = JSON.parse(detalle);
+      if (obj && typeof obj === "object" && "texto" in obj) return obj.texto || "";
+    } catch (_e) { /* no era JSON: se usa el detalle plano de abajo */ }
+  }
+  return detalle || "";
+}
+
+async function mencionesRecibidas(req, res) {
+
   if (req.method !== "GET") {
     return res.status(405).json({ success: false, error: "Método no permitido" });
   }
 
-  const { username, viewer } = req.query;
-  if (!validarViewer(req, res, viewer)) return;
+  const { username } = req.query;
   if (!username) {
     return res.status(400).json({ success: false, error: "Falta username" });
   }
 
-  if (viewer) {
-    const permitido = await accesoPerfilPermitido(username, viewer);
-    if (!permitido) return res.status(200).json({ success: true, actividades: [] });
+  const auth = requerirAuth(req, res);
+  if (!auth) return;
+  if (String(auth.username).toLowerCase() !== String(username).toLowerCase()) {
+    return res.status(403).json({ success: false, error: "No podés consultar las menciones de otro usuario" });
   }
 
-  const userId = await getUserId(username);
-  if (!userId) {
-    return res.status(200).json({ success: true, actividades: [] });
-  }
+  // Filtro grueso en SQL (ILIKE, escapando los comodines propios de
+  // ILIKE por si el username los contiene) para no traer toda la
+  // tabla; el filtro fino y exacto (que sea justo "@username", no
+  // "@username2") se hace después en JS con la misma regex que usa
+  // el resto de la app.
+  const patronILIKE = "%@" + String(username).replace(/[\\%_]/g, c => "\\" + c) + "%";
 
   const filas = await sql`
-    SELECT u.username, a.tipo, a.detalle, a.created_at
+    SELECT u.username AS autor, a.tipo, a.detalle, a.created_at
     FROM activity_log a
     JOIN users u ON u.id = a.user_id
     WHERE a.tipo IN ('comentario', 'resena')
-      AND a.detalle ~* ('@' || ${username} || '\\M')
-      AND LOWER(u.username) <> LOWER(${username})
-      AND NOT EXISTS (
-        SELECT 1 FROM user_blocks b
-        WHERE (b.blocker_id = ${userId} AND b.blocked_id = a.user_id)
-           OR (b.blocker_id = a.user_id AND b.blocked_id = ${userId})
-      )
+      AND u.username <> ${username}
+      AND a.detalle ILIKE ${patronILIKE} ESCAPE '\\'
     ORDER BY a.id DESC
-    LIMIT 20;
+    LIMIT 200;
   `;
 
-  return res.status(200).json({ success: true, actividades: filas });
+  const objetivo = String(username).toLowerCase();
+
+  const coincidencias = filas.filter(fila => {
+    const texto = _textoParaBuscarMencion(fila.tipo, fila.detalle);
+    const menciones = texto.match(REGEX_MENCION_SERVIDOR) || [];
+    return menciones.some(m => m.slice(1).toLowerCase() === objetivo);
+  }).slice(0, 20);
+
+  return res.status(200).json({ success: true, menciones: coincidencias });
 }
 
 // ============== FAVORITES ==============
@@ -1680,7 +1700,7 @@ module.exports = async function handler(req, res) {
     if (action === "notifications-mark-read") return await notificationsMarkRead(req, res);
     if (action === "activity") return await activity(req, res);
     if (action === "activity-friends") return await activityFriends(req, res);
-    if (action === "activity-mentions") return await activityMentions(req, res);
+    if (action === "mentions-received") return await mencionesRecibidas(req, res);
     if (action === "favorites") return await favorites(req, res);
     if (action === "game-history") return await gameHistory(req, res);
     if (action === "games-overview") return await gamesOverview(req, res);

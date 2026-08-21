@@ -45,12 +45,10 @@ function avatarMiniActividad(nombre){
 
 
 // ---------- ACTIVIDAD RECIENTE (propia) ----------
-// Ya no muestra lo que el dueño del perfil hizo (eso lo sigue mostrando
-// usuario.html, sin cambios, cuando alguien más visita este perfil):
-// acá se listan los mensajes que OTROS jugadores le dejaron
-// mencionándolo con "@usuario", con el texto completo — ver
-// obtenerMencionesRecibidas()/renderizarMencionRecibidaHTML() en
-// js/motor/actividad.js.
+// Ya no muestra lo que EL DUEÑO del perfil hizo (eso quedó para
+// usuario.html, lo que ve un visitante). Acá se muestra su buzón de
+// menciones: quién lo mencionó (@usuario) y con qué mensaje completo,
+// en un comentario de perfil o en una reseña de un juego.
 
 async function renderActividadReciente(){
   const contenedor = document.getElementById("listaActividadReciente");
@@ -64,20 +62,20 @@ async function renderActividadReciente(){
   const lista = await obtenerMencionesRecibidas(usuarioActual.nombre);
 
   if(lista.length === 0){
-    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía no te dejaron mensajes ni te mencionaron.</p>`;
+    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía nadie te mencionó con @${usuarioActual.nombre}.</p>`;
     return;
   }
 
-  // avatarMiniActividad() lee el avatar de cada autor desde
-  // _cacheAvatares (js/core.js); acá los autores son OTROS usuarios
-  // (quienes mencionaron al dueño del perfil), así que sí hay que
-  // precargarlos, igual que en renderActividadAmigos().
+  // A diferencia de antes (donde el único avatar era el propio, ya
+  // disponible en memoria), acá cada fila puede ser de una persona
+  // distinta -quien te mencionó-, así que hay que precargar sus
+  // avatares antes de pintar la lista.
   if(typeof cargarAvataresDeVarios === "function"){
     await cargarAvataresDeVarios(lista.map(a => a.autor));
   }
 
   contenedor.innerHTML = lista.map(a =>
-    renderizarMencionRecibidaHTML(a.autor, usuarioActual.nombre, a.contexto, a.mensaje, a.fecha, a.hora, avatarMiniActividad)
+    renderizarMencionRecibidaHTML(a.autor, a.tipo, a.detalle, a.fecha, a.hora, avatarMiniActividad)
   ).join("");
 }
 
