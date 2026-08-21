@@ -21,7 +21,23 @@
   }
   function money(n){return '🪙 '+Number(n||0).toLocaleString('es-ES');}
   function pct(v,t){return t?Math.max(0,Math.min(100,(Number(v||0)/Number(t))*100)):0;}
-  function show(msg,ok=false){status.hidden=false;status.textContent=msg;status.style.color=ok?'#9cf0d6':'';}
+  function show(msg,ok=false){
+    status.hidden=false;
+    status.textContent=msg;
+    status.classList.toggle('md-status-ok',ok);
+    status.style.animation='none';
+    void status.offsetWidth;
+    status.style.animation='';
+    if(ok){
+      const streakCard=document.querySelector('.md-streak');
+      if(streakCard){
+        streakCard.classList.remove('md-flash');
+        void streakCard.offsetWidth;
+        streakCard.classList.add('md-flash');
+        setTimeout(()=>streakCard.classList.remove('md-flash'),1600);
+      }
+    }
+  }
   function hide(){status.hidden=true;}
   async function json(url,opts){const options=opts||{};const mergedHeaders={...authHeaders(),...(options.headers||{})};const r=await fetch(url,{...options,headers:mergedHeaders,cache:'no-store'});const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'No se pudo cargar');return d;}
 
