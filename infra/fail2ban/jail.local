@@ -1,0 +1,48 @@
+# Configuracion de fail2ban para MacroReborn.
+# Sustituye la proteccion automatica que antes daba Vercel.
+
+[DEFAULT]
+# Nunca bloquear a la red local ni a la IP del administrador.
+ignoreip = 127.0.0.1/8 ::1 TU.IP.AQUI
+# Tiempo de bloqueo: 1 hora. Ventana de observacion: 10 minutos.
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+backend  = systemd
+
+# Intentos de acceso por SSH.
+[sshd]
+enabled  = true
+port     = ssh
+maxretry = 4
+bantime  = 2h
+
+# Escaneos buscando archivos y rutas que no existen (l9scan y similares).
+[nginx-http-auth]
+enabled = true
+
+[nginx-botsearch]
+enabled  = true
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 8
+bantime  = 6h
+
+# Exceso de errores 4xx: alguien probando rutas al azar.
+[nginx-bad-request]
+enabled  = true
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 25
+findtime = 5m
+bantime  = 2h
+
+# Quien acumula respuestas 429 esta forzando el limite a proposito.
+[nginx-limite]
+enabled  = true
+filter   = nginx-limite
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 15
+findtime = 5m
+bantime  = 4h
