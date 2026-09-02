@@ -66,6 +66,45 @@ const TIPOS = {
   ".webmanifest": "application/manifest+json"
 };
 
+// La raiz del sitio es la raiz del proyecto, asi que sin este filtro se sirve
+// por HTTP cualquier archivo que haya aqui: el `.env` con las contrasenas, la
+// carpeta `.git` entera, el codigo de `api/`, los respaldos de la base. Estaba
+// pasando de verdad — `GET /.env` devolvia 200 con el contenido completo.
+//
+// Se decide por lista blanca: solo salen los tipos que un navegador necesita
+// para pintar la pagina. Una lista negra de rutas prohibidas siempre se queda
+// corta, porque cada archivo nuevo que se anada al proyecto es publico hasta
+// que alguien se acuerde de anadirlo a la lista.
+const EXTENSIONES_PUBLICAS = new Set(Object.keys(TIPOS));
+
+// De estas carpetas no sale nada, ni siquiera con una extension permitida:
+// `api/` y `scripts/` son .js, y `docs/` y `migrations/` no pintan nada.
+const CARPETAS_PRIVADAS = [
+  "api", "scripts", "tests", "migrations", "docs", "infra",
+  "node_modules", "respaldos"
+];
+
+function esPublico(rutaRelativa) {
+  const partes = rutaRelativa.split("/").filter(Boolean);
+
+  // Nada que empiece por punto: .env, .git, .vscode, .DS_Store...
+  if (partes.some((parte) => parte.startsWith("."))) return false;
+
+  if (CARPETAS_PRIVADAS.includes(partes[0])) return false;
+
+  // server.js y cluster.js son .js, que es una extension publica, pero son el
+  // servidor, no el codigo del navegador (ese vive en js/).
+  if (partes.length === 1 && (partes[0] === "server.js" || partes[0] === "cluster.js")) {
+    return false;
+  }
+
+  // package.json revela las dependencias y sus versiones exactas, que es el
+  // primer sitio donde mira quien busca una vulnerabilidad conocida.
+  if (partes.length === 1 && partes[0].startsWith("package")) return false;
+
+  return EXTENSIONES_PUBLICAS.has(path.extname(rutaRelativa).toLowerCase());
+}
+
 function responder(res, codigo, obj) {
   if (res.writableEnded) return;
   res.writeHead(codigo, {
@@ -139,6 +178,11 @@ async function main() {
     if (!archivo.startsWith(RAIZ)) {
       res.writeHead(403);
       return res.end("Prohibido");
+    }
+
+    if (!esPublico(rutaRelativa)) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("No encontrado: " + rutaRelativa);
     }
 
     fs.readFile(archivo, (err, datos) => {
