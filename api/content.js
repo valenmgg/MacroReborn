@@ -4,6 +4,7 @@ const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
+const { validarAvatar } = require("./_avatar-catalogo");
 
 // La conexión se pide a api/_db.js en vez de crearla acá con
 // neon(process.env.DATABASE_URL). En producción es exactamente la misma
@@ -1363,11 +1364,20 @@ async function avatarGallery(req, res) {
       });
     }
 
+    // Los casilleros de la galería son el otro camino por el que un
+    // avatar entra a la base, así que necesitan la misma comprobación
+    // que el avatar activo: sin esto, alcanzaría con guardar la prenda
+    // no comprada en un casillero. Ver api/_avatar-catalogo.js.
+    const revision = await validarAvatar(sql, userId, avatar);
+    if (!revision.ok) {
+      return res.status(400).json({ success: false, error: revision.error });
+    }
+
     const fila = await sql`
       INSERT INTO saved_avatars (user_id, slot, avatar)
-      VALUES (${userId}, ${slotNum}, ${JSON.stringify(avatar)})
+      VALUES (${userId}, ${slotNum}, ${JSON.stringify(revision.avatar)})
       ON CONFLICT (user_id, slot)
-      DO UPDATE SET avatar = ${JSON.stringify(avatar)}, updated_at = now()
+      DO UPDATE SET avatar = ${JSON.stringify(revision.avatar)}, updated_at = now()
       RETURNING id, slot, avatar;
     `;
 

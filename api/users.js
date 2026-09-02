@@ -5,6 +5,7 @@ const { PasswordService } = require("./_password");
 const { requerirAuth } = require("./_auth");
 const { MonedasService } = require("./_monedas");
 const { crearNotificacionServidor } = require("./_notifications");
+const { validarAvatar } = require("./_avatar-catalogo");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -230,9 +231,19 @@ async function updateAvatar(req, res) {
     return res.status(403).json({ success: false, error: "El avatar PNG personalizado solo puede guardarse mediante el panel de administrador." });
   }
 
+  // Hasta acá el servidor guardaba cualquier cosa que le mandaran: el
+  // bloqueo de las prendas de la tienda era solo una clase de CSS en el
+  // navegador (aplicarBloqueosTienda() en js/perfil.js), así que desde
+  // la consola se podían vestir prendas sin pagarlas. Ahora se comprueba
+  // contra el catálogo real. Ver api/_avatar-catalogo.js.
+  const revision = await validarAvatar(sql, auth.sub, avatar);
+  if (!revision.ok) {
+    return res.status(400).json({ success: false, error: revision.error });
+  }
+
   const user = await sql`
     UPDATE users
-    SET avatar = ${JSON.stringify(avatar)}
+    SET avatar = ${JSON.stringify(revision.avatar)}
     WHERE username = ${username}
     RETURNING id, username, avatar;
   `;
