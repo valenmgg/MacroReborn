@@ -156,10 +156,24 @@ async function main() {
         status(codigo) { this.statusCode = codigo; return this; },
         json(obj) {
           if (res.writableEnded) return;
-          res.writeHead(this.statusCode || 200, { "Content-Type": "application/json; charset=utf-8" });
+          // Sin pisar las cabeceras que el handler ya haya puesto con
+          // setHeader (antes se pasaban en writeHead y las borraba).
+          if (!res.getHeader("Content-Type")) {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+          }
+          res.writeHead(this.statusCode || 200);
           res.end(JSON.stringify(obj));
         },
-        end() { if (!res.writableEnded) res.end(); }
+        // end(cuerpo) tiene que escribir ese cuerpo: es como un handler
+        // devuelve algo que no es JSON, por ejemplo una imagen. Antes se
+        // ignoraba el argumento y la respuesta salía con las cabeceras
+        // correctas pero vacía, lo que deja al navegador esperando bytes
+        // que nunca llegan.
+        end(cuerpo) {
+          if (res.writableEnded) return;
+          res.writeHead(this.statusCode || 200);
+          res.end(cuerpo);
+        }
       };
 
       try {
