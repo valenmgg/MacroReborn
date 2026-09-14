@@ -116,6 +116,15 @@ function responder(res, codigo, obj) {
 
 // Todos los módulos de la API que existen en api/ (menos los que
 // empiezan con "_", que son helpers internos, no rutas).
+// Tope de lo que se acepta en el cuerpo de una peticion.
+//
+// 12 MB da margen para subir una tanda de prendas de avatar desde el
+// panel del equipo de arte (la mas pesada del catalogo actual son 69 kB,
+// y base64 engorda un tercio) sin dejar la puerta abierta de par en par.
+// nginx tiene su propio limite por delante; este es el que protege al
+// proceso aunque alguien llegue por otra via.
+const LIMITE_CUERPO = 12 * 1024 * 1024;
+
 const HANDLERS = {
   "/api/auth": require("./api/auth"),
   "/api/users": require("./api/users"),
@@ -141,10 +150,32 @@ async function main() {
       let cuerpo = {};
       try {
         const trozos = [];
-        for await (const chunk of req) trozos.push(chunk);
+        let recibido = 0;
+
+        for await (const chunk of req) {
+          recibido += chunk.length;
+
+          // Sin este tope, el cuerpo de una peticion se acumula entero en
+          // memoria sin limite. En una maquina de 950 MB eso es una forma
+          // barata de tumbar el sitio: basta con enviar un POST enorme.
+          // Hasta ahora lo unico que lo frenaba era el limite de nginx, y
+          // eso deja el proceso desprotegido ante cualquier cosa que no
+          // pase por nginx.
+          if (recibido > LIMITE_CUERPO) {
+            req.destroy();
+            return responder(res, 413, {
+              success: false,
+              error: "El contenido enviado es demasiado grande"
+            });
+          }
+
+          trozos.push(chunk);
+        }
+
         const texto = Buffer.concat(trozos).toString("utf8");
         if (texto) cuerpo = JSON.parse(texto);
       } catch (error) {
+        if (res.writableEnded) return;
         return responder(res, 400, { success: false, error: "Body inválido" });
       }
 
