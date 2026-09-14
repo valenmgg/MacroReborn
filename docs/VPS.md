@@ -348,6 +348,42 @@ intentos fallidos leyendo el log, y la barrera real contra la fuerza
 bruta es el límite de nginx. Si algún día se cambia a `401`, se puede
 añadir una cárcel que los cuente directamente.
 
+### Caché del navegador: `immutable` es una promesa que no se retira
+
+Los estáticos se servían todos con `Cache-Control: public, max-age=2592000,
+immutable`. `immutable` le dice al navegador que **ni siquiera pregunte**: no
+hace una petición condicional, usa lo que tiene y punto. Para una imagen que
+no se edita en sitio está bien. Para el código del navegador fue un error, y
+costó un fallo en producción.
+
+**Qué pasó (14 de septiembre de 2026).** El HTML no está cacheado y el JS sí,
+durante 30 días. Al desplegar el editor de avatares dinámico, quien había
+visitado el sitio en las semanas anteriores recibió el `perfil.html` nuevo —que
+ya no trae los divs del catálogo— junto con el `perfil.js` viejo, que espera
+encontrarlos. El editor le salía vacío.
+
+**Cómo se reconoció.** En la consola de un navegador afectado, los errores
+apuntaban a líneas de `ranking.js` que en el código actual ya no existen. Si una
+traza señala líneas que no se corresponden con el archivo desplegado, lo que
+corre es código cacheado, no el que está en el servidor.
+
+**Lo que hay ahora, en dos capas:**
+
+1. `server.js` manda `ETag` y `Last-Modified` en los estáticos, y contesta `304`
+   sin leer el disco si el navegador ya tiene esa versión. nginx sirve `.js` y
+   `.css` con `max-age=300, must-revalidate`: fresco cinco minutos, luego se
+   pregunta, y la pregunta se contesta con una respuesta vacía. Un despliegue
+   llega a todo el mundo en cinco minutos.
+2. Los HTML piden los scripts con `?v=20260914`. Ese número es de un solo uso:
+   existía para escapar de las entradas `immutable` que ya estaban guardadas en
+   los navegadores, que es lo único que una entrada así permite hacer —cambiar
+   la URL—. No hace falta tocarlo en cada despliegue; la capa 1 se encarga.
+
+**La regla.** `immutable` solo en URLs que lleven la huella de su contenido,
+como `/prendas/<sha256>.png`: ahí no hay nada que invalidar, porque si el
+contenido cambia la URL cambia sola. Todo lo que se edite en sitio —el código
+del navegador— tiene que revalidar.
+
 ### Cabeceras de seguridad
 
 `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y
