@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<script src="js/tema.js?v=20260914"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de arte - MacroReborn</title>
+
+<!-- Es una herramienta interna del equipo de dibujo, no una página del
+     sitio: no tiene por qué aparecer en los buscadores. -->
+<meta name="description" content="Panel del equipo de arte de MacroReborn: subir, publicar y retirar prendas de avatar.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="imagenes/logo.png" type="image/png">
+<link rel="apple-touch-icon" href="imagenes/logo.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/modal.css?v=20260914">
+<link rel="stylesheet" href="css/inicio.css?v=20260914">
+<link rel="stylesheet" href="css/arte.css?v=20260914">
+<link rel="stylesheet" href="css/theme-canonical.css?v=20260914">
+<link rel="stylesheet" href="css/navbar-macrojuegos.css?v=20260914">
+</head>
+
+<body class="mr-root">
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <img src="imagenes/logo.png" alt="MacroReborn">
+    MacroReborn
+  </a>
+  <a href="comunidad-ranking.html" class="nav-boton-comunidad">Comunidad</a>
+  <div class="nav-links">
+    <a href="explorar.html">🧭 Explorar</a>
+    <a href="mi-dia.html">🔥 Mi día</a>
+    <a href="progreso.html">🎯 Progreso</a>
+    <a href="liga-global.html">🏆 Ligas</a>
+  </div>
+  <div class="nav-categorias">
+    <a href="chat.html">💬 Chat</a>
+    <a href="amigos.html">👥 Amigos</a>
+    <a href="juegos.html">🎮 Juegos</a>
+    <a href="noticias.html">📰 Noticias</a>
+  </div>
+</nav>
+
+<main class="arte-main">
+
+  <div class="arte-cabecera">
+    <h1>🎨 Panel de arte</h1>
+    <p>Subí prendas nuevas al editor de avatares. Lo que publiques acá aparece en el sitio enseguida: no hace falta esperar a nadie.</p>
+  </div>
+
+  <!-- Mientras se comprueba quién sos. js/arte.js lo reemplaza. -->
+  <div id="arteAviso" class="arte-aviso">
+    <h2>Comprobando tu acceso…</h2>
+    <p>Un momento.</p>
+  </div>
+
+  <!-- ==============================
+       SUBIR
+       ============================== -->
+  <section id="arteSubir" class="arte-seccion" hidden>
+    <h2>Subir prendas</h2>
+    <p class="arte-ayuda">
+      Elegí uno o varios PNG. Para cada uno decidís a qué personaje y a qué
+      ranura pertenece, cómo se va a llamar en el editor y cuánto cuesta.
+      Dejá el precio en 0 si querés que sea gratis, que es como está la
+      mayoría del catálogo. El identificador interno lo pone el servidor.
+    </p>
+
+    <div class="arte-campo" style="max-width:420px">
+      <label for="arteArchivos">Archivos PNG</label>
+      <input type="file" id="arteArchivos" accept="image/png" multiple>
+    </div>
+
+    <!-- Suelen subirse tandas de la misma ranura para el mismo personaje,
+         así que se pueden fijar de una vez para todas. -->
+    <div id="arteComunes" class="arte-comunes" hidden>
+      <div class="arte-campo">
+        <label for="arteTodosModelo">Personaje (para todas)</label>
+        <select id="arteTodosModelo"></select>
+      </div>
+      <div class="arte-campo">
+        <label for="arteTodosCapa">Ranura (para todas)</label>
+        <select id="arteTodosCapa"></select>
+      </div>
+      <div class="arte-campo">
+        <label for="arteTodosPrecio">Precio (para todas)</label>
+        <input type="number" id="arteTodosPrecio" min="0" step="10" value="0">
+      </div>
+      <div class="arte-campo">
+        <label>&nbsp;</label>
+        <button type="button" id="arteAplicarTodas" class="boton boton-secundario">Aplicar a todas</button>
+      </div>
+    </div>
+
+    <div id="arteLista"></div>
+
+    <div id="arteAcciones" hidden style="margin-top:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button type="button" id="arteSubirBtn" class="boton boton-primario">Subir prendas</button>
+      <span id="arteEstado" class="arte-contador"></span>
+    </div>
+
+    <div id="arteResultados" class="arte-resultados"></div>
+  </section>
+
+  <!-- ==============================
+       CATÁLOGO
+       ============================== -->
+  <section id="arteCatalogo" class="arte-seccion" hidden>
+    <h2>Catálogo <span id="arteCuenta" class="arte-contador"></span></h2>
+    <p class="arte-ayuda">
+      Todo lo que hay, incluido lo que está apagado. Retirar una prenda la
+      saca del editor, pero quien ya la tenga puesta la conserva: no se le
+      quita el avatar a nadie por sorpresa.
+    </p>
+
+    <div class="arte-filtros">
+      <div class="arte-campo">
+        <label for="arteFiltroModelo">Personaje</label>
+        <select id="arteFiltroModelo"></select>
+      </div>
+      <div class="arte-campo">
+        <label for="arteFiltroCapa">Ranura</label>
+        <select id="arteFiltroCapa"></select>
+      </div>
+      <div class="arte-campo">
+        <label for="arteFiltroEstado">Estado</label>
+        <select id="arteFiltroEstado">
+          <option value="todas">Todas</option>
+          <option value="publicadas">Publicadas</option>
+          <option value="retiradas">Retiradas</option>
+        </select>
+      </div>
+      <div class="arte-campo">
+        <label for="arteFiltroAutor">Autoría</label>
+        <select id="arteFiltroAutor">
+          <option value="todas">De cualquiera</option>
+          <option value="mias">Solo mías</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="arteGrid" class="arte-grid"></div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="pie-footer">
+  <div class="pie-contenido">
+    <div class="pie-marca">
+      <a href="index.html" class="nav-logo">
+        <img src="imagenes/logo.png" alt="MacroReborn">
+        MacroReborn
+      </a>
+      <p>Una comunidad de juegos con nostalgia de portal clásico y alma moderna.</p>
+      <p class="estado-servidor"><span class="punto"></span> Servidor en línea</p>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Plataforma</h4>
+      <a href="juegos.html">Juegos</a>
+      <a href="ranking.html">Ranking</a>
+      <a href="comunidad.html">Comunidad</a>
+      <a href="noticias.html">Noticias</a>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Cuenta</h4>
+      <a href="login.html">Iniciar sesión</a>
+      <a href="perfil.html">Mi perfil</a>
+      <a href="notificaciones.html">Notificaciones</a>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Social</h4>
+      <a href="amigos.html">Amigos</a>
+      <a href="chat.html">Chat</a>
+    </div>
+  </div>
+
+  <div class="pie-inferior">
+    <span>© 2026 MacroReborn. Todos los derechos reservados.</span>
+    <span>Hecho con 💛 para la vieja escuela de los juegos web.</span>
+  </div>
+</footer>
+
+<script defer src="js/core.js?v=20260914"></script>
+<script defer src="js/api-client.js?v=20260914"></script>
+<script defer src="js/session.js?v=20260914"></script>
+<script defer src="js/app-shell.js?v=20260914"></script>
+<script defer src="js/navbar.js?v=20260914"></script>
+<script defer src="js/nav-toggle.js?v=20260914"></script>
+<script defer src="js/arte.js?v=20260914"></script>
+
+</body>
+</html>

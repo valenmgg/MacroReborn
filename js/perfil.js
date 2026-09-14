@@ -672,6 +672,14 @@ insigniasPerfilPropioListas.then(lista=>{
       prepararPanelAvatarAdminPng();
     }
   }
+
+  // El panel de arte se ofrece a quien puede usarlo. El enlace no protege
+  // nada: arte.html comprueba el rol contra el servidor al abrirse. Esto
+  // es para que quien lo tiene lo encuentre sin que se lo expliquen.
+  if(Array.isArray(lista) && (lista.includes("artista") || lista.includes("administrador"))){
+    const enlace = document.getElementById("enlaceArtePanel");
+    if(enlace) enlace.style.display = "";
+  }
 });
 
 
