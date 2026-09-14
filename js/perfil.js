@@ -299,6 +299,20 @@ suscribirPerfilSesion();
 // SISTEMA AVATAR
 // ==============================
 
+// CAPAS_IMG hace dos cosas a la vez, y por eso todavía sigue acá:
+//
+//   1. traduce un valor a su ruta — eso ya lo hace rutaCapaAvatar() de
+//      js/core.js, así que como mapa de rutas es redundante (se verificó:
+//      las 622 entradas dan exactamente la misma ruta que la función);
+//   2. hace de CATÁLOGO de valores válidos. Object.keys() alimenta el
+//      avatar al azar, y la comprobación CAPAS_IMG[valor] es lo que evita
+//      dibujar una prenda cuyo archivo ya no existe (ej. "tora_piel7",
+//      que tres usuarios todavía tienen guardado).
+//
+// El punto 2 es el que lo mantiene vivo: no se puede borrar hasta que
+// exista el endpoint de catálogo, que es lo que lo reemplaza de verdad.
+// Hasta entonces, cualquier prenda nueva hay que seguir agregándola acá
+// a mano además de en perfil.html.
 const CAPAS_IMG={
   // Selector de modelo
   tora:"imagenes/tora.png",
@@ -956,11 +970,9 @@ let editorCapas={
   borde:"ninguno"
 };
 
-const ORDEN_CAPAS=[
-  "fondo","espalda","modelo","piel","ojos","boca",
-  "botas","pantalon","remera","guantes","accesorio",
-  "cara","pelo","mascota","borde"
-];
+// La lista de capas viene de js/core.js, que se carga antes que este
+// archivo. Acá solo se le da el nombre local de siempre.
+const ORDEN_CAPAS=ORDEN_CAPAS_AVATAR;
 
 
 // ---------- AVATAR (Neon: users.avatar) ----------

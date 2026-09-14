@@ -30,20 +30,14 @@
   // ---------- ORDEN DE CAPAS / RUTAS DE IMAGEN ----------
   // Mismo criterio que ORDEN_CAPAS y rutaImagenCapa() de js/usuario.js:
   // el "modelo" vive en imagenes/<modelo>.png, el resto de las capas
-  // en imagenes/<modelo>/<resto>.png. Reimplementado acá para no
-  // depender de que perfil.js exponga sus variables internas.
+  // en imagenes/<modelo>/<resto>.png. Vienen de js/core.js, que se carga
+  // antes que este archivo: así no dependemos de las variables internas
+  // de perfil.js, pero tampoco volvemos a copiar la lista de capas.
 
-  const ORDEN_CAPAS = [
-    "fondo","espalda","modelo","piel","ojos","boca",
-    "botas","pantalon","remera","guantes","accesorio",
-    "cara","pelo","mascota","borde"
-  ];
+  const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
   function rutaImagenCapa(valor) {
-    if (!valor || valor === "ninguno") return null;
-    if (!valor.includes("_")) return "imagenes/" + valor + ".png";
-    const idx = valor.indexOf("_");
-    return "imagenes/" + valor.slice(0, idx) + "/" + valor.slice(idx + 1) + ".png";
+    return rutaCapaAvatar(valor);
   }
 
   function marcadoAvatarCompuesto(avatar) {

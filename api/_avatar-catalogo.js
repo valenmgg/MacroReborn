@@ -33,10 +33,15 @@ const fs = require("fs");
 const path = require("path");
 
 // Las 15 capas que componen un avatar, en el mismo orden en que se
-// dibujan. Es la lista que hoy está repetida en 12 archivos del
-// frontend (y con una variante distinta en js/comunidad-ranking.js:
-// ahí "pantalon" va antes que "botas"). Acá vive la versión del
-// servidor, que es la que manda para validar.
+// dibujan. Acá vive la versión del servidor, que es la que manda para
+// validar.
+//
+// El frontend tenía esta lista copiada en once archivos, y dos de ellos
+// (js/ranking.js y js/comunidad-ranking.js) llevaban "pantalon" antes
+// que "botas": el mismo avatar se dibujaba distinto según la página.
+// Ahora los once toman la lista de ORDEN_CAPAS_AVATAR en js/core.js, que
+// es el gemelo de esta constante del lado del navegador. Si se cambia
+// una, hay que cambiar la otra.
 const CAPAS = [
   "fondo", "espalda", "modelo", "piel", "ojos", "boca",
   "botas", "pantalon", "remera", "guantes", "accesorio",

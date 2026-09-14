@@ -426,6 +426,20 @@ function usuarioEstaConectado(usuario){
 // del buscador (ítems chicos) o la bienvenida de Inicio, además de
 // los que ya arman este mismo HTML "a mano" en cada archivo.
 
+// ==============================
+// CAPAS DE AVATAR — fuente única del navegador
+// ==============================
+// Estas dos son las versiones buenas para todo el frontend. core.js se
+// carga antes que cualquier otro script en todas las páginas que dibujan
+// avatares, así que el resto de archivos usan estas y no su propia copia.
+//
+// Antes cada archivo llevaba la suya: once copias de la lista, y dos de
+// ellas (ranking.js y comunidad-ranking.js) con "pantalon" antes que
+// "botas". El orden es el orden de dibujo, así que el mismo avatar salía
+// con las botas encima del pantalón en esas dos páginas y debajo en el
+// resto. Si hay que cambiar el orden, se cambia acá y en CAPAS de
+// api/_avatar-catalogo.js, que es el gemelo del servidor.
+
 const ORDEN_CAPAS_AVATAR = [
   "fondo","espalda","modelo","piel","ojos","boca",
   "botas","pantalon","remera","guantes","accesorio",

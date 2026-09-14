@@ -49,46 +49,15 @@ async function cargarDatosAmigos(nombre){
 // ---------- AVATAR ----------
 
 
-const ORDEN_CAPAS = [
-
-"fondo",
-"espalda",
-"modelo",
-"piel",
-"ojos",
-"boca",
-"botas",
-"pantalon",
-"remera",
-"guantes",
-"accesorio",
-"cara",
-"pelo",
-"mascota",
-"borde"
-
-];
-
-
+// La lista de capas y la resolución de rutas viven en js/core.js, que se
+// carga antes que este archivo. Acá solo se les da el nombre local de
+// siempre, para no volver a copiar la lista.
+const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
 
 function rutaImagenCapa(valor){
 
-if(!valor || valor==="ninguno")
-return null;
-
-
-if(!valor.includes("_")){
-
-return "imagenes/"+valor+".png";
-
-}
-
-
-let partes = valor.split("_");
-
-
-return "imagenes/"+partes[0]+"/"+partes.slice(1).join("_")+".png";
+return rutaCapaAvatar(valor);
 
 }
 

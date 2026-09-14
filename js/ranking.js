@@ -64,25 +64,16 @@ function obtenerAvatar(nombre, avatarCrudo){
     }
 
 
-    const capas = [
-
-        "fondo",
-        "espalda",
-        "modelo",
-        "piel",
-        "ojos",
-        "boca",
-        "pantalon",
-        "botas",
-        "remera",
-        "guantes",
-        "accesorio",
-        "cara",
-        "pelo",
-        "mascota",
-        "borde"
-
-    ];
+    // El orden de capas y la resolución de rutas vienen de js/core.js,
+    // que se carga antes que este archivo.
+    //
+    // Hasta ahora esta copia tenía "pantalon" antes que "botas", al revés
+    // que el resto del sitio. Como el orden es el orden de dibujo, el
+    // mismo avatar se veía con las botas encima del pantalón acá y debajo
+    // en cualquier otra página. Al pasar a la lista compartida, las botas
+    // vuelven a quedar bajo el pantalón, como en el editor donde la gente
+    // arma su avatar.
+    const capas = ORDEN_CAPAS_AVATAR;
 
 
 
@@ -94,38 +85,10 @@ function obtenerAvatar(nombre, avatarCrudo){
     capas.forEach(tipo=>{
 
 
-        let valor = avatar[tipo];
+        const ruta = rutaCapaAvatar(avatar[tipo]);
 
 
-        if(valor && valor !== "ninguno"){
-
-
-            let ruta;
-
-
-            if(valor.includes("_")){
-
-
-                let partes = valor.split("_");
-
-                ruta =
-                "imagenes/" +
-                partes[0] +
-                "/" +
-                partes.slice(1).join("_") +
-                ".png";
-
-
-            }else{
-
-
-                ruta =
-                "imagenes/" +
-                valor +
-                ".png";
-
-
-            }
+        if(ruta){
 
 
             html += `

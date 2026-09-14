@@ -68,25 +68,20 @@ function obtenerActivo() {
 }
 
 // ---------- ORDEN DE CAPAS ----------
+// La lista de capas y la resolución de rutas viven en js/core.js, que
+// se carga antes que este archivo en todas las páginas. Acá solo se les
+// da el nombre local de siempre, para no volver a copiar la lista.
+//
+// Estaba repetida en once archivos, y por eso ranking.js y
+// comunidad-ranking.js llevaban meses dibujando las botas encima del
+// pantalón: alguien cambió el orden en dos copias y no en el resto.
 
-const ORDEN_CAPAS = [
-  "fondo","espalda","modelo","piel","ojos","boca",
-  "botas","pantalon","remera","guantes","accesorio",
-  "cara","pelo","mascota","borde"
-];
+const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
-// Resuelve la ruta real de una capa de avatar.
 // El "modelo" (ej: "tora") vive en imagenes/tora.png.
 // El resto de las capas (ej: "tora_piel1") viven en imagenes/tora/piel1.png.
 function rutaImagenCapa(valor) {
-  if (!valor || valor === "ninguno") return null;
-  if (!valor.includes("_")) {
-    return "imagenes/" + valor + ".png";
-  }
-  const idx = valor.indexOf("_");
-  const modelo = valor.slice(0, idx);
-  const resto = valor.slice(idx + 1);
-  return "imagenes/" + modelo + "/" + resto + ".png";
+  return rutaCapaAvatar(valor);
 }
 
 
