@@ -4,7 +4,10 @@ const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
-const { validarAvatar } = require("./_avatar-catalogo");
+// CAPAS es la lista de las 15 capas en su orden de dibujo. Es la del
+// servidor, gemela de ORDEN_CAPAS_AVATAR en js/core.js. Se manda dentro
+// del catálogo para que el editor no tenga que llevar su propia copia.
+const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
 
 // La conexión se pide a api/_db.js en vez de crearla acá con
 // neon(process.env.DATABASE_URL). En producción es exactamente la misma
@@ -15,6 +18,99 @@ const sql = obtenerSql();
 
 // El "banco": el único lugar que sabe restar monedas (ver api/_monedas.js).
 const monedasService = new MonedasService(sql);
+
+// ==============================
+// GET /api/content?action=avatar-catalogo
+// ==============================
+// Todo lo que el editor de avatares necesita para construirse solo:
+// qué modelos hay, qué prendas se ofrecen, cómo se llama cada una, de
+// qué ranura es y cuánto cuesta.
+//
+// Antes esto estaba escrito a mano en perfil.html —622 divs— y también
+// en CAPAS_IMG de js/perfil.js. Añadir una prenda obligaba a tocar los
+// dos a mano, además del fichero en disco. Nadie obligaba a que los
+// tres coincidieran, y de hecho no coincidían: cinco prendas existían
+// en el disco sin aparecer nunca en el editor.
+//
+// ---------------------------------------------------------------
+// LA CACHÉ Y LOS DOS PROCESOS
+// ---------------------------------------------------------------
+// El catálogo cambia poco y se pide mucho, así que se guarda en
+// memoria. Pero cluster.js levanta UN PROCESO POR NÚCLEO, y cada uno
+// tiene su propia memoria. Si se cacheara a ciegas, al publicar una
+// prenda solo se enteraría el proceso que atendió esa petición: la
+// prenda nueva aparecería y desaparecería al recargar, según quién
+// contestara. Es un fallo desconcertante y caro de perseguir.
+//
+// Por eso cada petición comprueba primero un entero en
+// avatar_catalogo_version —una fila, por clave primaria— y solo
+// reconstruye si cambió. Los dos procesos se enteran solos, sin tener
+// que hablar entre ellos, y sin depender de que nadie se acuerde de
+// invalidar nada.
+let _catalogoEnMemoria = null;   // { version, cuerpo }
+
+async function construirCatalogo(version) {
+  // Las prendas publicadas, con el precio de la tienda si lo tienen.
+  // El LEFT JOIN es lo que distingue "gratis" (precio null) de "de
+  // pago": la tienda sigue viviendo en avatar_shop_items, que no se
+  // tocó, y se enlaza por el mismo texto del valor de capa.
+  const filas = await sql`
+    SELECT p.valor, p.modelo, p.capa, p.nombre, a.sha256, s.precio
+    FROM avatar_prendas p
+    JOIN avatar_archivos a ON a.id = p.archivo_id
+    LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
+    WHERE p.publicada
+    ORDER BY p.capa, p.modelo, p.id;
+  `;
+
+  const modelos = [];
+  const prendas = [];
+
+  for (const f of filas) {
+    const item = {
+      valor: f.valor,
+      modelo: f.modelo,
+      capa: f.capa,
+      nombre: f.nombre,
+      url: "/prendas/" + f.sha256 + ".png",
+      precio: f.precio === null || f.precio === undefined ? null : Number(f.precio)
+    };
+    // La capa "modelo" son los personajes base, no ropa: el editor los
+    // muestra en su propio selector.
+    if (f.capa === "modelo") modelos.push(item);
+    else prendas.push(item);
+  }
+
+  return {
+    success: true,
+    version,
+    capas: CAPAS_AVATAR,
+    modelos,
+    prendas
+  };
+}
+
+async function avatarCatalogo(req, res) {
+  const filas = await sql`SELECT version FROM avatar_catalogo_version WHERE id = 1;`;
+  const version = filas.length ? Number(filas[0].version) : 0;
+
+  if (!_catalogoEnMemoria || _catalogoEnMemoria.version !== version) {
+    _catalogoEnMemoria = { version, cuerpo: await construirCatalogo(version) };
+  }
+
+  // La versión es la identidad del catálogo, así que sirve de ETag: si
+  // no cambió, el navegador se ahorra volver a bajarse los ~90 kB.
+  const etag = 'W/"catalogo-' + version + '"';
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
+
+  if (req.headers && req.headers["if-none-match"] === etag) {
+    return res.status(304).end();
+  }
+
+  return res.status(200).json(_catalogoEnMemoria.cuerpo);
+}
+
 
 // ==============================
 // GET /api/content?action=avatar-prenda&v=<huella>
@@ -1783,6 +1879,7 @@ module.exports = async function handler(req, res) {
     if (action === "avatar-shop") return await avatarShop(req, res);
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
     if (action === "avatar-prenda") return await avatarPrenda(req, res);
+    if (action === "avatar-catalogo") return await avatarCatalogo(req, res);
 
     return res.status(400).json({ success: false, error: "Acción inválida" });
 
