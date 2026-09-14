@@ -17,6 +17,63 @@ const sql = obtenerSql();
 const monedasService = new MonedasService(sql);
 
 // ==============================
+// GET /api/content?action=avatar-prenda&v=<huella>
+// ==============================
+// Sirve una prenda de avatar como PNG de verdad, leyéndola de
+// avatar_archivos en vez del disco.
+//
+// Se direcciona por la HUELLA del contenido, no por el id de la prenda.
+// Es a propósito: 635 prendas comparten solo 418 archivos, porque los
+// fondos, bordes y mascotas son el mismo PNG en varios modelos. Con la
+// huella por delante, "tora_fondo1" y "cereza_fondo1" son la misma URL
+// y el navegador se la descarga una sola vez para las dos. Si fuera por
+// id de prenda, se bajaría dos veces el mismo dibujo.
+//
+// Público, como lo era el archivo en imagenes/: son las prendas que ya
+// se ven en el editor y en cada avatar del sitio. No hay nada que
+// proteger que no estuviera visible antes.
+//
+// Caché de un año e immutable porque la URL ES el contenido: si el
+// dibujo cambia, cambia la huella y cambia la URL. Nunca puede quedarse
+// mostrando una versión vieja. Mismo criterio que el avatar PNG del
+// administrador en api/users.js.
+//
+// OJO: hasta que nginx tenga proxy_cache delante de esta ruta, cada
+// imagen que no esté en la caché del navegador llega hasta Node y
+// Postgres. Una página de comunidad con 20 avatares son cientos de
+// peticiones, y esta máquina tiene 950 MB y dos núcleos.
+async function avatarPrenda(req, res) {
+  const huella = String(req.query.v || "");
+
+  // Una huella SHA-256 y nada más: evita que esto se convierta en una
+  // vía para sondear la base con texto arbitrario.
+  if (!/^[a-f0-9]{64}$/.test(huella)) {
+    return res.status(400).json({ success: false, error: "Falta la prenda" });
+  }
+
+  const filas = await sql`
+    SELECT datos FROM avatar_archivos WHERE sha256 = ${huella} LIMIT 1;
+  `;
+
+  if (!filas.length) {
+    return res.status(404).json({ success: false, error: "Esa prenda no existe" });
+  }
+
+  // Según el driver, un bytea puede llegar como Buffer (pg) o como
+  // Uint8Array (PGlite, en los tests). Buffer.from cubre los dos sin
+  // copiar de más cuando ya es un Buffer.
+  const binario = Buffer.isBuffer(filas[0].datos)
+    ? filas[0].datos
+    : Buffer.from(filas[0].datos);
+
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Content-Length", binario.length);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  return res.status(200).end(binario);
+}
+
+
+// ==============================
 // /api/content?action=comments|likes|reports
 // ==============================
 // Fase 2 / Bloque 1: comentarios de perfil, likes (genérico) y
@@ -1725,6 +1782,7 @@ module.exports = async function handler(req, res) {
     if (action === "community-feed") return await communityFeed(req, res);
     if (action === "avatar-shop") return await avatarShop(req, res);
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
+    if (action === "avatar-prenda") return await avatarPrenda(req, res);
 
     return res.status(400).json({ success: false, error: "Acción inválida" });
 
