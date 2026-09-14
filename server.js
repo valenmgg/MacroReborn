@@ -199,13 +199,49 @@ async function main() {
       return res.end("No encontrado: " + rutaRelativa);
     }
 
-    fs.readFile(archivo, (err, datos) => {
-      if (err) {
+    // ----- ETag y respuestas 304 -----
+    // Hasta ahora esto solo ponía Content-Type. Sin ETag ni
+    // Last-Modified, un navegador no tiene forma de preguntar "¿esto
+    // cambió?": o se fía de la caché o se baja el archivo entero.
+    //
+    // Por eso nginx servía los .js con `immutable` durante 30 días, y
+    // eso trae un problema real: un cambio en el código tardaba hasta un
+    // mes en llegar a quien ya había visitado el sitio. Peor aún, el
+    // HTML NO está cacheado y el JS sí, así que alguien podía recibir un
+    // HTML nuevo con el JavaScript viejo — que es exactamente la forma
+    // de romperle la página a la mitad de la gente y a la otra mitad no.
+    //
+    // Con un ETag barato (tamaño + fecha de modificación, sin leer ni
+    // hashear el archivo) la revalidación cuesta una respuesta vacía de
+    // 304 en vez de una descarga. Eso es lo que permite que nginx pueda
+    // dejar de decir `immutable` en los scripts.
+    fs.stat(archivo, (errStat, datosArchivo) => {
+      if (errStat || !datosArchivo.isFile()) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         return res.end("No encontrado: " + rutaRelativa);
       }
-      res.writeHead(200, { "Content-Type": TIPOS[path.extname(archivo)] || "application/octet-stream" });
-      res.end(datos);
+
+      const etag = '"' + datosArchivo.size.toString(16) + "-" +
+                   Math.floor(datosArchivo.mtimeMs).toString(16) + '"';
+
+      res.setHeader("ETag", etag);
+      res.setHeader("Last-Modified", datosArchivo.mtime.toUTCString());
+
+      // Si el navegador ya tiene esta versión, no hace falta leer el
+      // archivo del disco siquiera.
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304);
+        return res.end();
+      }
+
+      fs.readFile(archivo, (err, datos) => {
+        if (err) {
+          res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+          return res.end("No encontrado: " + rutaRelativa);
+        }
+        res.writeHead(200, { "Content-Type": TIPOS[path.extname(archivo)] || "application/octet-stream" });
+        res.end(datos);
+      });
     });
   });
 
