@@ -448,13 +448,29 @@ function construirOpcionesDelEditor(){
       if(capa !== "modelo") div.dataset.modelo = item.modelo;
 
       const img = document.createElement("img");
-      img.src = item.url;
+
+      // EL ORDEN IMPORTA, Y MUCHO: primero los atributos, después src.
+      //
+      // El navegador arranca la descarga en el instante en que se asigna
+      // src. "loading=lazy" solo se tiene en cuenta si ya está puesto en
+      // ese momento; ponerlo después no cancela nada. Y como el elemento
+      // todavía no está insertado en el documento, tampoco lo frena que
+      // el editor esté con display:none.
+      //
+      // Estaba al revés, y el resultado se midió con un HAR de una carga
+      // real del perfil: 357 peticiones a /prendas/, 2,9 MB, el catálogo
+      // entero descargado sin que nadie abriera el editor. Con el orden
+      // bueno son 0 hasta que se abre.
+      //
       // Con setAttribute y no con la propiedad: no todos los motores
       // reflejan img.loading al atributo, y el atributo es lo que
-      // entienden todos. El HTML de antes también los traía así.
+      // entienden todos. El HTML de antes también los traía así, y por
+      // eso allí sí funcionaba: el parser pone los atributos antes de
+      // empezar a cargar.
       img.setAttribute("loading", "lazy");
       img.setAttribute("decoding", "async");
       img.setAttribute("alt", "");
+      img.src = item.url;
 
       div.appendChild(img);
       div.appendChild(document.createTextNode(item.nombre));
