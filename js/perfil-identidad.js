@@ -327,7 +327,25 @@
           programarRefresco(root, { parts: ['history'] });
         }
       },
-      'macro:session-change': () => programarRefresco(root, { refreshSession: true })
+      // OJO: aquí NO se vuelve a sincronizar la sesión.
+      //
+      // Sincronizar la sesión es justo lo que emite este evento
+      // (js/session.js, guardar() -> emitir("set")), así que pedirla
+      // desde aquí cerraba un bucle que no paraba nunca:
+      //
+      //   load({refreshSession:true}) -> MRApp.refreshSession()
+      //     -> guardar() -> "macro:session-change"
+      //     -> programarRefresco({refreshSession:true}) -> 120 ms -> otra vez
+      //
+      // Medido cargando estos mismos archivos con el fetch instrumentado:
+      // 64 peticiones en 2 segundos, en tandas de 4 cada 125 ms, sin
+      // señal de parar. Eso es lo que hacía lenta la carga del perfil.
+      //
+      // Las listas sí hay que repintarlas cuando la sesión cambia de
+      // verdad —por ejemplo desde otra pestaña—, así que se sigue
+      // llamando a programarRefresco; lo que se quita es el
+      // refreshSession, que es lo que realimentaba el bucle.
+      'macro:session-change': () => programarRefresco(root)
     };
 
     if (window.MRApp && MRApp.events && typeof MRApp.events.on === 'function') {

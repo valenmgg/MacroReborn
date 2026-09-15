@@ -106,8 +106,22 @@
   async function refresh(opciones) {
     const opts = opciones || {};
     const ahora = Date.now();
-    if (!opts.force && refreshPromise && ahora - lastRefreshAt < 5000) return refreshPromise;
     const local = estadoActual();
+
+    // Dos frenos distintos, y antes estaban encadenados con && — que es
+    // lo mismo que no tener el segundo:
+    //
+    //   if (!opts.force && refreshPromise && ahora - lastRefreshAt < 5000)
+    //
+    // refreshPromise se pone a null en el finally de abajo, así que en
+    // cuanto un refresco termina vale null y la condición entera es
+    // falsa. Resultado: el límite de 5 segundos no existía. Lo único que
+    // quedaba en pie era no duplicar una petición ya en vuelo, y eso no
+    // frena a quien pide otra vez en cuanto la anterior acaba.
+    if (!opts.force) {
+      if (refreshPromise) return refreshPromise;
+      if (ahora - lastRefreshAt < 5000) return local;
+    }
     const username = opts.username || (local && (local.nombre || local.username));
 
     if (!username) return local;
@@ -133,14 +147,17 @@
         nivel: data.user.level != null ? data.user.level : data.user.nivel
       });
 
-      const resultado = guardar(remoto, { conservarToken: true });
-      lastRefreshAt = Date.now();
-      return resultado;
+      return guardar(remoto, { conservarToken: true });
       } catch (error) {
         console.warn("MacroReborn: no se pudo sincronizar la sesión con Neon.", error);
         return local;
       } finally {
         refreshPromise = null;
+        // En el finally y no solo en el camino de éxito: si la petición
+        // falla, lastRefreshAt se quedaba a 0 y el freno de 5 segundos no
+        // llegaba a existir nunca. Justo cuando el servidor va mal es
+        // cuando menos conviene insistir sin parar.
+        lastRefreshAt = Date.now();
       }
     })();
 
