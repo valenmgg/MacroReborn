@@ -643,12 +643,11 @@ function componerAvatarPNG(rutas){
 // las capas apiladas tal cual estaban: se sigue viendo igual, solo que
 // en ese caso puntual el click derecho seguiría tomando una sola capa.
 
-async function componerAvataresEnPantalla(raiz){
-  const contenedor = raiz || document;
-  const nodos = contenedor.querySelectorAll(".avatar-compuesto:not([data-compuesto])");
-  if(!nodos.length) return;
-
-  await Promise.all(Array.from(nodos).map(async nodo=>{
+// Compone UN avatar. Antes esto vivía suelto dentro del bucle de
+// componerAvataresEnPantalla; se saca aparte para poder llamarlo cuando
+// el avatar se acerca a la pantalla y no antes.
+async function _componerUnAvatar(nodo){
+  {
     nodo.setAttribute("data-compuesto", "1"); // evita procesarlo dos veces
 
     const rutasTexto = nodo.getAttribute("data-capas") || "";
@@ -688,7 +687,49 @@ async function componerAvataresEnPantalla(raiz){
     }catch(error){
       console.warn("MacroReborn: no se pudo componer el avatar en una sola imagen.", error);
     }
-  }));
+  }
+}
+
+// Componer un avatar obliga a descargar sus capas con new Image(), y eso
+// NO respeta el loading="lazy" que llevan las <img> apiladas: una imagen
+// creada por JavaScript se descarga en cuanto se le asigna src, esté
+// donde esté el avatar.
+//
+// Como esto recorría el documento entero, cada avatar de la página se
+// bajaba completo aunque estuviera mucho más abajo de lo que se ve. En
+// un HAR de una carga real del perfil eran 20 y pico peticiones de
+// capas de gente que ni aparecía en pantalla. Fue lo que el dueño del
+// sitio describió como "imágenes que no reconozco".
+//
+// Ahora se espera a que el avatar se acerque a la vista. No se pierde
+// nada: la composición existe para que el clic derecho copie el avatar
+// entero, y solo se puede hacer clic derecho en lo que se ve.
+const _observadorAvatares = (typeof IntersectionObserver !== "undefined")
+  ? new IntersectionObserver(entradas=>{
+      entradas.forEach(entrada=>{
+        if(!entrada.isIntersecting) return;
+        _observadorAvatares.unobserve(entrada.target);
+        _componerUnAvatar(entrada.target);
+      });
+    }, { rootMargin: "300px" })   // un poco antes de que asome, para que no se note
+  : null;
+
+async function componerAvataresEnPantalla(raiz){
+  const contenedor = raiz || document;
+  const nodos = contenedor.querySelectorAll(".avatar-compuesto:not([data-compuesto]):not([data-esperando-vista])");
+  if(!nodos.length) return;
+
+  // Sin IntersectionObserver (navegador viejo) se compone todo de una,
+  // como antes: es peor para la red pero sigue funcionando.
+  if(!_observadorAvatares){
+    await Promise.all(Array.from(nodos).map(_componerUnAvatar));
+    return;
+  }
+
+  Array.from(nodos).forEach(nodo=>{
+    nodo.setAttribute("data-esperando-vista", "1");
+    _observadorAvatares.observe(nodo);
+  });
 }
 
 function _iniciarObservadorAvatares(){
