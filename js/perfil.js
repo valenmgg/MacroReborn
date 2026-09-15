@@ -323,6 +323,11 @@ const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo (elegibles)
 // Una prenda retirada hay que poder DIBUJARLA, pero no ELEGIRLA.
 const RUTAS_RETIRADAS = new Map();
 
+// Bandera para no encadenar esperas: si el avatar se pide varias veces
+// mientras el catalogo esta en camino, solo una espera y las demas se
+// descartan. Sin esto, cada llamada dejaria su propio reintento.
+let _avatarEnEspera = false;
+
 let _promesaCatalogo = null;
 
 // La descarga la hace core.js, que se carga antes que esto en todas las
@@ -835,6 +840,26 @@ function actualizarAvatarPrincipal(){
   if(avatarEsPNG(avatar)){
     const src = avatarPNGData(avatar);
     avatarWrapper.innerHTML = `<img id="avatarPrincipal" class="avatar-png-personalizado" src="${src}" alt="Avatar PNG personalizado">`;
+    return;
+  }
+
+  // Si el catálogo todavía no llegó, se espera en vez de dibujar con las
+  // rutas de imagenes/ y tener que repetirlo entero cuando llegue.
+  //
+  // Dibujar antes de tiempo no era gratis: en un HAR de una carga real
+  // las cuatro capas del avatar aparecían DOS veces, una por la ruta
+  // vieja y otra por la del catálogo. 464 kB descargados de más para
+  // pintar exactamente lo mismo.
+  //
+  // La espera es corta: core.js pide el catálogo nada más cargarse, muy
+  // antes de que esta función llegue a ejecutarse. Y si el catálogo
+  // falla, cargarCatalogo() resuelve igual y se sigue por la ruta vieja.
+  if(typeof cargarCatalogo === "function" && !RUTAS_PRENDA.size && !_avatarEnEspera){
+    _avatarEnEspera = true;
+    cargarCatalogo().finally(()=>{
+      _avatarEnEspera = false;
+      actualizarAvatarPrincipal();
+    });
     return;
   }
 
