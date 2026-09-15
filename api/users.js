@@ -234,8 +234,26 @@ async function listarUsuarios(req, res) {
     END AS avatar`;
 
   if (username) {
+    // ?ligero=1 -> el avatar PNG viaja como puntero, igual que en las
+    // listas, en vez de con su base64 entero.
+    //
+    // La lectura de un usuario suelto mandaba SIEMPRE el base64, porque
+    // el editor del perfil lo necesita para restaurar el avatar
+    // anterior. Pero el editor solo pide el TUYO. Quien pide el de otra
+    // persona -cargarAvatarUsuario() en js/core.js, que precarga los
+    // avatares de quienes te mencionaron o comentaron- solo quiere
+    // dibujarlo, y se estaba bajando el archivo completo.
+    //
+    // Medido en un HAR de una carga real del perfil: una sola de esas
+    // llamadas, /api/users?username=Samuel488, pesaba 1.313 kB y tardaba
+    // 402 ms. Era casi la cuarta parte de toda la página.
+    //
+    // avatarPNGData() en js/core.js ya entiende las dos formas desde
+    // ca518e6, así que para dibujar no cambia nada.
+    const avatarUno = req.query.ligero ? avatarLigeroSQL : sql`u.avatar AS avatar`;
+
     const usuario = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, u.avatar, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, ${avatarUno}, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,

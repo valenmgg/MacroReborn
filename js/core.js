@@ -322,7 +322,14 @@ async function cargarAvatarUsuario(nombre){
 
   _peticionesAvatares[nombre] = (async function(){
     try{
-      const resp = await fetch("/api/users?username=" + encodeURIComponent(nombre));
+      // ligero=1: esto es para DIBUJAR el avatar de otra persona, no
+      // para editarlo. Sin ese parámetro llega el PNG entero en base64
+      // dentro del JSON; con él llega un puntero de unos 80 bytes y la
+      // imagen se pide aparte, cacheada un año por su huella.
+      //
+      // Una sola de estas llamadas pesaba 1.313 kB en una carga real del
+      // perfil. avatarPNGData() entiende las dos formas.
+      const resp = await fetch("/api/users?ligero=1&username=" + encodeURIComponent(nombre));
       const datos = await resp.json();
       const avatar = (datos && datos.success) ? normalizarAvatar(datos.user.avatar) : null;
       _cacheAvatares[nombre] = avatar;
