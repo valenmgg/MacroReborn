@@ -339,3 +339,51 @@ describe("publicar y retirar", () => {
     assert.ok(!publico.cuerpo.prendas.some(x => x.id === idPropia), "el catálogo público no");
   });
 });
+
+describe("no repartir un identificador que alguien lleva puesto", () => {
+  test("se salta el número de una prenda que sobrevivió a su dibujo", async () => {
+    // El caso real: "tora_piel7" lo llevan tres cuentas y dos casilleros
+    // de galería, pero su fichero se borró hace tiempo y no está en el
+    // catálogo. El primer hueco libre de tora/piel era justo el 7, así
+    // que la siguiente piel de tora que alguien subiera se habría
+    // convertido, en silencio, en la piel de esas tres personas.
+    const id = await crearUsuario("lleva_una_fantasma");
+    await db.query(
+      "UPDATE users SET avatar = $1 WHERE id = $2",
+      [JSON.stringify({ modelo: "tora", espalda: "tora_espalda1" }), id]
+    );
+
+    // tora_espalda1 no está en avatar_prendas: el hueco libre sería el 1.
+    const hay = await db.query("SELECT count(*)::int AS n FROM avatar_prendas WHERE valor = 'tora_espalda1'");
+    assert.equal(hay.rows[0].n, 0, "el montaje asume que esa prenda no está en el catálogo");
+
+    const r = await subir([prendaDePrueba({ capa: "espalda", nombre: "Espalda nueva" })], ARTISTA());
+
+    assert.equal(r.cuerpo.entraron, 1, r.cuerpo.resultados[0] && r.cuerpo.resultados[0].error);
+    assert.notEqual(r.cuerpo.resultados[0].valor, "tora_espalda1",
+      "no debe reutilizar un valor que alguien lleva puesto");
+    assert.equal(r.cuerpo.resultados[0].valor, "tora_espalda2");
+  });
+
+  test("también mira los casilleros de la galería, no solo el avatar activo", async () => {
+    const id = await crearUsuario("guarda_una_fantasma");
+    await db.query(
+      `INSERT INTO saved_avatars (user_id, slot, avatar) VALUES ($1, 1, $2)`,
+      [id, JSON.stringify({ modelo: "tora", guantes: "tora_guantes3" })]
+    );
+
+    const r = await subir([
+      prendaDePrueba({ capa: "guantes", nombre: "Guantes A" }),
+      prendaDePrueba({ capa: "guantes", nombre: "Guantes B", png: comoDataUrl(PNG_B) })
+    ], ARTISTA());
+
+    assert.equal(r.cuerpo.entraron, 2);
+    const valores = r.cuerpo.resultados.map(x => x.valor);
+    // El 3 está guardado en una galería, así que no debe repartirse.
+    // Los números bajos ya los ocupó un test anterior de este archivo:
+    // lo que importa es que se salte el 3, no cuáles toquen.
+    assert.ok(!valores.includes("tora_guantes3"), "el 3 está guardado en una galería");
+    assert.equal(new Set(valores).size, 2, "deben ser dos identificadores distintos");
+    valores.forEach(v => assert.match(v, /^tora_guantes\d+$/));
+  });
+});

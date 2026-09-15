@@ -168,14 +168,47 @@ function leerPngSubido(texto) {
 // porque su nombre llevaba mayúscula y espacio.
 async function siguienteValor(modelo, capa) {
   const prefijo = modelo + "_" + capa;
-  const filas = await sql`
+  const usados = new Set();
+
+  const delCatalogo = await sql`
     SELECT valor FROM avatar_prendas WHERE modelo = ${modelo} AND capa = ${capa};
   `;
-  const usados = new Set();
-  for (const f of filas) {
+  for (const f of delCatalogo) {
     const n = parseInt(String(f.valor).slice(prefijo.length), 10);
     if (!Number.isNaN(n)) usados.add(n);
   }
+
+  // Y también los números que alguien LLEVA PUESTOS, aunque ya no
+  // estén en el catálogo.
+  //
+  // Hay valores que sobrevivieron a su dibujo: "tora_piel7" lo llevan
+  // tres cuentas y dos casilleros de galería, y su fichero se borró
+  // hace tiempo. Como el catálogo solo llega hasta tora_piel6, el
+  // primer hueco libre era justo el 7: la siguiente piel de tora que
+  // alguien subiera se habría convertido, en silencio, en la piel de
+  // esas tres personas.
+  //
+  // No es un caso hipotético. Es el único valor colgando del sitio, y
+  // apuntaba exactamente al próximo número a repartir. Saltárselo
+  // cuesta una consulta por prenda subida, y se suben de a pocas.
+  const enAvatares = await sql`
+    SELECT avatar::text AS t FROM users
+      WHERE avatar IS NOT NULL AND avatar::text LIKE ${"%" + prefijo + "%"}
+    UNION ALL
+    SELECT avatar::text AS t FROM saved_avatars
+      WHERE avatar IS NOT NULL AND avatar::text LIKE ${"%" + prefijo + "%"}
+  `;
+
+  // El prefijo es modelo_capa: solo letras y dígitos, así que no hay
+  // nada que escapar en la expresión.
+  const busca = new RegExp(prefijo + "(\\d+)", "g");
+  for (const fila of enAvatares) {
+    for (const m of String(fila.t).matchAll(busca)) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n)) usados.add(n);
+    }
+  }
+
   let n = 1;
   while (usados.has(n)) n++;
   return prefijo + n;
