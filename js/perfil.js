@@ -316,7 +316,13 @@ suscribirPerfilSesion();
 // su dibujo. Publicar una prenda deja de necesitar un despliegue.
 
 let CATALOGO = null;
-const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo
+const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo (elegibles)
+
+// Las retiradas van aparte, y no en RUTAS_PRENDA, porque ese mapa es
+// además la lista de lo que el editor ofrece (ver valoresDelCatalogo).
+// Una prenda retirada hay que poder DIBUJARLA, pero no ELEGIRLA.
+const RUTAS_RETIRADAS = new Map();
+
 let _promesaCatalogo = null;
 
 // La descarga la hace core.js, que se carga antes que esto en todas las
@@ -337,6 +343,10 @@ function cargarCatalogo(){
       RUTAS_PRENDA.clear();
       datos.modelos.forEach(m => RUTAS_PRENDA.set(m.valor, m.url));
       datos.prendas.forEach(p => RUTAS_PRENDA.set(p.valor, p.url));
+
+      RUTAS_RETIRADAS.clear();
+      (datos.retiradas || []).forEach(r => RUTAS_RETIRADAS.set(r.valor, r.url));
+
       return datos;
     })
     .catch(error => {
@@ -360,10 +370,35 @@ function cargarCatalogo(){
 // un valor que ya no existe —como "tora_piel7", que tres cuentas tienen
 // guardado y cuyo fichero se borró hace tiempo— deja de pedirse, así que
 // deja de dar un 404 en la consola.
+//
+// Pero hay que separar dos cosas que antes estaban mezcladas, porque se
+// parecen y no son lo mismo:
+//
+//   - RETIRADA: existe en la base, alguien la lleva puesta, y se sacó
+//     del editor. HAY QUE DIBUJARLA. Retirar una prenda la saca del
+//     editor, no del avatar de quien ya la tenía.
+//
+//   - COLGANDO: no existe en ningún sitio. Se dibujaría como un hueco y
+//     un 404 en la consola. Esa no se pide.
+//
+// Estaban mezcladas porque el catálogo solo traía las publicadas, así
+// que las dos caían en el mismo "no está en el mapa" y las dos se
+// descartaban. El resultado se vio en producción: una persona con dos
+// prendas retiradas puestas veía su propio avatar sin fondo y sin piel.
 function rutaDePrenda(valor){
   if(!valor || valor === "ninguno") return null;
-  if(RUTAS_PRENDA.size) return RUTAS_PRENDA.get(valor) || null;
-  return typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(valor) : null;
+
+  const conocida = RUTAS_PRENDA.get(valor) || RUTAS_RETIRADAS.get(valor);
+  if(conocida) return conocida;
+
+  // Todavía sin catálogo: la ruta de siempre, igual que el resto de las
+  // páginas. Degradar a lo de antes es mejor que no mostrar nada.
+  if(!RUTAS_PRENDA.size){
+    return typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(valor) : null;
+  }
+
+  // Con catálogo y sin rastro del valor: está colgando.
+  return null;
 }
 
 // Los valores que el catálogo reconoce. Sustituye a Object.keys(CAPAS_IMG).

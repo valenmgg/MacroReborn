@@ -279,3 +279,59 @@ describe("cuando el catálogo no llega", () => {
     assert.equal(llamadas, 1);
   });
 });
+
+// ==============================
+// RETIRADA NO ES LO MISMO QUE COLGANDO
+// ==============================
+// Las dos caen fuera de la lista de prendas elegibles, y por eso
+// estuvieron mezcladas: el catálogo solo traía las publicadas, así que
+// rutaDePrenda devolvía null para ambas y la capa no se dibujaba.
+//
+// Se vio en producción: una persona con "cereza_fondo40" y
+// "cereza_piel4" puestas -las dos retiradas- veía su propio avatar sin
+// fondo y sin piel. Retirar una prenda la saca del editor, no del avatar
+// de quien ya la llevaba.
+
+const CON_RETIRADAS = () => catalogoDePrueba({
+  retiradas: [
+    { valor: "cereza_fondo40", url: "/prendas/ret1.png" },
+    { valor: "cereza_piel4", url: "/prendas/ret2.png" }
+  ]
+});
+
+describe("una prenda retirada se sigue dibujando", () => {
+  test("devuelve su URL con huella, no null", async () => {
+    const { api } = montar(respuestaOk(CON_RETIRADAS()));
+    await api.cargarCatalogo();
+
+    assert.equal(api.rutaDePrenda("cereza_fondo40"), "/prendas/ret1.png");
+    assert.equal(api.rutaDePrenda("cereza_piel4"), "/prendas/ret2.png");
+  });
+
+  test("pero un valor colgando sigue devolviendo null", async () => {
+    // "tora_piel7" no existe en ningún sitio: pedirlo solo daría un 404.
+    const { api } = montar(respuestaOk(CON_RETIRADAS()));
+    await api.cargarCatalogo();
+
+    assert.equal(api.rutaDePrenda("tora_piel7"), null);
+  });
+
+  test("y NO aparece como opción del editor", async () => {
+    const { api } = montar(respuestaOk(CON_RETIRADAS()));
+    await api.cargarCatalogo();
+
+    const valores = api.valoresDelCatalogo();
+    assert.ok(!valores.includes("cereza_fondo40"), "retirada: no se puede elegir");
+    assert.ok(!valores.includes("cereza_piel4"), "retirada: no se puede elegir");
+    assert.ok(valores.includes("tora_botas1"), "publicada: sí se puede elegir");
+  });
+
+  test("un catálogo sin el campo retiradas no rompe nada", async () => {
+    // Por si el servidor es más viejo que el frontend.
+    const { api } = montar(respuestaOk(catalogoDePrueba()));
+    await api.cargarCatalogo();
+
+    assert.equal(api.rutaDePrenda("tora_botas1"), "/prendas/ccc.png");
+    assert.equal(api.rutaDePrenda("cereza_fondo40"), null);
+  });
+});
