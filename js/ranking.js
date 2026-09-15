@@ -270,25 +270,46 @@ async function revisarLogrosRanking(){
     const yo = activoRanking && activoRanking.nombre;
     if(!yo) return;
 
-    const ranking = await obtenerListaRanking();
+    // El puesto ya viaja con el usuario de la sesión: /api/users devuelve
+    // rank_actual. Es el mismo atajo que js/perfil.js toma para pintar la
+    // posición, y aquí hacía falta igual.
+    //
+    // Antes esto llamaba siempre a obtenerListaRanking(), que para leer
+    // UNA fila se bajaba /api/users?limit=500 (101 kB) y además pedía los
+    // logros y las insignias de las ~150 personas del ranking en dos URLs
+    // de más de 3 kB cada una. nginx las cortaba con 429 y el navegador
+    // intentaba leer como JSON la página de error:
+    //
+    //   SyntaxError: Unexpected token '<', "<html>..." is not valid JSON
+    //
+    // Y pasaba en CADA página que carga ranking.js, incluido el perfil,
+    // porque revisarLogrosRanking() se ejecuta suelta al final del
+    // archivo. Es el mismo derroche que ya se quitó del lado POST en
+    // ddf2773, por la otra punta.
+    let puesto = Number(activoRanking.rank_actual);
 
-    const mio = ranking.find(usuario =>
-        usuario && typeof usuario.nombre === "string" &&
-        usuario.nombre.toLowerCase() === String(yo).toLowerCase()
-    );
+    if(!puesto){
+        // Sin ese dato sí toca preguntar: sesiones viejas guardadas antes
+        // de que /api/users lo devolviera.
+        const ranking = await obtenerListaRanking();
 
-    if(!mio) return;
+        const mio = ranking.find(usuario =>
+            usuario && typeof usuario.nombre === "string" &&
+            usuario.nombre.toLowerCase() === String(yo).toLowerCase()
+        );
 
-    const puesto = Number(mio.rank_actual);
+        if(!mio) return;
+        puesto = Number(mio.rank_actual);
+    }
 
     if(!puesto) return; // todavía no se calculó (se calcula los lunes)
 
-    if(puesto <= 100) desbloquearLogro(mio.nombre,"top100");
-    if(puesto <= 50) desbloquearLogro(mio.nombre,"top50");
-    if(puesto <= 10) desbloquearLogro(mio.nombre,"top10");
-    if(puesto <= 3) desbloquearLogro(mio.nombre,"top3");
-    if(puesto === 2) desbloquearLogro(mio.nombre,"subcampeon");
-    if(puesto === 1) desbloquearLogro(mio.nombre,"numeroUno");
+    if(puesto <= 100) desbloquearLogro(yo,"top100");
+    if(puesto <= 50) desbloquearLogro(yo,"top50");
+    if(puesto <= 10) desbloquearLogro(yo,"top10");
+    if(puesto <= 3) desbloquearLogro(yo,"top3");
+    if(puesto === 2) desbloquearLogro(yo,"subcampeon");
+    if(puesto === 1) desbloquearLogro(yo,"numeroUno");
 
 }
 
