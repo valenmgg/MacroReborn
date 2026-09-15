@@ -8,15 +8,17 @@
 // cualquier cosa que le mandaran. Con abrir la consola del navegador se
 // podían vestir todas las prendas de pago sin gastar una moneda.
 //
-// El catálogo se arma leyendo la carpeta imagenes/, que es la fuente de
-// verdad real del proyecto:
+// El catálogo sale de la base (tabla avatar_prendas, migración 018).
 //
-//   imagenes/tora.png          -> el modelo "tora"
-//   imagenes/tora/remera3.png  -> la prenda "tora_remera3"
+// Antes se armaba escaneando la carpeta imagenes/, que era la fuente de
+// verdad del proyecto. Dejó de serlo cuando el arte se mudó a Postgres y
+// el equipo de dibujo pudo publicar desde arte.html: una prenda subida
+// por el panel no existe en el disco, así que este módulo la rechazaba y
+// nadie podía guardársela. El editor la ofrecía y al guardar daba un 400.
 //
-// Es el mismo criterio que usa el frontend para resolver rutas
-// (rutaImagenCapa() en js/usuario.js), así que catálogo y dibujo no
-// pueden desincronizarse.
+// Lo avisaba el comentario que estaba justo acá: "cuando exista el panel
+// de carga del equipo de arte, este módulo pasará a leer la tabla del
+// catálogo". Esto es esa parte.
 //
 // Solo se aceptan nombres en minúsculas, sin espacios ni paréntesis. En
 // la carpeta hay archivos como "Boca 1.png" o "boca5 (1).png" que el
@@ -29,8 +31,6 @@
 // del equipo de arte, este módulo pasará a leer la tabla del catálogo y
 // habrá que invalidar la caché al publicar una prenda.
 
-const fs = require("fs");
-const path = require("path");
 
 // Las 15 capas que componen un avatar, en el mismo orden en que se
 // dibujan. Acá vive la versión del servidor, que es la que manda para
@@ -53,17 +53,18 @@ const CAPAS_VALIDAS = new Set(CAPAS);
 // "ninguno" es cómo el editor representa una capa vacía.
 const VACIO = "ninguno";
 
-// Carpetas dentro de imagenes/ que no son modelos de avatar.
-const NO_MODELOS = new Set(["juegos"]);
-
-// Un nombre de archivo utilizable: minúsculas, dígitos, nada más.
-const NOMBRE_LIMPIO = /^[a-z0-9]+$/;
-
-const RAIZ_IMAGENES = path.join(__dirname, "..", "imagenes");
-
+// El catálogo cacheado, junto a la versión con la que se armó.
+//
+// Se cachea porque se consulta en cada guardado de avatar y cambia poco.
+// Pero cluster.js levanta un proceso por núcleo y cada uno tiene su
+// propia memoria: si se cacheara a ciegas, una prenda recién publicada
+// solo existiría para el proceso que atendió esa petición, y guardarla
+// funcionaría o fallaría según quién contestara. Por eso cada llamada
+// comprueba primero un entero en avatar_catalogo_version —una fila, por
+// clave primaria— y solo reconstruye si cambió.
 let _catalogo = null;
 
-// Arma el catálogo leyendo el disco. Devuelve:
+// Arma el catálogo desde la base. Devuelve:
 //   modelos: Set de modelos válidos ("tora", "cereza", ...)
 //   prendas: Map de valor -> capa ("tora_remera3" -> "remera")
 //
@@ -71,65 +72,47 @@ let _catalogo = null;
 // mande una remera en la ranura del pelo: sin eso, un avatar podría
 // tener {"pelo": "tora_remera3"} y el navegador dibujaría una remera
 // flotando sobre la cabeza.
-function construirCatalogo() {
+//
+// Solo entra lo PUBLICADO. Lo retirado deja de poder equiparse, pero
+// quien ya lo tuviera puesto lo conserva: de eso se encarga más abajo
+// valoresYaEnUso(), que es la regla de derecho adquirido.
+async function construirCatalogo(sql) {
   const modelos = new Set();
   const prendas = new Map();
 
-  let carpetas;
-  try {
-    carpetas = fs.readdirSync(RAIZ_IMAGENES, { withFileTypes: true });
-  } catch (error) {
-    // Si no se puede leer el disco preferimos un catálogo vacío antes
-    // que reventar: quien llame decide qué hacer (ver validarAvatar,
-    // que ante un catálogo vacío no bloquea a nadie).
-    console.error("_avatar-catalogo: no se pudo leer imagenes/", error.message);
-    return { modelos, prendas };
-  }
+  const filas = await sql`
+    SELECT valor, capa FROM avatar_prendas WHERE publicada;
+  `;
 
-  for (const entrada of carpetas) {
-    if (!entrada.isDirectory()) continue;
-
-    const modelo = entrada.name;
-    if (NO_MODELOS.has(modelo)) continue;
-    if (!NOMBRE_LIMPIO.test(modelo)) continue;
-
-    // Un modelo solo cuenta si tiene su propia imagen en la raíz:
-    // imagenes/tora.png es lo que el editor usa como "cuerpo".
-    if (!fs.existsSync(path.join(RAIZ_IMAGENES, modelo + ".png"))) continue;
-
-    modelos.add(modelo);
-
-    let archivos;
-    try {
-      archivos = fs.readdirSync(path.join(RAIZ_IMAGENES, modelo));
-    } catch (_) {
-      continue;
-    }
-
-    for (const archivo of archivos) {
-      const ext = path.extname(archivo).toLowerCase();
-      if (ext !== ".png" && ext !== ".jpg") continue;
-
-      const base = path.basename(archivo, ext);
-      if (!NOMBRE_LIMPIO.test(base)) continue;
-
-      // "remera3" -> capa "remera". El número final es solo la variante.
-      const capa = base.replace(/\d+$/, "");
-      if (!CAPAS_VALIDAS.has(capa)) continue;
-
-      prendas.set(modelo + "_" + base, capa);
-    }
+  for (const fila of filas) {
+    if (fila.capa === "modelo") modelos.add(fila.valor);
+    else if (CAPAS_VALIDAS.has(fila.capa)) prendas.set(fila.valor, fila.capa);
   }
 
   return { modelos, prendas };
 }
 
-function obtenerCatalogo() {
-  if (!_catalogo) _catalogo = construirCatalogo();
-  return _catalogo;
+async function obtenerCatalogo(sql) {
+  let version = null;
+  try {
+    const filas = await sql`SELECT version FROM avatar_catalogo_version WHERE id = 1;`;
+    version = filas.length ? Number(filas[0].version) : null;
+  } catch (error) {
+    // Si no se puede leer la versión preferimos servir lo que haya en
+    // memoria antes que reventar el guardado de un avatar.
+    console.error("_avatar-catalogo: no se pudo leer la versión", error.message);
+    if (_catalogo) return _catalogo.datos;
+  }
+
+  if (_catalogo && _catalogo.version === version) return _catalogo.datos;
+
+  const datos = await construirCatalogo(sql);
+  _catalogo = { version, datos };
+  return datos;
 }
 
-// Para los tests y para el futuro panel de carga de prendas.
+// Para los tests. En producción no hace falta llamarla: la versión del
+// catálogo ya obliga a reconstruir cuando algo cambia.
 function invalidarCache() {
   _catalogo = null;
 }
@@ -228,12 +211,13 @@ async function validarAvatar(sql, userId, avatar) {
     return { ok: false, error: "El avatar tiene más capas de las que existen" };
   }
 
-  const { modelos, prendas } = obtenerCatalogo();
+  const { modelos, prendas } = await obtenerCatalogo(sql);
 
-  // Si el catálogo quedó vacío (disco ilegible), validar rechazaría
-  // absolutamente todo y dejaría a la gente sin poder guardar. Ante esa
-  // falla preferimos no bloquear: se registra y se deja pasar, que es
-  // exactamente el comportamiento que había antes de este módulo.
+  // Si el catálogo vuelve vacío (la consulta falló, o las tablas están
+  // sin poblar), validar rechazaría absolutamente todo y dejaría a la
+  // gente sin poder guardar su avatar. Ante esa falla preferimos no
+  // bloquear: se registra y se deja pasar, que es exactamente el
+  // comportamiento que había antes de que este módulo existiera.
   if (prendas.size === 0) {
     console.error("_avatar-catalogo: catálogo vacío, se omite la validación");
     return { ok: true, avatar };

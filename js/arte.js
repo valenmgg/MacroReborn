@@ -101,18 +101,17 @@
       return;
     }
 
-    if (respuesta.status === 401) {
-      mostrarAviso("Necesitás iniciar sesión", [
-        "Este panel es del equipo de arte. Entrá con tu cuenta y volvé."
-      ], true);
-      return;
-    }
-
-    if (respuesta.status === 403) {
-      mostrarAviso("Esta sección es del equipo de arte", [
-        "Tu cuenta no tiene el rol de artista.",
-        "Si creés que debería tenerlo, pediselo a un administrador: se otorga desde el panel de administración."
-      ], true);
+    // Sin sesión o sin el rol no se explica nada: se sale a la portada.
+    //
+    // Es una herramienta interna, y una pantalla que dice "esta sección
+    // es del equipo de arte" le confirma a cualquiera que existe y dónde
+    // está. Quien tiene el rol llega acá desde el enlace de su perfil y
+    // no ve esto nunca.
+    //
+    // No protege nada por sí solo: el servidor comprueba el rol en cada
+    // petición. Esto es solo para no dejar una puerta señalizada.
+    if (respuesta.status === 401 || respuesta.status === 403) {
+      window.location.replace("index.html");
       return;
     }
 

@@ -10,7 +10,7 @@
 // tenía ninguno.
 //
 // Lo que se prueba acá:
-//   - Sin sesión y sin rol, la página lo dice y no muestra el panel.
+//   - Sin sesión y sin rol, la página echa a la portada sin enseñar nada.
 //   - Con rol, se pintan los controles y el catálogo.
 //   - Los filtros hacen lo que dicen.
 //   - El botón de retirar solo aparece donde se puede usar.
@@ -23,7 +23,7 @@ const { test, before, describe, beforeEach } = require("node:test");
 const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
-const { JSDOM } = require("jsdom");
+const { JSDOM, VirtualConsole } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
 const HTML = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
@@ -51,9 +51,18 @@ function panelDePrueba(extra) {
 // Monta la página con un servidor simulado. Devuelve el documento y el
 // registro de las llamadas que hizo, para poder comprobarlas.
 async function montar(respuestas) {
+  // jsdom no navega de verdad, pero avisa cuando alguien lo intenta. Es
+  // lo que permite comprobar que la página echa a quien no debe entrar.
+  const navegaciones = [];
+  const consola = new VirtualConsole();
+  consola.on("jsdomError", e => {
+    if (/navigation/i.test(String(e && e.message))) navegaciones.push(String(e.message));
+  });
+
   const dom = new JSDOM(HTML, {
     url: "https://macroreborn.com/arte.html",
-    runScripts: "outside-only"
+    runScripts: "outside-only",
+    virtualConsole: consola
   });
 
   const llamadas = [];
@@ -72,7 +81,7 @@ async function montar(respuestas) {
   await new Promise(r => setTimeout(r, 0));
   await new Promise(r => setTimeout(r, 0));
 
-  return { dom, doc: dom.window.document, llamadas };
+  return { dom, doc: dom.window.document, llamadas, navegaciones };
 }
 
 function respuestaJson(codigo, cuerpo) {
@@ -84,25 +93,30 @@ const servidorOk = datos => () => respuestaJson(200, datos);
 // ==============================
 
 describe("quién ve el panel", () => {
-  test("sin sesión, lo dice y no muestra nada", async () => {
-    const { doc } = await montar(() => respuestaJson(401, { success: false }));
+  test("sin sesión, echa a la portada sin enseñar nada", async () => {
+    const { doc, navegaciones } = await montar(() => respuestaJson(401, { success: false }));
 
+    assert.equal(navegaciones.length, 1, "debería haber salido de la página");
     assert.equal(doc.getElementById("arteSubir").hidden, true);
     assert.equal(doc.getElementById("arteCatalogo").hidden, true);
-    assert.match(doc.getElementById("arteAviso").textContent, /iniciar sesión/i);
   });
 
-  test("sin el rol, explica cómo conseguirlo", async () => {
-    const { doc } = await montar(() => respuestaJson(403, { success: false }));
+  test("sin el rol, lo mismo: ni se explica que la sección existe", async () => {
+    // Es una herramienta interna. Un cartel que diga "esto es del equipo
+    // de arte" le confirma a cualquiera que existe y dónde está.
+    const { doc, navegaciones } = await montar(() => respuestaJson(403, { success: false }));
 
+    assert.equal(navegaciones.length, 1);
     assert.equal(doc.getElementById("arteSubir").hidden, true);
-    assert.match(doc.getElementById("arteAviso").textContent, /equipo de arte/i);
-    assert.match(doc.getElementById("arteAviso").textContent, /administrador/i);
+    assert.ok(!/equipo de arte/i.test(doc.getElementById("arteAviso").textContent));
   });
 
-  test("si el servidor falla, no se queda en 'comprobando'", async () => {
-    const { doc } = await montar(() => respuestaJson(500, { success: false }));
+  test("si el servidor falla, avisa y NO echa a nadie", async () => {
+    // Un 500 no es un problema de permisos. Redirigir ahí escondería la
+    // avería y dejaría a quien sí tiene acceso sin saber qué pasó.
+    const { doc, navegaciones } = await montar(() => respuestaJson(500, { success: false }));
 
+    assert.equal(navegaciones.length, 0, "un error del servidor no debe echar a nadie");
     assert.match(doc.getElementById("arteAviso").textContent, /salió mal/i);
     assert.ok(!/Comprobando/i.test(doc.getElementById("arteAviso").textContent));
   });

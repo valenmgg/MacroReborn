@@ -29,30 +29,55 @@
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
 
 const { test, before } = require("node:test");
+const crypto = require("node:crypto");
 const assert = require("node:assert");
 
 const { crearBaseLocal, crearSqlPGlite } = require("../scripts/pglite");
 const { usarSqlLocal } = require("../api/_db");
 const { crearToken } = require("../api/_auth");
-const { obtenerCatalogo, CAPAS } = require("../api/_avatar-catalogo");
+const { obtenerCatalogo, invalidarCache, CAPAS } = require("../api/_avatar-catalogo");
 
 let db;
 let sql;
 let usersHandler;
 let contentHandler;
 
-// Prendas reales tomadas del catálogo en disco. No se escriben a mano
-// para que el test no se rompa si mañana se renombra un archivo.
+// El catálogo vive en la base (tabla avatar_prendas), no en el disco.
+// Para que estos tests no dependan de qué tenga dibujado el equipo de
+// arte en ese momento, se siembra un catálogo propio con un modelo
+// inventado: "sonda". Así ninguna prenda de estos tests puede chocar con
+// las que la migración 012 mete en la tienda.
 //
 // Los tests comparten una misma base y corren en orden, así que cada
 // prenda tiene un propósito fijo: las que se registran en la tienda no
 // se reutilizan como prendas gratuitas más adelante, porque a partir de
 // ese momento exigirían compra y harían fallar a los tests siguientes.
-let MODELO;
-let PRENDA_LIBRE;      // nunca entra a la tienda
-let PRENDA_LIBRE_2;    // nunca entra a la tienda
-let PRENDA_TIENDA;     // se registra como premium
-let PRENDA_COMPRADA;   // premium, pero con compra registrada
+const MODELO = "sonda";
+const PRENDA_LIBRE = "sonda_remera1";     // nunca entra a la tienda
+const PRENDA_LIBRE_2 = "sonda_remera2";   // nunca entra a la tienda
+const PRENDA_COMPRADA = "sonda_remera3";  // premium, pero con compra registrada
+const PRENDA_TIENDA = "sonda_pelo1";      // se registra como premium
+
+// Un PNG de 1x1 real; lo que importa acá es la fila, no el dibujo.
+const PNG_SEMILLA = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64"
+);
+
+async function sembrarPrenda(valor, capa, contador) {
+  const datos = Buffer.concat([PNG_SEMILLA, Buffer.from(String(contador))]);
+  const sha = crypto.createHash("sha256").update(datos).digest("hex");
+  const archivo = await db.query(
+    `INSERT INTO avatar_archivos (sha256, datos, ancho, alto, peso)
+     VALUES ($1, $2, 327, 504, $3) RETURNING id`,
+    [sha, datos, datos.length]
+  );
+  await db.query(
+    `INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, publicada)
+     VALUES ($1, $2, $3, $4, $5, true)`,
+    [valor, MODELO, capa, valor, archivo.rows[0].id]
+  );
+}
 
 before(async () => {
   db = await crearBaseLocal();
@@ -62,46 +87,20 @@ before(async () => {
   usersHandler = require("../api/users");
   contentHandler = require("../api/content");
 
-  const { modelos, prendas } = obtenerCatalogo();
-
-  assert.ok(modelos.size > 0, "el catálogo debe encontrar al menos un modelo");
-  assert.ok(prendas.size > 0, "el catálogo debe encontrar prendas en imagenes/");
-
-  // Las migraciones ya siembran la tienda con prendas reales, así que
-  // no se puede dar por hecho que una prenda cualquiera sea gratuita:
-  // se consulta cuáles son de pago y se descartan para los casos que
-  // necesitan una prenda libre.
-  const yaEnTienda = new Set(
-    (await sql`SELECT valor_capa FROM avatar_shop_items;`).map(f => f.valor_capa)
-  );
-
-  // Se elige el modelo con más remeras gratuitas, para tener varias
-  // distintas y no reutilizar ninguna entre tests.
-  const remerasPorModelo = new Map();
-  for (const [valor, capa] of prendas.entries()) {
-    if (capa !== "remera" || yaEnTienda.has(valor)) continue;
-    const modelo = valor.slice(0, valor.indexOf("_"));
-    remerasPorModelo.set(modelo, (remerasPorModelo.get(modelo) || 0) + 1);
+  let n = 0;
+  await sembrarPrenda(MODELO, "modelo", ++n);
+  for (const capa of ["remera", "pelo", "botas", "piel"]) {
+    for (let i = 1; i <= 4; i++) await sembrarPrenda(MODELO + "_" + capa + i, capa, ++n);
   }
-  MODELO = [...remerasPorModelo.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
-  const libresDe = (capa) =>
-    [...prendas.entries()]
-      .filter(([valor, c]) =>
-        c === capa && valor.startsWith(MODELO + "_") && !yaEnTienda.has(valor))
-      .map(([valor]) => valor)
-      .sort();
+  // El catálogo se cachea por versión, y las inserciones de arriba no la
+  // movieron: se invalida a mano para que la primera validación vea lo
+  // recién sembrado.
+  invalidarCache();
 
-  const remeras = libresDe("remera");
-  const pelos = libresDe("pelo");
-
-  assert.ok(remeras.length >= 3, `${MODELO} debe tener 3 remeras fuera de la tienda`);
-  assert.ok(pelos.length >= 1, `debe haber un pelo de ${MODELO} fuera de la tienda`);
-
-  PRENDA_LIBRE = remeras[0];
-  PRENDA_LIBRE_2 = remeras[1];
-  PRENDA_COMPRADA = remeras[2];
-  PRENDA_TIENDA = pelos[0];
+  const { modelos, prendas } = await obtenerCatalogo(sql);
+  assert.ok(modelos.has(MODELO), "el catálogo debe traer el modelo sembrado");
+  assert.ok(prendas.size >= 16, "el catálogo debe traer las prendas sembradas");
 });
 
 function llamar(handler, metodo, query, body, headers) {
@@ -397,11 +396,14 @@ test("la galería sí acepta un avatar legítimo", async () => {
   assert.equal(r.cuerpo.slot.slot, 2);
 });
 
-test("el catálogo descarta los archivos con nombres irregulares", async () => {
-  // En imagenes/tora/ hay "Boca 1.png" ... "Boca 8.png" (mayúscula y
-  // espacio) que el frontend nunca pudo mostrar. No deben entrar al
-  // catálogo como si fueran prendas usables.
-  const { prendas } = obtenerCatalogo();
+test("todos los valores del catálogo tienen la forma modelo_prenda", async () => {
+  // El identificador ya no sale del nombre de un archivo: lo genera el
+  // servidor. Eso es lo que hace imposible que se repita el caso de
+  // "Boca 1.png", ocho dibujos que el frontend nunca pudo mostrar porque
+  // su nombre llevaba mayúscula y espacio. Esta comprobación vigila que
+  // esa garantía siga en pie.
+  const { prendas } = await obtenerCatalogo(sql);
+  assert.ok(prendas.size > 0);
   for (const valor of prendas.keys()) {
     assert.ok(
       /^[a-z0-9]+_[a-z0-9]+$/.test(valor),
@@ -411,8 +413,30 @@ test("el catálogo descarta los archivos con nombres irregulares", async () => {
 });
 
 test("todas las capas del catálogo son capas conocidas", async () => {
-  const { prendas } = obtenerCatalogo();
+  const { prendas } = await obtenerCatalogo(sql);
   for (const capa of new Set(prendas.values())) {
     assert.ok(CAPAS.includes(capa), `"${capa}" no está en CAPAS`);
   }
+});
+
+test("una prenda retirada sale del catálogo, pero quien la tenía la conserva", async () => {
+  // Es la mitad que faltaba de poder retirar desde el panel de arte:
+  // deja de poder equiparse, pero no se le quita a nadie del avatar.
+  const id = await crearUsuario("sonda_retirada");
+  const avatar = { modelo: MODELO, botas: "sonda_botas4" };
+
+  const antes = await guardarAvatar(id, "sonda_retirada", avatar);
+  assert.equal(antes.cuerpo.success, true, antes.cuerpo.error);
+
+  await db.query("UPDATE avatar_prendas SET publicada = false WHERE valor = 'sonda_botas4'");
+  await db.query("UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1");
+
+  // Quien ya la tenía puesta puede seguir guardando su avatar con ella.
+  const conservada = await guardarAvatar(id, "sonda_retirada", avatar);
+  assert.equal(conservada.cuerpo.success, true, conservada.cuerpo.error);
+
+  // Pero alguien que no la tenía ya no puede ponérsela.
+  const otro = await crearUsuario("sonda_tarde");
+  const rechazada = await guardarAvatar(otro, "sonda_tarde", avatar);
+  assert.equal(rechazada.codigo, 400);
 });
