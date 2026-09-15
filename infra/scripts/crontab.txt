@@ -1,2 +1,2 @@
-0 8 * * 1 curl -s -m 120 "http://127.0.0.1:3000/api/system?action=recalcular-ranking" >> /home/azureuser/ranking-cron.log 2>&1
+0 8 * * 1 /home/azureuser/recalcular-ranking.sh >> /home/azureuser/ranking-cron.log 2>&1
 30 3 * * * /home/azureuser/respaldar.sh >> /home/azureuser/respaldos/respaldo.log 2>&1

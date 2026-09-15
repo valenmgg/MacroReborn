@@ -143,9 +143,17 @@ async function adminStats(req, res) {
 // usan DOS acciones distintas, cada una con su propia manera de
 // autorizarse:
 //
-//   - action=recalcular-ranking (GET): la dispara el cron de Vercel
-//     todos los lunes a las 5:00 hora Argentina (ver vercel.json).
-//     Se protege con CRON_SECRET.
+//   - action=recalcular-ranking (GET): la dispara el cron del servidor
+//     todos los lunes a las 5:00 hora Argentina (ver
+//     infra/scripts/crontab.txt y infra/scripts/recalcular-ranking.sh).
+//     Se protege con CRON_SECRET, que vive en el .env del proyecto.
+//
+//     Ojo con esto: el secreto lo ponía Vercel en el entorno de la
+//     función, y al mudarnos al VPS nadie lo puso. Durante semanas el
+//     cron corrió cada lunes y devolvió 503 sin que el ranking se
+//     recalculara, porque devolver un error no es fallar desde el punto
+//     de vista de cron. Ahora el script sale con código 1 si la
+//     respuesta no es un 200 con success:true.
 //
 //   - action=recalcular-ranking-manual (POST): botón "🔄 Recalcular
 //     ranking ahora" en admin.html (pestaña Estadísticas), para poder

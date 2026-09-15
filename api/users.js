@@ -118,8 +118,9 @@ function xpNecesaria(nivel) {
 // El ranking (comunidad-ranking.html y demás lugares donde aparece)
 // YA NO se calcula por nivel/XP: se calcula una vez por semana, todos
 // los lunes a las 5:00 (hora Argentina), en api/system.js
-// (recalcularRankingSemanal(), disparada por un cron de Vercel — ver
-// vercel.json). Ese cálculo usa lo que se va guardando acá abajo.
+// (recalcularRankingSemanal(), disparada por el cron del servidor — ver
+// infra/scripts/crontab.txt). Ese cálculo usa lo que se va guardando
+// acá abajo.
 //
 // Mientras el usuario está jugando (jugar.html tiene abierto
 // js/motor/xp.js), cada 60 segundos ya se llamaba a
