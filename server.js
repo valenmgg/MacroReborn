@@ -167,6 +167,34 @@ const HANDLERS = {
 // consultando la base en cada 404.
 const RUTA_DE_PRENDA = /^\/imagenes\/([a-z0-9]+)(?:\/([a-z0-9]+))?\.png$/;
 
+// La URL canónica de una prenda: /prendas/<huella sha256>.png.
+//
+// Hasta ahora esa ruta solo existía como `rewrite` en la configuración de
+// nginx, que la traduce a /api/content?action=avatar-prenda. Eso deja el
+// sitio dependiendo de nginx para algo que no es infraestructura sino
+// parte de la aplicación: con `node server.js` a pelo —que es el flujo
+// que documenta el README para trabajar en local— todas esas imágenes
+// daban 404, y el editor de avatares salía en blanco.
+//
+// Aquí se hace la misma traducción, así que la ruta funciona con nginx
+// delante o sin él. nginx sigue teniendo la suya, que además cachea.
+const RUTA_POR_HUELLA = /^\/prendas\/([a-f0-9]{64})\.png$/;
+
+// Traduce la URL en su sitio y avisa si lo hizo. No sirve la imagen ni
+// duplica la consulta: deja la petición hecha una llamada de API normal,
+// que ya valida la huella, responde 404 si no existe y marca la
+// respuesta como immutable durante un año. Es correcto marcarla así
+// porque en esta URL el nombre ES el contenido.
+function traducirRutaCanonica(url) {
+  const m = RUTA_POR_HUELLA.exec(url.pathname);
+  if (!m) return false;
+
+  url.pathname = "/api/content";
+  url.searchParams.set("action", "avatar-prenda");
+  url.searchParams.set("v", m[1]);
+  return true;
+}
+
 function valorDePrenda(rutaRelativa) {
   const m = RUTA_DE_PRENDA.exec(rutaRelativa);
   if (!m) return null;
@@ -223,6 +251,9 @@ async function servirPrendaDeLaBase(req, res, rutaRelativa) {
 async function main() {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
+
+    // ----- La URL canónica de las prendas -----
+    traducirRutaCanonica(url);
 
     // ----- API -----
     if (url.pathname.startsWith("/api/")) {
