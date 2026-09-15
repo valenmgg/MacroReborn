@@ -95,7 +95,7 @@ function montar(respuesta) {
 
   const api = vm.runInContext(
     bloqueDelCatalogo() +
-    "\n;({ cargarCatalogo, construirOpcionesDelEditor, rutaDePrenda, valoresDelCatalogo, avisarCatalogoCaido })",
+    "\n;({ cargarCatalogo, construirOpcionesDelEditor, rutaDePrenda, valoresDelCatalogo, avisarCatalogoCaido, mostrarImagenesVisibles })",
     contexto
   );
 
@@ -153,7 +153,10 @@ describe("construir las opciones desde el catálogo", () => {
     assert.ok(item, "debería existir la opción");
     assert.equal(item.dataset.capa, "botas");
     assert.equal(item.dataset.modelo, "tora");
-    assert.equal(item.querySelector("img").getAttribute("src"), "/prendas/ccc.png");
+    // El src no se asigna al construir: la URL espera en data-src
+    // hasta que la miniatura se ve. Ver mostrarImagenesVisibles().
+    assert.equal(item.querySelector("img").dataset.src, "/prendas/ccc.png");
+    assert.equal(item.querySelector("img").getAttribute("src"), null);
     assert.equal(item.querySelector("img").getAttribute("loading"), "lazy");
     assert.match(item.textContent, /Botas de combate/);
   });
@@ -204,7 +207,10 @@ describe("construir las opciones desde el catálogo", () => {
     const item = doc.querySelector('.opcion-item[data-valor="tora_botas9"]');
     // Una sola imagen: la de la prenda. La del nombre no debe existir.
     assert.equal(item.querySelectorAll("img").length, 1);
-    assert.equal(item.querySelector("img").getAttribute("src"), "/prendas/ggg.png");
+    // El src no se asigna al construir: la URL espera en data-src
+    // hasta que la miniatura se ve. Ver mostrarImagenesVisibles().
+    assert.equal(item.querySelector("img").dataset.src, "/prendas/ggg.png");
+    assert.equal(item.querySelector("img").getAttribute("src"), null);
     assert.match(item.textContent, /onerror/, "el texto debe verse tal cual, escapado");
   });
 });
@@ -337,82 +343,97 @@ describe("una prenda retirada se sigue dibujando", () => {
 });
 
 // ==============================
-// CUÁNDO SE ASIGNA EL src DE CADA MINIATURA
+// LAS MINIATURAS NO SE PIDEN HASTA QUE SE VEN
 // ==============================
-// El editor tiene 638 miniaturas y vive dentro de un #editorAvatar con
-// display:none, así que no debería descargarse ninguna hasta que se
-// abra. Dos condiciones, y las dos son invisibles a ojo:
+// El editor tiene 638 miniaturas dentro de un #editorAvatar con
+// display:none. Ninguna debe descargarse al cargar el perfil.
 //
-//   1. loading="lazy" tiene que estar puesto ANTES del src. El navegador
-//      arranca la descarga al asignar src; ponerlo después no cancela
-//      nada.
+// Se intentó tres veces con loading="lazy" y no funciona: medido con HAR
+// de cargas reales salieron 25 miniaturas, luego 3, luego 160, sin tocar
+// ese código en medio. Un navegador no aplaza imágenes que no tienen
+// caja de dibujo.
 //
-//   2. La imagen tiene que estar YA en el documento cuando se le asigna
-//      el src. Una imagen suelta no pertenece a ningún documento: no hay
-//      viewport contra el que decidir si está a la vista, así que el
-//      navegador no puede aplicar el lazy y empieza a descargar igual.
-//
-// Las dos estuvieron mal, una después de otra. La primera costó 357
-// peticiones y 2,9 MB en cada carga del perfil; la segunda, 25 más.
-// Ninguna de las dos la detecta un test que mire el HTML resultante: el
-// atributo está puesto y todo parece correcto.
+// El contrato ahora es del DOM y no del navegador: al construir NO se
+// asigna src; la URL vive en data-src y pasa a src cuando la miniatura
+// está realmente dibujándose. Eso sí se puede comprobar.
 
-describe("las miniaturas del editor no se descargan al cargar el perfil", () => {
-  // Se espía el orden real de operaciones sobre cada <img>.
+describe("construir el editor no pide ninguna imagen", () => {
   function espiar(dom) {
-    const eventos = [];
+    const puestos = [];
     const win = dom.window;
-
-    const descSrc = Object.getOwnPropertyDescriptor(win.HTMLImageElement.prototype, "src");
+    const desc = Object.getOwnPropertyDescriptor(win.HTMLImageElement.prototype, "src");
     Object.defineProperty(win.HTMLImageElement.prototype, "src", {
       configurable: true,
-      get() { return descSrc.get.call(this); },
-      set(valor) {
-        eventos.push({
-          que: "src",
-          img: this,
-          lazy: this.getAttribute("loading"),
-          conectado: this.isConnected
-        });
-        descSrc.set.call(this, valor);
-      }
+      get() { return desc.get.call(this); },
+      set(v) { puestos.push(v); desc.set.call(this, v); }
     });
-
-    return eventos;
+    return puestos;
   }
 
-  test("el loading=lazy está puesto antes de asignar el src", async () => {
+  test("ni un solo src al construir las opciones", async () => {
     const { dom, api } = montar(respuestaOk(catalogoDePrueba()));
-    const eventos = espiar(dom);
+    const puestos = espiar(dom);
 
     await api.cargarCatalogo();
     api.construirOpcionesDelEditor();
 
-    assert.ok(eventos.length > 0, "debería haber asignado algún src");
-    const sinLazy = eventos.filter(e => e.lazy !== "lazy");
-    assert.equal(sinLazy.length, 0,
-      sinLazy.length + " miniaturas recibieron el src sin loading=lazy puesto todavía");
+    assert.equal(puestos.length, 0,
+      "se asignaron " + puestos.length + " src al construir: eso son descargas");
   });
 
-  test("y la imagen ya está dentro del documento en ese momento", async () => {
-    const { dom, api } = montar(respuestaOk(catalogoDePrueba()));
-    const eventos = espiar(dom);
-
+  test("pero la URL queda guardada en data-src", async () => {
+    const { doc, api } = montar(respuestaOk(catalogoDePrueba()));
     await api.cargarCatalogo();
     api.construirOpcionesDelEditor();
 
-    const sueltas = eventos.filter(e => !e.conectado);
-    assert.equal(sueltas.length, 0,
-      sueltas.length + " miniaturas recibieron el src estando todavía fuera del documento: " +
-      "sin documento no hay viewport y el lazy no puede decidir");
+    const imgs = doc.querySelectorAll("#editorAvatar .opcion-item img");
+    assert.ok(imgs.length > 0, "debería haber miniaturas");
+    const sinDato = [...imgs].filter(i => !i.dataset.src);
+    assert.equal(sinDato.length, 0, "toda miniatura necesita su data-src");
+    assert.ok([...imgs].every(i => !i.getAttribute("src")), "ninguna con src todavía");
   });
 
-  test("y el editor sigue oculto mientras tanto", () => {
+  test("y el editor sigue oculto", () => {
     const { doc } = montar(respuestaOk(catalogoDePrueba()));
     const editor = doc.getElementById("editorAvatar");
+    assert.match(editor.getAttribute("style") || "", /display\s*:\s*none/);
+  });
+});
 
-    assert.ok(editor, "perfil.html debería traer #editorAvatar");
-    assert.match(editor.getAttribute("style") || "", /display\s*:\s*none/,
-      "si el editor dejara de estar oculto, el lazy no serviría de nada");
+describe("cuando la miniatura se ve, entonces sí se pide", () => {
+  test("mostrarImagenesVisibles pasa data-src a src solo en las visibles", async () => {
+    const { doc, api } = montar(respuestaOk(catalogoDePrueba()));
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    const imgs = [...doc.querySelectorAll("#editorAvatar .opcion-item img")];
+    assert.ok(imgs.length >= 2);
+
+    // jsdom no hace maquetación, así que offsetParent es siempre null:
+    // se simula que la primera está dibujándose y el resto no.
+    Object.defineProperty(imgs[0], "offsetParent", { value: {}, configurable: true });
+
+    api.mostrarImagenesVisibles();
+
+    assert.ok(imgs[0].getAttribute("src"), "la visible debería haber pedido su dibujo");
+    assert.equal(imgs[0].dataset.src, undefined, "y soltar su data-src");
+
+    const otras = imgs.slice(1).filter(i => i.getAttribute("src"));
+    assert.equal(otras.length, 0, "las que siguen ocultas, ni tocarlas");
+  });
+
+  test("llamarla dos veces no vuelve a asignar nada", async () => {
+    const { doc, api } = montar(respuestaOk(catalogoDePrueba()));
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    const img = doc.querySelector("#editorAvatar .opcion-item img");
+    Object.defineProperty(img, "offsetParent", { value: {}, configurable: true });
+
+    api.mostrarImagenesVisibles();
+    const primera = img.getAttribute("src");
+    api.mostrarImagenesVisibles();
+
+    assert.equal(img.getAttribute("src"), primera);
   });
 });

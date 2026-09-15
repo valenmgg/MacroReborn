@@ -454,51 +454,52 @@ function construirOpcionesDelEditor(){
 
       const img = document.createElement("img");
 
-      // EL ORDEN IMPORTA, Y MUCHO: primero los atributos, después src.
-      //
-      // El navegador arranca la descarga en el instante en que se asigna
-      // src. "loading=lazy" solo se tiene en cuenta si ya está puesto en
-      // ese momento; ponerlo después no cancela nada. Y como el elemento
-      // todavía no está insertado en el documento, tampoco lo frena que
-      // el editor esté con display:none.
-      //
-      // Estaba al revés, y el resultado se midió con un HAR de una carga
-      // real del perfil: 357 peticiones a /prendas/, 2,9 MB, el catálogo
-      // entero descargado sin que nadie abriera el editor. Con el orden
-      // bueno son 0 hasta que se abre.
-      //
-      // Con setAttribute y no con la propiedad: no todos los motores
-      // reflejan img.loading al atributo, y el atributo es lo que
-      // entienden todos. El HTML de antes también los traía así, y por
-      // eso allí sí funcionaba: el parser pone los atributos antes de
-      // empezar a cargar.
+      // loading=lazy se mantiene, aunque ya no sea lo que evita las
+      // descargas al cargar la pagina: de eso se encarga data-src.
+      // Sirve DENTRO del editor ya abierto, para lo que queda fuera
+      // de la fila visible al hacer scroll.
       img.setAttribute("loading", "lazy");
       img.setAttribute("decoding", "async");
       img.setAttribute("alt", "");
+
+      // La URL se guarda, NO se asigna. Ver mostrarImagenesVisibles().
+      img.dataset.src = item.url;
 
       div.appendChild(img);
       div.appendChild(document.createTextNode(item.nombre));
       fila.appendChild(div);
 
-      // Y el src AL FINAL, con la imagen ya dentro del documento.
-      //
-      // Poner los atributos antes que el src no bastaba. Una imagen
-      // suelta, todavía sin insertar, no pertenece a ningún documento:
-      // no hay viewport contra el que decidir si está a la vista, así
-      // que el navegador no puede aplicar el lazy y empieza a descargar.
-      // Al insertarla después dentro de #editorAvatar (display:none) la
-      // mayoría de esas descargas se cancelan, pero las que ya iban
-      // lanzadas terminan igual.
-      //
-      // Medido en un HAR de una carga real: con el src antes del
-      // appendChild se colaban 25 de las 638, en una ráfaga de 15 ms.
-      // Con el src después, la imagen ya está en un subárbol que no se
-      // dibuja y el lazy sí decide: cero hasta que se abre el editor.
-      img.src = item.url;
+
     });
   });
 
   return true;
+}
+
+// ---------- LAS MINIATURAS SE CARGAN CUANDO SE VEN ----------
+// El editor tiene 638 miniaturas y vive dentro de un #editorAvatar con
+// display:none hasta que alguien pulsa "Crear avatar". Ninguna debería
+// descargarse antes de eso.
+//
+// Durante tres intentos se confió en loading="lazy" para conseguirlo, y
+// no funciona. Se midió con HAR de cargas reales del perfil: 25
+// miniaturas, luego 3, luego 160, sin tocar ese código en medio. Esa
+// variación es la prueba de que no lo estaba decidiendo el lazy sino el
+// azar de qué descargas alcanzaban a arrancar. Un navegador no aplaza
+// imágenes que no tienen caja de dibujo: sin caja no hay nada contra lo
+// que medir la distancia a la pantalla.
+//
+// Así que no se deja el src puesto. La URL vive en data-src y se pasa a
+// src únicamente cuando la miniatura está de verdad dibujándose, que es
+// lo que dice offsetParent: null mientras algún antepasado tenga
+// display:none. Es una comprobación del DOM, no una heurística del
+// navegador, así que no depende de con qué se mire la página.
+function mostrarImagenesVisibles(){
+  document.querySelectorAll("#editorAvatar img[data-src]").forEach(img=>{
+    if(img.offsetParent === null) return;   // todavía oculta
+    img.src = img.dataset.src;
+    delete img.dataset.src;
+  });
 }
 
 // Si el catálogo no llega, el editor se quedaría vacío y sin explicación.
@@ -948,6 +949,9 @@ function filtrarOpcionesPorModelo(grupo){
   } else if(aviso){
     aviso.remove();
   }
+
+  // Lo que acaba de quedar a la vista ya puede pedir su dibujo.
+  mostrarImagenesVisibles();
 }
 
 function filtrarTodosLosGrupos(){
@@ -1014,6 +1018,7 @@ document.getElementById("botonCrearAvatar")?.addEventListener("click",()=>{
   filtrarTodosLosGrupos();
   aplicarBloqueosTienda();
   actualizarPreview();
+  mostrarImagenesVisibles();
 });
 
 document.getElementById("cancelarEditor")?.addEventListener("click",()=>{
