@@ -2,7 +2,7 @@
 // MACROREBORN - ACTIVIDAD (PERFIL PROPIO) — Fase 2: Neon
 // =========================
 //
-// Usa datosUsuario, ORDEN_CAPAS y CAPAS_IMG definidos en perfil.js
+// Usa datosUsuario, ORDEN_CAPAS y rutaDePrenda definidos en perfil.js
 // (se carga después en perfil.html), y las funciones del motor de
 // actividad (js/motor/actividad.js).
 
@@ -23,13 +23,27 @@ function avatarMiniActividad(nombre){
     return `<img src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
   }
 
+  // rutaDePrenda() de js/perfil.js, igual que hace el resto del perfil.
+  //
+  // Aquí había CAPAS_IMG[valor]. CAPAS_IMG era el mapa de 622 pares
+  // escritos a mano que vivía en perfil.js y que se borró al pasar el
+  // editor al catálogo del servidor. Este archivo se quedó atrás: es el
+  // único que no se convirtió, y desde entonces reventaba con
+  // "CAPAS_IMG is not defined" cada vez que la actividad del perfil
+  // pintaba una mención. El avatar se quedaba sin dibujar.
+  //
+  // No saltó en ningún test ni en ninguna revisión porque el error va
+  // dentro de un .map() dentro de una promesa: se queda en "Uncaught (in
+  // promise)" en la consola y el resto de la página sigue pintándose.
   let capas = "";
   let rutasCapas = [];
   ORDEN_CAPAS.forEach(tipo=>{
-    const valor = avatar[tipo];
-    if(valor && valor !== "ninguno" && CAPAS_IMG[valor]){
-      capas += `<img class="capa-comentario" src="${CAPAS_IMG[valor]}" alt="" loading="lazy">`;
-      rutasCapas.push(CAPAS_IMG[valor]);
+    const ruta = typeof rutaDePrenda === "function"
+      ? rutaDePrenda(avatar[tipo])
+      : (typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(avatar[tipo]) : null);
+    if(ruta){
+      capas += `<img class="capa-comentario" src="${ruta}" alt="" loading="lazy">`;
+      rutasCapas.push(ruta);
     }
   });
 
