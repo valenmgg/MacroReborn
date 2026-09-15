@@ -19,6 +19,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "bugs": {
     "url": "https://github.com/valenmgg/MacroReborn/issues"
   },
