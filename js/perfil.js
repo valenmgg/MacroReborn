@@ -1320,20 +1320,30 @@ async function renderAmigosPerfil(){
   let misAmigos = [];
   let misFavoritos = [];
 
-  try{
-    const respuesta = await fetch("/api/social?action=friends&username=" + encodeURIComponent(datosUsuario.nombre));
-    const datos = await respuesta.json();
-    if(datos && datos.success) misAmigos = datos.amigos;
-  }catch(error){
-    console.warn("MacroReborn: no se pudo cargar la lista de amigos.", error);
+  // Las dos peticiones a la vez, no una detrás de otra. No dependen entre
+  // sí: la segunda no usa nada de la primera, y sin embargo esperaba a
+  // que terminara. Eso son dos viajes de ida y vuelta al servidor donde
+  // cabe uno, y en el arranque del perfil se notan.
+  //
+  // allSettled y no all: si una de las dos falla, la otra se sigue
+  // usando. Antes cada una tenía su propio try/catch y esa tolerancia no
+  // se puede perder al juntarlas.
+  const nombreCodificado = encodeURIComponent(datosUsuario.nombre);
+  const [resAmigos, resFavoritos] = await Promise.allSettled([
+    fetch("/api/social?action=friends&username=" + nombreCodificado).then(r => r.json()),
+    fetch("/api/social?action=favoriteFriends&username=" + nombreCodificado).then(r => r.json())
+  ]);
+
+  if(resAmigos.status === "fulfilled" && resAmigos.value && resAmigos.value.success){
+    misAmigos = resAmigos.value.amigos;
+  }else{
+    console.warn("MacroReborn: no se pudo cargar la lista de amigos.", resAmigos.reason);
   }
 
-  try{
-    const respuestaFav = await fetch("/api/social?action=favoriteFriends&username=" + encodeURIComponent(datosUsuario.nombre));
-    const datosFav = await respuestaFav.json();
-    if(datosFav && datosFav.success) misFavoritos = datosFav.favoritos;
-  }catch(error){
-    console.warn("MacroReborn: no se pudo cargar los amigos favoritos.", error);
+  if(resFavoritos.status === "fulfilled" && resFavoritos.value && resFavoritos.value.success){
+    misFavoritos = resFavoritos.value.favoritos;
+  }else{
+    console.warn("MacroReborn: no se pudo cargar los amigos favoritos.", resFavoritos.reason);
   }
 
   if(misAmigos.length === 0){
