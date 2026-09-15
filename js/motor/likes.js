@@ -56,17 +56,37 @@ function botonLikeHTML(targetType, itemId, nombreUsuarioActivo){
 
 // ---------- ACTUALIZAR BOTONES VISIBLES ----------
 
+// Los botones cuyo contador TODAVÍA NO conocemos, agrupados por tipo.
+//
+// Esto es lo que rompe un bucle que estuvo abierto desde la mudanza al
+// VPS. El MutationObserver de más abajo vigila el body entero y llama a
+// esta función; la función escribía innerHTML en cada botón; eso es una
+// mutación del DOM; el observer se disparaba otra vez. Cada vuelta era
+// un pedido al servidor, cada 80 ms, mientras la pestaña estuviera
+// abierta. El 12 de septiembre fueron 548.726 pedidos a action=likes en
+// un día, y la página del perfil tardaba en cargar por eso.
+//
+// Preguntando solo por lo que falta, la segunda vuelta no tiene nada que
+// hacer y se corta sola. Es además lo que el comentario de arriba del
+// archivo decía que hacía: "detecta cuándo aparecen botones NUEVOS".
+function _likesPendientes(){
+    const porTipo = {};
+
+    document.querySelectorAll(".boton-like[data-clave][data-item]").forEach(b=>{
+        const tipo = b.dataset.clave;
+        const id = b.dataset.item;
+        if(_likesCache[_claveCache(tipo, id)]) return;
+        if(!porTipo[tipo]) porTipo[tipo] = new Set();
+        porTipo[tipo].add(id);
+    });
+
+    return porTipo;
+}
+
 async function _refrescarLikesVisibles(){
 
-    const botones = document.querySelectorAll(".boton-like[data-clave][data-item]");
-    if(!botones.length) return;
-
-    const porTipo = {};
-    botones.forEach(b=>{
-        const tipo = b.dataset.clave;
-        if(!porTipo[tipo]) porTipo[tipo] = new Set();
-        porTipo[tipo].add(b.dataset.item);
-    });
+    const porTipo = _likesPendientes();
+    if(!Object.keys(porTipo).length) return;
 
     const activo = (window.MRSession && typeof window.MRSession.get === "function") ? window.MRSession.get() : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 
@@ -92,6 +112,15 @@ async function _refrescarLikesVisibles(){
                 const id = b.dataset.item;
                 const c = _likesCache[_claveCache(tipo, id)];
                 if(!c) return;
+
+                // Escribir lo mismo que ya hay cuesta una mutación del
+                // DOM, y cada mutación despierta al observer. Cinturón
+                // además del tirante.
+                const contador = b.querySelector(".like-contador");
+                if(contador &&
+                   contador.textContent.trim() === String(c.count) &&
+                   b.classList.contains("like-activo") === !!c.liked) return;
+
                 b.classList.toggle("like-activo", c.liked);
                 b.innerHTML = `
                     <span class="like-icono">${c.liked ? "❤️" : "🤍"}</span>
