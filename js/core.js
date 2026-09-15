@@ -475,6 +475,13 @@ function cargarCatalogoAvatares(){
       RUTAS_DE_PRENDA.clear();
       (datos.modelos || []).forEach(m => RUTAS_DE_PRENDA.set(m.valor, m.url));
       (datos.prendas || []).forEach(p => RUTAS_DE_PRENDA.set(p.valor, p.url));
+
+      // Las retiradas también se dibujan: hay gente que las lleva
+      // puestas desde antes. Entran solo en este mapa, que es para
+      // dibujar; el editor se arma con modelos y prendas, así que
+      // siguen sin poder elegirse.
+      (datos.retiradas || []).forEach(r => RUTAS_DE_PRENDA.set(r.valor, r.url));
+
       return datos;
     })
     .catch(error => {

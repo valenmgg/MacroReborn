@@ -461,12 +461,38 @@ async function construirCatalogo(version) {
     else prendas.push(item);
   }
 
+  // Y las RETIRADAS, solo con lo justo para dibujarlas: valor y dónde
+  // está el archivo. Sin nombre ni precio, porque no se pueden elegir.
+  //
+  // El editor no las toca: se arma con "modelos" y "prendas". Esto es
+  // para las otras 24 páginas, que tienen que poder dibujar el avatar
+  // de quien ya llevaba puesta una prenda antes de que se retirara.
+  // Retirar una prenda la saca del editor, no de la gente.
+  //
+  // Sin esto caían a la ruta de siempre (imagenes/<modelo>/<x>.png), y
+  // ahí hay un problema que no se puede arreglar desde el servidor: los
+  // navegadores que pidieron esa imagen mientras nginx marcaba los 404
+  // como immutable tienen guardado ese 404 durante 30 días. No vuelven a
+  // preguntar. Pasó de verdad: una persona veía su propio avatar sin
+  // fondo y sin piel, y en una ventana de incógnito se veía bien.
+  //
+  // Dándoles su URL con huella, esos navegadores piden una dirección que
+  // nunca habían pedido y el 404 guardado deja de importar.
+  const retiradas = (await sql`
+    SELECT p.valor, a.sha256
+    FROM avatar_prendas p
+    JOIN avatar_archivos a ON a.id = p.archivo_id
+    WHERE NOT p.publicada
+    ORDER BY p.id;
+  `).map(f => ({ valor: f.valor, url: "/prendas/" + f.sha256 + ".png" }));
+
   return {
     success: true,
     version,
     capas: CAPAS_AVATAR,
     modelos,
-    prendas
+    prendas,
+    retiradas
   };
 }
 
