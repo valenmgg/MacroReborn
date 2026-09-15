@@ -25,12 +25,23 @@ const { JSDOM } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
 const FUENTE = fs.readFileSync(path.join(RAIZ, "js", "perfil.js"), "utf8");
+const FUENTE_CORE = fs.readFileSync(path.join(RAIZ, "js", "core.js"), "utf8");
 const HTML = fs.readFileSync(path.join(RAIZ, "perfil.html"), "utf8");
 
 // El trozo de js/perfil.js que maneja el catálogo. Se corta entre dos
 // marcas estables del propio archivo.
 const INICIO = "let CATALOGO = null;";
 const FINAL = "let editorCapas={";
+
+// El bloque de js/core.js que descarga el catalogo y traduce un valor a
+// la URL de su dibujo. perfil.js se apoya en el, asi que hace falta en el
+// mismo contexto.
+function bloqueDeCore() {
+  const i = FUENTE_CORE.indexOf("const RUTAS_DE_PRENDA");
+  const j = FUENTE_CORE.indexOf("function avatarMiniaturaHTML");
+  assert.ok(i !== -1 && j !== -1, "no se encontro el bloque del catalogo en js/core.js");
+  return FUENTE_CORE.slice(i, j);
+}
 
 function bloqueDelCatalogo() {
   const i = FUENTE.indexOf(INICIO);
@@ -70,17 +81,18 @@ function montar(respuesta) {
     document: dom.window.document,
     window: dom.window,
     console: { warn() {}, error() {}, log() {} },
-    // Lo que usa el camino de respaldo cuando no hay catálogo.
-    rutaCapaAvatar(valor) {
-      if (!valor || valor === "ninguno") return null;
-      const i = valor.indexOf("_");
-      if (i === -1) return "imagenes/" + valor + ".png";
-      return "imagenes/" + valor.slice(0, i) + "/" + valor.slice(i + 1) + ".png";
-    },
     fetch: respuesta
   };
 
   vm.createContext(contexto);
+
+  // El catálogo lo descarga core.js y perfil.js lo reutiliza, así que se
+  // evalúa el core.js de verdad en el mismo contexto. Antes acá había una
+  // copia a mano de rutaCapaAvatar: una copia se queda vieja en cuanto
+  // alguien toca el original, que es justo el problema que se estaba
+  // quitando del editor.
+  vm.runInContext(bloqueDeCore(), contexto);
+
   const api = vm.runInContext(
     bloqueDelCatalogo() +
     "\n;({ cargarCatalogo, construirOpcionesDelEditor, rutaDePrenda, valoresDelCatalogo, avisarCatalogoCaido })",

@@ -319,11 +319,18 @@ let CATALOGO = null;
 const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo
 let _promesaCatalogo = null;
 
+// La descarga la hace core.js, que se carga antes que esto en todas las
+// páginas y ya la arranca al abrirse. Si acá se pidiera otra vez, la
+// misma página bajaría el catálogo dos veces en paralelo y habría dos
+// copias de la misma verdad en memoria.
+//
+// De esa llamada sale el mapa de URLs para dibujar. Lo que el editor
+// necesita además —nombres, ranuras, precios— está en el mismo cuerpo de
+// la respuesta, así que se guarda en CATALOGO desde acá.
 function cargarCatalogo(){
   if(_promesaCatalogo) return _promesaCatalogo;
 
-  _promesaCatalogo = fetch("/api/content?action=avatar-catalogo")
-    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+  _promesaCatalogo = cargarCatalogoAvatares()
     .then(datos => {
       if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
       CATALOGO = datos;

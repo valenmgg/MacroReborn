@@ -446,9 +446,62 @@ const ORDEN_CAPAS_AVATAR = [
   "cara","pelo","mascota","borde"
 ];
 
+// ------------------------------------------------------------------
+// EL CATÁLOGO, PARA TODAS LAS PÁGINAS
+// ------------------------------------------------------------------
+// Un mapa de valor -> URL del dibujo, que llega de /api/content.
+//
+// Hasta ahora esto solo lo tenía el editor del perfil, y el resto de las
+// páginas armaban la ruta a mano a partir del valor guardado. Funcionaba
+// gracias a una vía de compatibilidad en server.js que, cuando el
+// fichero no está en el disco, busca la prenda en la base. Pero esa vía
+// se cachea con revalidación cada 5 minutos, porque el nombre no dice
+// nada del contenido y una prenda podría cambiar de dibujo.
+//
+// La URL del catálogo lleva la huella SHA-256 del contenido, así que
+// puede cachearse un año y de verdad: si el dibujo cambiara, cambiaría
+// la URL. Poniendo el mapa acá lo heredan de una vez los ocho archivos
+// que dibujan avatares, porque todos pasan por rutaCapaAvatar().
+const RUTAS_DE_PRENDA = new Map();
+let _promesaCatalogoAvatares = null;
+
+function cargarCatalogoAvatares(){
+  if(_promesaCatalogoAvatares) return _promesaCatalogoAvatares;
+
+  _promesaCatalogoAvatares = fetch("/api/content?action=avatar-catalogo")
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+    .then(datos => {
+      if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
+      RUTAS_DE_PRENDA.clear();
+      (datos.modelos || []).forEach(m => RUTAS_DE_PRENDA.set(m.valor, m.url));
+      (datos.prendas || []).forEach(p => RUTAS_DE_PRENDA.set(p.valor, p.url));
+      return datos;
+    })
+    .catch(error => {
+      // Que no se pueda cargar el catálogo no puede dejar sin avatar a
+      // nadie: rutaCapaAvatar sigue funcionando con la ruta de siempre.
+      console.warn("MacroReborn: no se pudo cargar el catálogo de avatares.", error);
+      return null;
+    });
+
+  return _promesaCatalogoAvatares;
+}
+
+// Se pide cuanto antes, no cuando haga falta: así el mapa suele estar
+// listo para el primer avatar que se dibuje. Lo que se dibuje antes sale
+// con la ruta de siempre, que también funciona.
+cargarCatalogoAvatares();
+
 function rutaCapaAvatar(valor){
   if(!valor || valor === "ninguno") return null;
 
+  const delCatalogo = RUTAS_DE_PRENDA.get(valor);
+  if(delCatalogo) return delCatalogo;
+
+  // Sin catálogo todavía, o valor que el catálogo no conoce. Lo segundo
+  // NO es un error: el catálogo solo trae las prendas publicadas, y una
+  // prenda retirada tiene que seguir viéndose en el avatar de quien ya
+  // la llevaba puesta. Retirar la saca del editor, no de la gente.
   const texto = String(valor);
   const idx = texto.indexOf("_");
 
