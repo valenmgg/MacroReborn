@@ -125,6 +125,9 @@ function responder(res, codigo, obj) {
 // proceso aunque alguien llegue por otra via.
 const LIMITE_CUERPO = 12 * 1024 * 1024;
 
+// Para poder servir las prendas de avatar que viven en la base.
+const { obtenerSql } = require("./api/_db");
+
 const HANDLERS = {
   "/api/auth": require("./api/auth"),
   "/api/users": require("./api/users"),
@@ -134,6 +137,88 @@ const HANDLERS = {
   "/api/originales-ranking": require("./api/originales-ranking"),
   "/api/progreso": require("./api/progreso")
 };
+
+// ==============================
+// PRENDAS DE AVATAR QUE YA NO ESTÁN EN EL DISCO
+// ==============================
+// El arte de los avatares se mudó a la base (migración 018) y desde
+// arte.html el equipo de dibujo sube prendas nuevas que NUNCA llegan a
+// tener un fichero en imagenes/.
+//
+// El problema es que casi todo el frontend sigue armando la ruta a mano
+// a partir del valor guardado: "cereza_fondo40" -> imagenes/cereza/
+// fondo40.png. Solo el editor del perfil consulta el catálogo. Así que
+// una prenda subida por el panel se veía bien en el editor y se perdía
+// —capa que no se dibuja, 404 en la consola— en Ranking, Comunidad,
+// chat, amigos, los perfiles ajenos, las galerías y la portada.
+//
+// Esto lo resuelve de una vez para los once archivos: cuando el fichero
+// no está en el disco, se busca esa misma prenda en la base y se sirve
+// desde ahí. Las URL de siempre siguen funcionando, incluidas las que
+// hay guardadas en avatares de hace meses.
+//
+// La URL canónica sigue siendo la del catálogo, que lleva la huella del
+// contenido y se cachea un año. Esta es una vía de compatibilidad: se
+// cachea con ETag y revalidación, porque el nombre no dice nada del
+// contenido y una prenda podría cambiar de dibujo.
+
+// Solo se intenta con rutas que tengan la forma de una prenda. Sin este
+// filtro, cualquier escáner pidiendo imágenes al azar acabaría
+// consultando la base en cada 404.
+const RUTA_DE_PRENDA = /^\/imagenes\/([a-z0-9]+)(?:\/([a-z0-9]+))?\.png$/;
+
+function valorDePrenda(rutaRelativa) {
+  const m = RUTA_DE_PRENDA.exec(rutaRelativa);
+  if (!m) return null;
+  // imagenes/tora.png -> "tora"   |   imagenes/tora/pelo3.png -> "tora_pelo3"
+  return m[2] ? m[1] + "_" + m[2] : m[1];
+}
+
+async function servirPrendaDeLaBase(req, res, rutaRelativa) {
+  const valor = valorDePrenda(rutaRelativa);
+  if (!valor) return false;
+
+  let filas;
+  try {
+    const sql = obtenerSql();
+    filas = await sql`
+      SELECT a.datos, a.sha256
+      FROM avatar_prendas p
+      JOIN avatar_archivos a ON a.id = p.archivo_id
+      WHERE p.valor = ${valor}
+      LIMIT 1;
+    `;
+  } catch (error) {
+    console.error("prenda desde la base:", error.message);
+    return false;
+  }
+
+  if (!filas.length) return false;
+
+  // Se sirve aunque esté retirada: quien la tenga puesta en su avatar
+  // tiene que seguir viéndola. Retirar saca una prenda del editor, no
+  // del avatar de quien ya la llevaba.
+  const binario = Buffer.isBuffer(filas[0].datos)
+    ? filas[0].datos
+    : Buffer.from(filas[0].datos);
+
+  const etag = '"' + filas[0].sha256.slice(0, 32) + '"';
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+
+  if (req.headers["if-none-match"] === etag) {
+    res.writeHead(304);
+    res.end();
+    return true;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Content-Length": binario.length
+  });
+  res.end(binario);
+  return true;
+}
 
 async function main() {
   const server = http.createServer(async (req, res) => {
@@ -246,8 +331,16 @@ async function main() {
     // hashear el archivo) la revalidación cuesta una respuesta vacía de
     // 304 en vez de una descarga. Eso es lo que permite que nginx pueda
     // dejar de decir `immutable` en los scripts.
-    fs.stat(archivo, (errStat, datosArchivo) => {
+    fs.stat(archivo, async (errStat, datosArchivo) => {
       if (errStat || !datosArchivo.isFile()) {
+        // Puede ser una prenda de avatar que vive en la base y no en el
+        // disco: subida desde el panel del equipo de arte.
+        try {
+          if (await servirPrendaDeLaBase(req, res, rutaRelativa)) return;
+        } catch (error) {
+          console.error("prenda desde la base:", error.message);
+        }
+        if (res.writableEnded) return;
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         return res.end("No encontrado: " + rutaRelativa);
       }
