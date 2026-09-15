@@ -475,11 +475,26 @@ function construirOpcionesDelEditor(){
       img.setAttribute("loading", "lazy");
       img.setAttribute("decoding", "async");
       img.setAttribute("alt", "");
-      img.src = item.url;
 
       div.appendChild(img);
       div.appendChild(document.createTextNode(item.nombre));
       fila.appendChild(div);
+
+      // Y el src AL FINAL, con la imagen ya dentro del documento.
+      //
+      // Poner los atributos antes que el src no bastaba. Una imagen
+      // suelta, todavía sin insertar, no pertenece a ningún documento:
+      // no hay viewport contra el que decidir si está a la vista, así
+      // que el navegador no puede aplicar el lazy y empieza a descargar.
+      // Al insertarla después dentro de #editorAvatar (display:none) la
+      // mayoría de esas descargas se cancelan, pero las que ya iban
+      // lanzadas terminan igual.
+      //
+      // Medido en un HAR de una carga real: con el src antes del
+      // appendChild se colaban 25 de las 638, en una ráfaga de 15 ms.
+      // Con el src después, la imagen ya está en un subárbol que no se
+      // dibuja y el lazy sí decide: cero hasta que se abre el editor.
+      img.src = item.url;
     });
   });
 

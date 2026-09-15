@@ -335,3 +335,84 @@ describe("una prenda retirada se sigue dibujando", () => {
     assert.equal(api.rutaDePrenda("cereza_fondo40"), null);
   });
 });
+
+// ==============================
+// CUÁNDO SE ASIGNA EL src DE CADA MINIATURA
+// ==============================
+// El editor tiene 638 miniaturas y vive dentro de un #editorAvatar con
+// display:none, así que no debería descargarse ninguna hasta que se
+// abra. Dos condiciones, y las dos son invisibles a ojo:
+//
+//   1. loading="lazy" tiene que estar puesto ANTES del src. El navegador
+//      arranca la descarga al asignar src; ponerlo después no cancela
+//      nada.
+//
+//   2. La imagen tiene que estar YA en el documento cuando se le asigna
+//      el src. Una imagen suelta no pertenece a ningún documento: no hay
+//      viewport contra el que decidir si está a la vista, así que el
+//      navegador no puede aplicar el lazy y empieza a descargar igual.
+//
+// Las dos estuvieron mal, una después de otra. La primera costó 357
+// peticiones y 2,9 MB en cada carga del perfil; la segunda, 25 más.
+// Ninguna de las dos la detecta un test que mire el HTML resultante: el
+// atributo está puesto y todo parece correcto.
+
+describe("las miniaturas del editor no se descargan al cargar el perfil", () => {
+  // Se espía el orden real de operaciones sobre cada <img>.
+  function espiar(dom) {
+    const eventos = [];
+    const win = dom.window;
+
+    const descSrc = Object.getOwnPropertyDescriptor(win.HTMLImageElement.prototype, "src");
+    Object.defineProperty(win.HTMLImageElement.prototype, "src", {
+      configurable: true,
+      get() { return descSrc.get.call(this); },
+      set(valor) {
+        eventos.push({
+          que: "src",
+          img: this,
+          lazy: this.getAttribute("loading"),
+          conectado: this.isConnected
+        });
+        descSrc.set.call(this, valor);
+      }
+    });
+
+    return eventos;
+  }
+
+  test("el loading=lazy está puesto antes de asignar el src", async () => {
+    const { dom, api } = montar(respuestaOk(catalogoDePrueba()));
+    const eventos = espiar(dom);
+
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    assert.ok(eventos.length > 0, "debería haber asignado algún src");
+    const sinLazy = eventos.filter(e => e.lazy !== "lazy");
+    assert.equal(sinLazy.length, 0,
+      sinLazy.length + " miniaturas recibieron el src sin loading=lazy puesto todavía");
+  });
+
+  test("y la imagen ya está dentro del documento en ese momento", async () => {
+    const { dom, api } = montar(respuestaOk(catalogoDePrueba()));
+    const eventos = espiar(dom);
+
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    const sueltas = eventos.filter(e => !e.conectado);
+    assert.equal(sueltas.length, 0,
+      sueltas.length + " miniaturas recibieron el src estando todavía fuera del documento: " +
+      "sin documento no hay viewport y el lazy no puede decidir");
+  });
+
+  test("y el editor sigue oculto mientras tanto", () => {
+    const { doc } = montar(respuestaOk(catalogoDePrueba()));
+    const editor = doc.getElementById("editorAvatar");
+
+    assert.ok(editor, "perfil.html debería traer #editorAvatar");
+    assert.match(editor.getAttribute("style") || "", /display\s*:\s*none/,
+      "si el editor dejara de estar oculto, el lazy no serviría de nada");
+  });
+});
