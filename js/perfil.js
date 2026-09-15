@@ -869,12 +869,25 @@ function actualizarAvatarPrincipal(){
   // La espera es corta: core.js pide el catálogo nada más cargarse, muy
   // antes de que esta función llegue a ejecutarse. Y si el catálogo
   // falla, cargarCatalogo() resuelve igual y se sigue por la ruta vieja.
-  if(typeof cargarCatalogo === "function" && !RUTAS_PRENDA.size && !_avatarEnEspera){
-    _avatarEnEspera = true;
-    cargarCatalogo().finally(()=>{
-      _avatarEnEspera = false;
-      actualizarAvatarPrincipal();
-    });
+  if(typeof cargarCatalogo === "function" && !RUTAS_PRENDA.size){
+    // La bandera decide si se PROGRAMA el reintento, no si se espera.
+    //
+    // Antes estaba dentro de la condición del if, y eso dejaba pasar de
+    // largo a la segunda llamada: entraba una, se ponía la bandera, y la
+    // siguiente ya no cumplía la condición, así que seguía hasta abajo y
+    // dibujaba con las rutas de imagenes/. Que es justo lo que este
+    // bloque existe para evitar.
+    //
+    // Se vio en un HAR: las cuatro capas del avatar otra vez por
+    // duplicado, 470 kB, después de un arreglo que se suponía que lo
+    // había quitado.
+    if(!_avatarEnEspera){
+      _avatarEnEspera = true;
+      cargarCatalogo().finally(()=>{
+        _avatarEnEspera = false;
+        actualizarAvatarPrincipal();
+      });
+    }
     return;
   }
 
