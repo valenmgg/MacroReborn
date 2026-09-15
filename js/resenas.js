@@ -38,21 +38,11 @@
 
   // ---------- AVATAR (mismo criterio que comunidad.js / usuario.js) ----------
 
-  const ORDEN_CAPAS_RESENA = [
-    "fondo", "espalda", "modelo", "piel", "ojos", "boca",
-    "botas", "pantalon", "remera", "guantes", "accesorio",
-    "cara", "pelo", "mascota", "borde"
-  ];
+  // Ambas vienen de js/core.js, que se carga antes que este archivo.
+  const ORDEN_CAPAS_RESENA = ORDEN_CAPAS_AVATAR;
 
   function rutaImagenCapaResena(valor) {
-    if (!valor || valor === "ninguno") return null;
-    if (!valor.includes("_")) {
-      return "imagenes/" + valor + ".png";
-    }
-    const idx = valor.indexOf("_");
-    const modelo = valor.slice(0, idx);
-    const resto = valor.slice(idx + 1);
-    return "imagenes/" + modelo + "/" + resto + ".png";
+    return rutaCapaAvatar(valor);
   }
 
   function avatarHTMLResena(nombre) {

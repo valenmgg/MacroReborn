@@ -47,27 +47,18 @@ async function obtenerMensajes(){
 
 // ---------- AVATAR ----------
 
-const ORDEN_CAPAS = [
-    "fondo","espalda","modelo","piel","ojos","boca",
-    "botas","pantalon","remera","guantes","accesorio",
-    "cara","pelo","mascota","borde"
-];
+// La lista de capas y la resolución de rutas viven en js/core.js, que se
+// carga antes que este archivo. Acá solo se les da el nombre local de
+// siempre, para no volver a copiar la lista.
+const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
 // El avatar guardado por perfil.js usa valores como "tora_piel1" para el
 // guardarropa (viven en imagenes/tora/piel1.png) y "tora" para el modelo
-// (vive en imagenes/tora.png). Misma lógica que comunidad.js/usuario.js/
-// amigos.js/ranking.js: la ruta se deriva del propio valor guardado, por
-// lo que cualquier imagen nueva agregada a imagenes/<modelo>/ funciona
-// automáticamente sin tener que tocar este archivo.
+// (vive en imagenes/tora.png). La ruta se deriva del propio valor
+// guardado, por lo que cualquier imagen nueva agregada a
+// imagenes/<modelo>/ funciona sin tocar este archivo.
 function rutaImagenCapa(valor){
-    if(!valor || valor === "ninguno") return null;
-    if(!valor.includes("_")){
-        return "imagenes/" + valor + ".png";
-    }
-    const idx = valor.indexOf("_");
-    const modelo = valor.slice(0, idx);
-    const resto = valor.slice(idx + 1);
-    return "imagenes/" + modelo + "/" + resto + ".png";
+    return rutaCapaAvatar(valor);
 }
 
 

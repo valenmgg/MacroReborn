@@ -1,8 +1,8 @@
-const { neon } = require("@neondatabase/serverless");
 const { setCors } = require("./_utils");
 const { requerirAuth } = require("./_auth");
+const { obtenerSql } = require("./_db");
 
-const sql = neon(process.env.DATABASE_URL);
+const sql = obtenerSql();
 
 // ==============================
 // /api/system?action=test-db

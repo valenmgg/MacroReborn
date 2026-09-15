@@ -1,10 +1,10 @@
-const { neon } = require("@neondatabase/serverless");
 const { setCors, hayBloqueoEntreUsuarios, usuarioBloqueaA } = require("./_utils");
 const { getPusher, canalNotificaciones } = require("./_pusher");
 const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor } = require("./_notifications");
+const { obtenerSql } = require("./_db");
 
-const sql = neon(process.env.DATABASE_URL);
+const sql = obtenerSql();
 
 // ==============================
 // /api/social?action=friends|favoriteFriends|achievements|badges

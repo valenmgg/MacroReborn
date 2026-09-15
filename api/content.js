@@ -4,6 +4,11 @@ const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
+// CAPAS es la lista de las 15 capas en su orden de dibujo. Es la del
+// servidor, gemela de ORDEN_CAPAS_AVATAR en js/core.js. Se manda dentro
+// del catálogo para que el editor no tenga que llevar su propia copia.
+const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
+const crypto = require("crypto");
 
 // La conexión se pide a api/_db.js en vez de crearla acá con
 // neon(process.env.DATABASE_URL). En producción es exactamente la misma
@@ -14,6 +19,535 @@ const sql = obtenerSql();
 
 // El "banco": el único lugar que sabe restar monedas (ver api/_monedas.js).
 const monedasService = new MonedasService(sql);
+
+// ==============================
+// PANEL DEL EQUIPO DE ARTE
+// ==============================
+// Hasta ahora, añadir una prenda al sitio significaba dejar el PNG en
+// imagenes/, escribir un div en perfil.html, otra entrada en CAPAS_IMG y
+// desplegar. El equipo de dibujo no podía hacerlo solo, y cuando alguien
+// se olvidaba de uno de los tres pasos la prenda simplemente no aparecía:
+// así se perdieron cinco prendas y un juego entero de ocho bocas.
+//
+// Estas rutas son las que cierran ese agujero: subir, publicar y retirar
+// desde la propia web, sin commit y sin despliegue.
+
+// Quién puede tocar el catálogo. El rol vive en la tabla badges, la misma
+// que ya maneja administrador, moderador y colaborador, así que no hizo
+// falta esquema nuevo: un artista es una fila más.
+async function rolesDeArte(req, res) {
+  const auth = requerirAuth(req, res);
+  if (!auth) return null;
+
+  const filas = await sql`
+    SELECT badge_id FROM badges
+    WHERE user_id = ${auth.sub} AND badge_id IN ('artista', 'administrador');
+  `;
+  const roles = new Set(filas.map(f => f.badge_id));
+
+  if (!roles.size) {
+    res.status(403).json({ success: false, error: "Esta sección es del equipo de arte" });
+    return null;
+  }
+
+  return { auth, esAdmin: roles.has("administrador") };
+}
+
+// Cada publicación o retirada mueve este contador, y es lo que hace que
+// los dos procesos del cluster se enteren del cambio. Ver la migración
+// 018 y avatarCatalogo().
+async function subirVersionCatalogo() {
+  await sql`UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1;`;
+}
+
+// ==============================
+// GET /api/content?action=avatar-panel
+// ==============================
+// Como el catálogo público, pero incluyendo lo apagado y con el autor de
+// cada prenda. Es lo que el panel necesita para revisar y retirar.
+async function avatarPanel(req, res) {
+  const permiso = await rolesDeArte(req, res);
+  if (!permiso) return;
+
+  const filas = await sql`
+    SELECT p.id, p.valor, p.modelo, p.capa, p.nombre, p.publicada,
+           a.sha256, a.ancho, a.alto, a.peso,
+           u.username AS autor, s.precio
+    FROM avatar_prendas p
+    JOIN avatar_archivos a ON a.id = p.archivo_id
+    LEFT JOIN users u ON u.id = p.autor_id
+    LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
+    ORDER BY p.publicada ASC, p.id DESC;
+  `;
+
+  const prendas = [];
+  const modelos = [];
+
+  for (const f of filas) {
+    const item = {
+      id: Number(f.id),
+      valor: f.valor,
+      modelo: f.modelo,
+      capa: f.capa,
+      nombre: f.nombre,
+      publicada: f.publicada === true || f.publicada === "t",
+      autor: f.autor || null,
+      url: "/prendas/" + f.sha256 + ".png",
+      medidas: f.ancho + "x" + f.alto,
+      peso: Number(f.peso),
+      precio: f.precio === null || f.precio === undefined ? null : Number(f.precio)
+    };
+    if (f.capa === "modelo") modelos.push(item);
+    else prendas.push(item);
+  }
+
+  return res.status(200).json({
+    success: true,
+    // "modelo" no se ofrece para subir: de momento solo se añaden prendas
+    // a personajes que ya existen. Un personaje nuevo son unos cien
+    // ficheros y necesita subida por lotes, que es otra conversación.
+    capas: CAPAS_AVATAR.filter(c => c !== "modelo"),
+    modelos,
+    prendas,
+    esAdmin: permiso.esAdmin,
+    yo: permiso.auth.username
+  });
+}
+
+// ==============================
+// POST /api/content?action=avatar-subir-prendas
+// ==============================
+// Recibe una tanda: { prendas: [{ modelo, capa, nombre, precio, png }] }
+//
+// Cada prenda se valida por separado y el resultado vuelve una por una.
+// Es a propósito: si alguien sube doce dibujos y uno está mal exportado,
+// los once buenos tienen que entrar igual. Rechazar la tanda entera por
+// un fichero obligaría a repetir el trabajo.
+const TOPE_POR_PRENDA = 1024 * 1024;   // el mismo que el avatar PNG del admin
+const TOPE_POR_TANDA = 20;
+const FIRMA_PNG_SUBIDA = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+function leerPngSubido(texto) {
+  const match = typeof texto === "string"
+    ? texto.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/)
+    : null;
+  if (!match) return { error: "Tiene que ser un PNG" };
+
+  let binario;
+  try {
+    binario = Buffer.from(match[1], "base64");
+  } catch (_) {
+    return { error: "El PNG está corrupto" };
+  }
+
+  if (binario.length === 0) return { error: "El archivo está vacío" };
+  if (binario.length > TOPE_POR_PRENDA) {
+    return { error: "El PNG no puede superar 1 MB (pesa " + Math.round(binario.length / 1024) + " kB)" };
+  }
+
+  // La firma se comprueba en los bytes, no en la extensión ni en lo que
+  // diga el navegador: es lo único que no se puede falsear renombrando.
+  if (binario.length < 24 || !binario.subarray(0, 8).equals(FIRMA_PNG_SUBIDA)) {
+    return { error: "El archivo no es un PNG de verdad" };
+  }
+
+  // El IHDR es el primer bloque de un PNG y siempre está en el mismo
+  // sitio, así que las medidas se leen de 24 bytes sin instalar nada.
+  // Todavía no se rechaza nada por tamaño: se guardan para poder exigir
+  // el lienzo de 327x504 más adelante sin releer el catálogo entero.
+  return {
+    binario,
+    ancho: binario.readUInt32BE(16),
+    alto: binario.readUInt32BE(20)
+  };
+}
+
+// Busca el primer número libre de esa ranura para ese personaje. El
+// artista nunca escribe el identificador: es lo que hace imposible que
+// se repita el caso de "Boca 1.png", ocho dibujos que nunca funcionaron
+// porque su nombre llevaba mayúscula y espacio.
+async function siguienteValor(modelo, capa) {
+  const prefijo = modelo + "_" + capa;
+  const usados = new Set();
+
+  const delCatalogo = await sql`
+    SELECT valor FROM avatar_prendas WHERE modelo = ${modelo} AND capa = ${capa};
+  `;
+  for (const f of delCatalogo) {
+    const n = parseInt(String(f.valor).slice(prefijo.length), 10);
+    if (!Number.isNaN(n)) usados.add(n);
+  }
+
+  // Y también los números que alguien LLEVA PUESTOS, aunque ya no
+  // estén en el catálogo.
+  //
+  // Hay valores que sobrevivieron a su dibujo: "tora_piel7" lo llevan
+  // tres cuentas y dos casilleros de galería, y su fichero se borró
+  // hace tiempo. Como el catálogo solo llega hasta tora_piel6, el
+  // primer hueco libre era justo el 7: la siguiente piel de tora que
+  // alguien subiera se habría convertido, en silencio, en la piel de
+  // esas tres personas.
+  //
+  // No es un caso hipotético. Es el único valor colgando del sitio, y
+  // apuntaba exactamente al próximo número a repartir. Saltárselo
+  // cuesta una consulta por prenda subida, y se suben de a pocas.
+  const enAvatares = await sql`
+    SELECT avatar::text AS t FROM users
+      WHERE avatar IS NOT NULL AND avatar::text LIKE ${"%" + prefijo + "%"}
+    UNION ALL
+    SELECT avatar::text AS t FROM saved_avatars
+      WHERE avatar IS NOT NULL AND avatar::text LIKE ${"%" + prefijo + "%"}
+  `;
+
+  // El prefijo es modelo_capa: solo letras y dígitos, así que no hay
+  // nada que escapar en la expresión.
+  const busca = new RegExp(prefijo + "(\\d+)", "g");
+  for (const fila of enAvatares) {
+    for (const m of String(fila.t).matchAll(busca)) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n)) usados.add(n);
+    }
+  }
+
+  let n = 1;
+  while (usados.has(n)) n++;
+  return prefijo + n;
+}
+
+async function avatarSubirPrendas(req, res) {
+  const permiso = await rolesDeArte(req, res);
+  if (!permiso) return;
+
+  const entrada = (req.body && req.body.prendas) || [];
+  if (!Array.isArray(entrada) || entrada.length === 0) {
+    return res.status(400).json({ success: false, error: "No llegó ninguna prenda" });
+  }
+  if (entrada.length > TOPE_POR_TANDA) {
+    return res.status(400).json({
+      success: false,
+      error: "Máximo " + TOPE_POR_TANDA + " prendas por tanda"
+    });
+  }
+
+  const capasValidas = new Set(CAPAS_AVATAR.filter(c => c !== "modelo"));
+  const filasModelo = await sql`SELECT valor FROM avatar_prendas WHERE capa = 'modelo';`;
+  const modelosValidos = new Set(filasModelo.map(f => f.valor));
+
+  const resultados = [];
+  let entraronAlgunas = false;
+
+  for (const cruda of entrada) {
+    const item = cruda || {};
+    const etiqueta = String(item.archivo || item.nombre || "(sin nombre)").slice(0, 120);
+
+    const capa = String(item.capa || "");
+    if (!capasValidas.has(capa)) {
+      resultados.push({ archivo: etiqueta, ok: false, error: "Esa ranura no existe" });
+      continue;
+    }
+
+    const modelo = String(item.modelo || "");
+    if (!modelosValidos.has(modelo)) {
+      resultados.push({ archivo: etiqueta, ok: false, error: "Ese personaje no existe" });
+      continue;
+    }
+
+    const nombre = String(item.nombre || "").trim();
+    if (nombre.length < 1 || nombre.length > 60) {
+      resultados.push({ archivo: etiqueta, ok: false, error: "El nombre tiene que tener entre 1 y 60 caracteres" });
+      continue;
+    }
+
+    // 0 es gratis, que es como está el 94% del catálogo.
+    const precio = Number(item.precio);
+    if (!Number.isInteger(precio) || precio < 0 || precio > 100000) {
+      resultados.push({ archivo: etiqueta, ok: false, error: "El precio tiene que ser un número entero de 0 en adelante" });
+      continue;
+    }
+
+    const png = leerPngSubido(item.png);
+    if (png.error) {
+      resultados.push({ archivo: etiqueta, ok: false, error: png.error });
+      continue;
+    }
+
+    try {
+      const sha = crypto.createHash("sha256").update(png.binario).digest("hex");
+
+      // El archivo se comparte por contenido: si este dibujo ya está en
+      // la base (otro personaje con el mismo fondo, o una resubida), se
+      // reusa la fila en vez de guardar los bytes otra vez.
+      let archivoId;
+      const ya = await sql`SELECT id FROM avatar_archivos WHERE sha256 = ${sha} LIMIT 1;`;
+      if (ya.length) {
+        archivoId = ya[0].id;
+      } else {
+        const ins = await sql`
+          INSERT INTO avatar_archivos (sha256, datos, ancho, alto, peso)
+          VALUES (${sha}, ${png.binario}, ${png.ancho}, ${png.alto}, ${png.binario.length})
+          RETURNING id;
+        `;
+        archivoId = ins[0].id;
+      }
+
+      // Dos artistas subiendo a la vez pueden calcular el mismo número.
+      // La restricción UNIQUE de "valor" lo impide, así que se reintenta
+      // con el siguiente hueco en vez de fallar.
+      let guardada = null;
+      for (let intento = 0; intento < 5 && !guardada; intento++) {
+        const valor = await siguienteValor(modelo, capa);
+        const filas = await sql`
+          INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, autor_id, publicada)
+          VALUES (${valor}, ${modelo}, ${capa}, ${nombre}, ${archivoId}, ${permiso.auth.sub}, true)
+          ON CONFLICT (valor) DO NOTHING
+          RETURNING id, valor;
+        `;
+        if (filas.length) guardada = filas[0];
+      }
+
+      if (!guardada) {
+        resultados.push({ archivo: etiqueta, ok: false, error: "No se pudo reservar un nombre libre, probá de nuevo" });
+        continue;
+      }
+
+      if (precio > 0) {
+        await sql`
+          INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
+          VALUES (${capa}, ${modelo}, ${guardada.valor}, ${nombre}, ${precio})
+          ON CONFLICT (valor_capa) DO UPDATE SET precio = EXCLUDED.precio;
+        `;
+      }
+
+      entraronAlgunas = true;
+      resultados.push({
+        archivo: etiqueta,
+        ok: true,
+        id: Number(guardada.id),
+        valor: guardada.valor,
+        url: "/prendas/" + sha + ".png",
+        medidas: png.ancho + "x" + png.alto,
+        precio
+      });
+    } catch (error) {
+      console.error("avatar-subir-prendas:", error);
+      resultados.push({ archivo: etiqueta, ok: false, error: "No se pudo guardar" });
+    }
+  }
+
+  if (entraronAlgunas) await subirVersionCatalogo();
+
+  return res.status(200).json({
+    success: true,
+    entraron: resultados.filter(r => r.ok).length,
+    fallaron: resultados.filter(r => !r.ok).length,
+    resultados
+  });
+}
+
+// ==============================
+// POST /api/content?action=avatar-estado-prenda
+// ==============================
+// Publicar o retirar: { id, publicada }
+//
+// Retirar NO borra. La prenda deja de ofrecerse en el editor, pero quien
+// ya la tuviera puesta la conserva. Es la misma regla de derecho
+// adquirido que aplica api/_avatar-catalogo.js al validar avatares, y
+// existe porque quitarle a alguien una prenda del avatar sin avisar es
+// peor que dejar de ofrecerla.
+//
+// Como no hay revisión previa, esto es la red de seguridad: si algo sale
+// mal, se quita en un clic.
+async function avatarEstadoPrenda(req, res) {
+  const permiso = await rolesDeArte(req, res);
+  if (!permiso) return;
+
+  const id = Number(req.body && req.body.id);
+  const publicada = (req.body && req.body.publicada) === true;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ success: false, error: "Falta la prenda" });
+  }
+
+  const filas = await sql`SELECT id, autor_id, capa FROM avatar_prendas WHERE id = ${id} LIMIT 1;`;
+  if (!filas.length) {
+    return res.status(404).json({ success: false, error: "Esa prenda no existe" });
+  }
+
+  // Los personajes base no se retiran desde acá: dejar sin modelo a quien
+  // lo lleve puesto le rompe el avatar entero, no una prenda.
+  if (filas[0].capa === "modelo") {
+    return res.status(400).json({ success: false, error: "Los personajes no se retiran desde el panel" });
+  }
+
+  // El autor manda sobre lo suyo; un administrador, sobre todo. El arte
+  // que viene de la migración no tiene autor, así que solo un
+  // administrador puede tocarlo.
+  const esMio = filas[0].autor_id !== null && Number(filas[0].autor_id) === Number(permiso.auth.sub);
+  if (!esMio && !permiso.esAdmin) {
+    return res.status(403).json({ success: false, error: "Esa prenda no es tuya" });
+  }
+
+  await sql`
+    UPDATE avatar_prendas
+    SET publicada = ${publicada},
+        retirada_at = ${publicada ? null : new Date()}
+    WHERE id = ${id};
+  `;
+
+  await subirVersionCatalogo();
+
+  return res.status(200).json({ success: true, id, publicada });
+}
+
+// ==============================
+// GET /api/content?action=avatar-catalogo
+// ==============================
+// Todo lo que el editor de avatares necesita para construirse solo:
+// qué modelos hay, qué prendas se ofrecen, cómo se llama cada una, de
+// qué ranura es y cuánto cuesta.
+//
+// Antes esto estaba escrito a mano en perfil.html —622 divs— y también
+// en CAPAS_IMG de js/perfil.js. Añadir una prenda obligaba a tocar los
+// dos a mano, además del fichero en disco. Nadie obligaba a que los
+// tres coincidieran, y de hecho no coincidían: cinco prendas existían
+// en el disco sin aparecer nunca en el editor.
+//
+// ---------------------------------------------------------------
+// LA CACHÉ Y LOS DOS PROCESOS
+// ---------------------------------------------------------------
+// El catálogo cambia poco y se pide mucho, así que se guarda en
+// memoria. Pero cluster.js levanta UN PROCESO POR NÚCLEO, y cada uno
+// tiene su propia memoria. Si se cacheara a ciegas, al publicar una
+// prenda solo se enteraría el proceso que atendió esa petición: la
+// prenda nueva aparecería y desaparecería al recargar, según quién
+// contestara. Es un fallo desconcertante y caro de perseguir.
+//
+// Por eso cada petición comprueba primero un entero en
+// avatar_catalogo_version —una fila, por clave primaria— y solo
+// reconstruye si cambió. Los dos procesos se enteran solos, sin tener
+// que hablar entre ellos, y sin depender de que nadie se acuerde de
+// invalidar nada.
+let _catalogoEnMemoria = null;   // { version, cuerpo }
+
+async function construirCatalogo(version) {
+  // Las prendas publicadas, con el precio de la tienda si lo tienen.
+  // El LEFT JOIN es lo que distingue "gratis" (precio null) de "de
+  // pago": la tienda sigue viviendo en avatar_shop_items, que no se
+  // tocó, y se enlaza por el mismo texto del valor de capa.
+  const filas = await sql`
+    SELECT p.valor, p.modelo, p.capa, p.nombre, a.sha256, s.precio
+    FROM avatar_prendas p
+    JOIN avatar_archivos a ON a.id = p.archivo_id
+    LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
+    WHERE p.publicada
+    ORDER BY p.capa, p.modelo, p.id;
+  `;
+
+  const modelos = [];
+  const prendas = [];
+
+  for (const f of filas) {
+    const item = {
+      valor: f.valor,
+      modelo: f.modelo,
+      capa: f.capa,
+      nombre: f.nombre,
+      url: "/prendas/" + f.sha256 + ".png",
+      precio: f.precio === null || f.precio === undefined ? null : Number(f.precio)
+    };
+    // La capa "modelo" son los personajes base, no ropa: el editor los
+    // muestra en su propio selector.
+    if (f.capa === "modelo") modelos.push(item);
+    else prendas.push(item);
+  }
+
+  return {
+    success: true,
+    version,
+    capas: CAPAS_AVATAR,
+    modelos,
+    prendas
+  };
+}
+
+async function avatarCatalogo(req, res) {
+  const filas = await sql`SELECT version FROM avatar_catalogo_version WHERE id = 1;`;
+  const version = filas.length ? Number(filas[0].version) : 0;
+
+  if (!_catalogoEnMemoria || _catalogoEnMemoria.version !== version) {
+    _catalogoEnMemoria = { version, cuerpo: await construirCatalogo(version) };
+  }
+
+  // La versión es la identidad del catálogo, así que sirve de ETag: si
+  // no cambió, el navegador se ahorra volver a bajarse los ~90 kB.
+  const etag = 'W/"catalogo-' + version + '"';
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
+
+  if (req.headers && req.headers["if-none-match"] === etag) {
+    return res.status(304).end();
+  }
+
+  return res.status(200).json(_catalogoEnMemoria.cuerpo);
+}
+
+
+// ==============================
+// GET /api/content?action=avatar-prenda&v=<huella>
+// ==============================
+// Sirve una prenda de avatar como PNG de verdad, leyéndola de
+// avatar_archivos en vez del disco.
+//
+// Se direcciona por la HUELLA del contenido, no por el id de la prenda.
+// Es a propósito: 635 prendas comparten solo 418 archivos, porque los
+// fondos, bordes y mascotas son el mismo PNG en varios modelos. Con la
+// huella por delante, "tora_fondo1" y "cereza_fondo1" son la misma URL
+// y el navegador se la descarga una sola vez para las dos. Si fuera por
+// id de prenda, se bajaría dos veces el mismo dibujo.
+//
+// Público, como lo era el archivo en imagenes/: son las prendas que ya
+// se ven en el editor y en cada avatar del sitio. No hay nada que
+// proteger que no estuviera visible antes.
+//
+// Caché de un año e immutable porque la URL ES el contenido: si el
+// dibujo cambia, cambia la huella y cambia la URL. Nunca puede quedarse
+// mostrando una versión vieja. Mismo criterio que el avatar PNG del
+// administrador en api/users.js.
+//
+// OJO: hasta que nginx tenga proxy_cache delante de esta ruta, cada
+// imagen que no esté en la caché del navegador llega hasta Node y
+// Postgres. Una página de comunidad con 20 avatares son cientos de
+// peticiones, y esta máquina tiene 950 MB y dos núcleos.
+async function avatarPrenda(req, res) {
+  const huella = String(req.query.v || "");
+
+  // Una huella SHA-256 y nada más: evita que esto se convierta en una
+  // vía para sondear la base con texto arbitrario.
+  if (!/^[a-f0-9]{64}$/.test(huella)) {
+    return res.status(400).json({ success: false, error: "Falta la prenda" });
+  }
+
+  const filas = await sql`
+    SELECT datos FROM avatar_archivos WHERE sha256 = ${huella} LIMIT 1;
+  `;
+
+  if (!filas.length) {
+    return res.status(404).json({ success: false, error: "Esa prenda no existe" });
+  }
+
+  // Según el driver, un bytea puede llegar como Buffer (pg) o como
+  // Uint8Array (PGlite, en los tests). Buffer.from cubre los dos sin
+  // copiar de más cuando ya es un Buffer.
+  const binario = Buffer.isBuffer(filas[0].datos)
+    ? filas[0].datos
+    : Buffer.from(filas[0].datos);
+
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Content-Length", binario.length);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  return res.status(200).end(binario);
+}
+
 
 // ==============================
 // /api/content?action=comments|likes|reports
@@ -1363,11 +1897,20 @@ async function avatarGallery(req, res) {
       });
     }
 
+    // Los casilleros de la galería son el otro camino por el que un
+    // avatar entra a la base, así que necesitan la misma comprobación
+    // que el avatar activo: sin esto, alcanzaría con guardar la prenda
+    // no comprada en un casillero. Ver api/_avatar-catalogo.js.
+    const revision = await validarAvatar(sql, userId, avatar);
+    if (!revision.ok) {
+      return res.status(400).json({ success: false, error: revision.error });
+    }
+
     const fila = await sql`
       INSERT INTO saved_avatars (user_id, slot, avatar)
-      VALUES (${userId}, ${slotNum}, ${JSON.stringify(avatar)})
+      VALUES (${userId}, ${slotNum}, ${JSON.stringify(revision.avatar)})
       ON CONFLICT (user_id, slot)
-      DO UPDATE SET avatar = ${JSON.stringify(avatar)}, updated_at = now()
+      DO UPDATE SET avatar = ${JSON.stringify(revision.avatar)}, updated_at = now()
       RETURNING id, slot, avatar;
     `;
 
@@ -1715,6 +2258,11 @@ module.exports = async function handler(req, res) {
     if (action === "community-feed") return await communityFeed(req, res);
     if (action === "avatar-shop") return await avatarShop(req, res);
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
+    if (action === "avatar-prenda") return await avatarPrenda(req, res);
+    if (action === "avatar-catalogo") return await avatarCatalogo(req, res);
+    if (action === "avatar-panel") return await avatarPanel(req, res);
+    if (action === "avatar-subir-prendas") return await avatarSubirPrendas(req, res);
+    if (action === "avatar-estado-prenda") return await avatarEstadoPrenda(req, res);
 
     return res.status(400).json({ success: false, error: "Acción inválida" });
 

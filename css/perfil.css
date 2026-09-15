@@ -2838,3 +2838,24 @@ html[data-tema="claro"] .mr-identidad-loading {
 .admin-avatar-png-preview { margin-top:12px; min-height:56px; display:flex; align-items:center; gap:10px; }
 .admin-avatar-png-preview img { width:96px; height:96px; object-fit:contain; background:#0b1020; border:1px solid #34405f; border-radius:8px; }
 .admin-avatar-png-estado { margin-top:8px; min-height:18px; font-size:12px; color:#9fb0c9; }
+
+/* ==============================
+   ENLACE AL PANEL DE ARTE
+   ==============================
+   Solo se ve si tenés el rol; js/perfil.js lo destapa. */
+
+.arte-enlace-perfil {
+  background: var(--control-bg);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.arte-enlace-perfil a {
+  color: var(--accent);
+  font-weight: 600;
+}

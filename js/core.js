@@ -238,10 +238,36 @@ function normalizarAvatar(valor){
 // compacto { tipo:"png", src:"data:image/png;base64,..." } dentro de
 // users.avatar, por lo que funciona igual en perfiles, ranking, chat,
 // buscador y actividad sin depender del sistema de capas.
+// Puede llegar de dos formas, y las dos terminan en un src que se le
+// puede poner a un <img>:
+//
+//   { tipo:"png", src:"data:image/png;base64,..." }  -> la imagen entera
+//   { tipo:"png", url:"/api/users?action=avatar-png..." } -> un puntero
+//
+// La segunda es la que viaja en las listas de usuarios (ranking,
+// comunidad, buscador, actividad). Antes iba el base64 completo en cada
+// lista: un solo avatar PNG hacía que /api/users pesara 1,35 MB y todo
+// el mundo se lo descargaba al abrir la comunidad, sin poder cachearlo.
+// Ahora va un puntero de unos 80 bytes y el navegador pide la imagen
+// una sola vez, como cualquier otra.
+//
+// El base64 directo se sigue aceptando porque es lo que devuelve
+// /api/users?username=X y lo que el editor del perfil maneja mientras
+// se está cambiando el avatar.
 function avatarPNGData(avatarCrudo){
   const avatar = normalizarAvatar(avatarCrudo);
-  if(!avatar || avatar.tipo !== "png" || typeof avatar.src !== "string") return null;
-  return /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(avatar.src) ? avatar.src : null;
+  if(!avatar || avatar.tipo !== "png") return null;
+
+  if(typeof avatar.src === "string"){
+    return /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(avatar.src) ? avatar.src : null;
+  }
+
+  // Solo rutas propias: nunca una URL que venga de afuera.
+  if(typeof avatar.url === "string" && avatar.url.startsWith("/api/users?action=avatar-png")){
+    return avatar.url;
+  }
+
+  return null;
 }
 
 function avatarEsPNG(avatarCrudo){
@@ -399,6 +425,20 @@ function usuarioEstaConectado(usuario){
 // píxeles. Así se puede reutilizar en lugares nuevos como el panel
 // del buscador (ítems chicos) o la bienvenida de Inicio, además de
 // los que ya arman este mismo HTML "a mano" en cada archivo.
+
+// ==============================
+// CAPAS DE AVATAR — fuente única del navegador
+// ==============================
+// Estas dos son las versiones buenas para todo el frontend. core.js se
+// carga antes que cualquier otro script en todas las páginas que dibujan
+// avatares, así que el resto de archivos usan estas y no su propia copia.
+//
+// Antes cada archivo llevaba la suya: once copias de la lista, y dos de
+// ellas (ranking.js y comunidad-ranking.js) con "pantalon" antes que
+// "botas". El orden es el orden de dibujo, así que el mismo avatar salía
+// con las botas encima del pantalón en esas dos páginas y debajo en el
+// resto. Si hay que cambiar el orden, se cambia acá y en CAPAS de
+// api/_avatar-catalogo.js, que es el gemelo del servidor.
 
 const ORDEN_CAPAS_AVATAR = [
   "fondo","espalda","modelo","piel","ojos","boca",

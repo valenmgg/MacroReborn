@@ -34,6 +34,16 @@ const INSIGNIAS = {
     id:"colaborador",
     icono:"❤️",
     nombre:"Colaborador"
+  },
+
+  // Quien dibuja las prendas de avatar. Da acceso a arte.html, donde se
+  // suben, publican y retiran sin tocar codigo ni esperar un despliegue.
+  // La comprobacion de verdad la hace el servidor contra la tabla badges
+  // (ver rolesDeArte en api/content.js); esto es solo como se muestra.
+  artista:{
+    id:"artista",
+    icono:"🎨",
+    nombre:"Artista"
   }
 
 };

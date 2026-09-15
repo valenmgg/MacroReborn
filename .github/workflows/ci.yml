@@ -1,6 +1,6 @@
 # CI — MacroReborn
 # Corre los tests automáticos en cada push y en cada pull request,
-# sobre las versiones de Node que usa el proyecto (18, 20 y 22).
+# sobre las versiones de Node que soporta el proyecto (20 y 22).
 
 name: CI
 
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

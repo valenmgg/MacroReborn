@@ -5,6 +5,7 @@ const { PasswordService } = require("./_password");
 const { requerirAuth } = require("./_auth");
 const { MonedasService } = require("./_monedas");
 const { crearNotificacionServidor } = require("./_notifications");
+const { validarAvatar } = require("./_avatar-catalogo");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -45,6 +46,64 @@ const monedasService = new MonedasService(sql);
 // dejó de llenarse cuando el registro/login pasaron a Neon, así que
 // no tenían ningún efecto real.)
 // ==============================
+
+// ==============================
+// AVATARES PNG EN LAS LISTAS
+// ==============================
+// Un avatar normal es una receta de capas y pesa unos 300 bytes. Los
+// avatares PNG del administrador, en cambio, guardan la imagen entera
+// en base64 dentro de users.avatar y pueden llegar al tope de 1 MB.
+//
+// Como la columna avatar viaja en TODAS las listas (ranking, comunidad,
+// buscador, actividad, panel de admin), un solo avatar PNG hacía que
+// /api/users pesara 1,35 MB, de los cuales 1,31 MB era una sola cuenta:
+// los otros 41 avatares juntos ocupaban 14 kB. Cada persona que abría
+// la comunidad se descargaba esa imagen aunque apareciera del tamaño de
+// una moneda, y encima sin poder cachearla, porque viajaba incrustada
+// dentro del JSON.
+//
+// Acá el base64 se saca de la lista y se reemplaza por un puntero al
+// endpoint que sirve esa imagen como PNG de verdad
+// (GET /api/users?action=avatar-png&username=X). El navegador lo pide
+// una vez, lo cachea como cualquier otra imagen y no vuelve a pedirlo.
+//
+// El "v" es la huella del contenido: mientras el avatar no cambie, la
+// URL es la misma y el navegador ni pregunta; si el administrador se
+// cambia el PNG, la URL cambia sola y se ve al instante. Es lo que
+// permite cachear un año sin quedar nunca con la imagen vieja.
+//
+// La lectura de un usuario puntual (?username=X) NO se toca: ahí el
+// avatar es lo que se fue a buscar, y el editor del perfil necesita el
+// base64 completo para poder restaurarlo.
+function aligerarAvatarPNG(usuario) {
+  const avatar = usuario && usuario.avatar;
+
+  // Según el driver, un jsonb puede llegar ya parseado o como texto.
+  let datos = avatar;
+  if (typeof datos === "string") {
+    try { datos = JSON.parse(datos); } catch (_) { return usuario; }
+  }
+
+  if (!datos || typeof datos !== "object" || datos.tipo !== "png") return usuario;
+
+  // La consulta ya reemplazó el base64 por la huella; acá solo se arma
+  // la URL. Si no hay huella, el avatar no pasó por esa consulta y se
+  // deja como está antes que devolver un puntero roto.
+  if (typeof datos.huella !== "string" || !datos.huella) return usuario;
+
+  return {
+    ...usuario,
+    avatar: {
+      tipo: "png",
+      url: "/api/users?action=avatar-png&username=" +
+           encodeURIComponent(usuario.username) + "&v=" + datos.huella,
+      // "restaurar" es la receta de capas que la persona tenía antes de
+      // ponerse el PNG. Son unos pocos cientos de bytes y el perfil la
+      // necesita para el botón de volver al avatar normal.
+      restaurar: datos.restaurar || null
+    }
+  };
+}
 
 // XP necesaria por nivel (misma fórmula que js/motor/xp.js en el cliente).
 function xpNecesaria(nivel) {
@@ -155,6 +214,24 @@ async function listarUsuarios(req, res) {
   // (rank_actual) no se mueve con esto, se recalcula recién el lunes.
   const semanaActualSQL = sql`date_trunc('week', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires'))::date`;
 
+  // En las listas, un avatar PNG viaja sin su base64: se manda solo la
+  // huella del contenido (md5) y la receta de capas a restaurar, y el
+  // navegador va a buscar la imagen aparte. El recorte se hace acá, en
+  // la consulta, y no en JavaScript, porque así el megabyte ni siquiera
+  // sale de la base: no se lee del disco, no viaja al proceso y no hay
+  // que reservarle memoria en un servidor de 950 MB.
+  //
+  // Los avatares normales (recetas de capas) pasan enteros, intactos.
+  const avatarLigeroSQL = sql`
+    CASE WHEN u.avatar->>'tipo' = 'png'
+      THEN jsonb_build_object(
+             'tipo', 'png',
+             'huella', left(md5(u.avatar->>'src'), 12),
+             'restaurar', u.avatar->'restaurar'
+           )
+      ELSE u.avatar
+    END AS avatar`;
+
   if (username) {
     const usuario = await sql`
       SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, u.avatar, u.created_at, u.last_login,
@@ -180,7 +257,7 @@ async function listarUsuarios(req, res) {
   if (q && String(q).trim() !== "") {
     const buscado = "%" + String(q).trim() + "%";
     usuarios = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, u.avatar, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
@@ -200,7 +277,7 @@ async function listarUsuarios(req, res) {
     // (recién registrados, antes de que corra el cron del próximo
     // lunes) quedan al final, ordenados por nombre.
     usuarios = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, u.avatar, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
@@ -213,7 +290,7 @@ async function listarUsuarios(req, res) {
     `;
   }
 
-  return res.status(200).json({ success: true, users: usuarios });
+  return res.status(200).json({ success: true, users: usuarios.map(aligerarAvatarPNG) });
 }
 
 async function updateAvatar(req, res) {
@@ -230,9 +307,19 @@ async function updateAvatar(req, res) {
     return res.status(403).json({ success: false, error: "El avatar PNG personalizado solo puede guardarse mediante el panel de administrador." });
   }
 
+  // Hasta acá el servidor guardaba cualquier cosa que le mandaran: el
+  // bloqueo de las prendas de la tienda era solo una clase de CSS en el
+  // navegador (aplicarBloqueosTienda() en js/perfil.js), así que desde
+  // la consola se podían vestir prendas sin pagarlas. Ahora se comprueba
+  // contra el catálogo real. Ver api/_avatar-catalogo.js.
+  const revision = await validarAvatar(sql, auth.sub, avatar);
+  if (!revision.ok) {
+    return res.status(400).json({ success: false, error: revision.error });
+  }
+
   const user = await sql`
     UPDATE users
-    SET avatar = ${JSON.stringify(avatar)}
+    SET avatar = ${JSON.stringify(revision.avatar)}
     WHERE username = ${username}
     RETURNING id, username, avatar;
   `;
@@ -242,6 +329,50 @@ async function updateAvatar(req, res) {
   }
 
   return res.status(200).json({ success: true, user: user[0] });
+}
+
+// ==============================
+// GET /api/users?action=avatar-png&username=X
+// ==============================
+// Sirve el avatar PNG de una persona como una imagen de verdad, en vez
+// de mandarlo incrustado en base64 dentro de cada lista de usuarios.
+//
+// Es público a propósito: es la foto de perfil de esa cuenta, la misma
+// que ya se ve en el ranking y en la comunidad. No hay nada que
+// proteger que no estuviera visible antes.
+//
+// Se cachea un año porque la URL lleva la huella del contenido (&v=):
+// si el administrador se cambia el PNG, cambia la huella, cambia la URL
+// y el navegador la pide de nuevo. Nunca queda mostrando la vieja.
+async function avatarPng(req, res) {
+  const { username } = req.query;
+
+  if (!username) {
+    return res.status(400).json({ success: false, error: "Falta el usuario" });
+  }
+
+  const filas = await sql`
+    SELECT avatar->>'src' AS src
+    FROM users
+    WHERE username = ${username} AND avatar->>'tipo' = 'png'
+    LIMIT 1;
+  `;
+
+  const src = filas.length ? filas[0].src : null;
+  const match = typeof src === "string"
+    ? src.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/)
+    : null;
+
+  if (!match) {
+    return res.status(404).json({ success: false, error: "Ese usuario no tiene avatar PNG" });
+  }
+
+  const binario = Buffer.from(match[1], "base64");
+
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Content-Length", binario.length);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  return res.status(200).end(binario);
 }
 
 async function updateAdminAvatarPng(req, res) {
@@ -548,6 +679,9 @@ module.exports = async function handler(req, res) {
   try {
 
     if (req.method === "GET") {
+      // Devuelve una imagen PNG, no JSON: es la única lectura con
+      // action, porque el navegador la pide desde un <img src="...">.
+      if (action === "avatar-png") return await avatarPng(req, res);
       return await listarUsuarios(req, res);
     }
 

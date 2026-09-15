@@ -66,19 +66,20 @@ let _comSolicitudesRecibidas = [];
 // ==============================
 // AVATAR POR CAPAS (compartido)
 // ==============================
-// Misma resolución de rutas que ya usan js/ranking.js y js/comunidad.js.
+// El orden y la resolución de rutas vienen de js/core.js, que se carga
+// antes que este archivo.
+//
+// Hasta ahora esta copia tenía "pantalon" antes que "botas", al revés
+// que el resto del sitio. Como el orden es el orden de dibujo, el mismo
+// avatar se veía con las botas encima del pantalón acá y debajo en
+// cualquier otra página. Al pasar a la lista compartida, las botas
+// vuelven a quedar bajo el pantalón, como en el editor donde la gente
+// arma su avatar.
 
-const RK_ORDEN_CAPAS = [
-  "fondo", "espalda", "modelo", "piel", "ojos", "boca",
-  "pantalon", "botas", "remera", "guantes", "accesorio",
-  "cara", "pelo", "mascota", "borde"
-];
+const RK_ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
 function rkRutaCapa(valor) {
-  if (!valor || valor === "ninguno") return null;
-  if (!valor.includes("_")) return "imagenes/" + valor + ".png";
-  const idx = valor.indexOf("_");
-  return "imagenes/" + valor.slice(0, idx) + "/" + valor.slice(idx + 1) + ".png";
+  return rutaCapaAvatar(valor);
 }
 
 function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho) {

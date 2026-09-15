@@ -127,7 +127,10 @@ const USERS_INICIAL = `
     xp INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active',
     bio TEXT,
-    avatar TEXT,
+    -- JSONB, igual que en producción. Estuvo como TEXT y eso hacía que
+    -- los handlers devolvieran el avatar como cadena en los tests y como
+    -- objeto en el servidor real: la maqueta mentía sobre la base.
+    avatar JSONB,
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     last_login TIMESTAMP
   );

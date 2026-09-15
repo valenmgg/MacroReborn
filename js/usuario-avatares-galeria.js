@@ -30,19 +30,12 @@
       : JSON.parse(localStorage.getItem("usuarioActivo") || "null"));
 
   // ---------- ORDEN DE CAPAS / RUTAS DE IMAGEN ----------
-  // Mismo criterio que rutaImagenCapa() de js/usuario.js.
+  // Ambas vienen de js/core.js, que se carga antes que este archivo.
 
-  const ORDEN_CAPAS = [
-    "fondo","espalda","modelo","piel","ojos","boca",
-    "botas","pantalon","remera","guantes","accesorio",
-    "cara","pelo","mascota","borde"
-  ];
+  const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
 
   function rutaImagenCapa(valor) {
-    if (!valor || valor === "ninguno") return null;
-    if (!valor.includes("_")) return "imagenes/" + valor + ".png";
-    const idx = valor.indexOf("_");
-    return "imagenes/" + valor.slice(0, idx) + "/" + valor.slice(idx + 1) + ".png";
+    return rutaCapaAvatar(valor);
   }
 
   function marcadoAvatarCompuesto(avatar) {

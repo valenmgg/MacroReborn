@@ -1,0 +1,74 @@
+# Configuracion de fail2ban para MacroReborn.
+# Sustituye la proteccion automatica que antes daba Vercel.
+
+[DEFAULT]
+# Nunca bloquear a la red local ni a la IP del administrador.
+ignoreip = 127.0.0.1/8 ::1 TU.IP.AQUI
+# Tiempo de bloqueo: 1 hora. Ventana de observacion: 10 minutos.
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+
+# OJO: el backend va en cada carcel, no aqui. Si se pone
+# `backend = systemd` en [DEFAULT] se aplica tambien a las carceles de
+# nginx, que entonces dejan de leer su archivo de log y no detectan nada
+# (se ve con `fail2ban-client get <carcel> logpath`: "No file is
+# currently monitored").
+
+# Intentos de acceso por SSH. Lee del journal, no de un archivo.
+[sshd]
+enabled  = true
+backend  = systemd
+port     = ssh
+maxretry = 4
+bantime  = 2h
+
+# Peticiones a rutas de WordPress, PHP, paneles de administracion y demas
+# cosas que este sitio no tiene. Es la carcel que de verdad caza los escaneos:
+# los filtros de serie de fail2ban no reconocian casi ninguna de las rutas que
+# nos llegaron (ver el comentario de filter.d/nginx-hostil.conf).
+# maxretry = 3 porque un visitante real no pide ni una sola de esas rutas.
+[nginx-hostil]
+enabled  = true
+backend  = auto
+filter   = nginx-hostil
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 3
+findtime = 30m
+bantime  = 24h
+
+# Escaneos buscando archivos y rutas que no existen (l9scan y similares).
+[nginx-http-auth]
+enabled  = true
+backend  = auto
+logpath  = /var/log/nginx/error.log
+
+[nginx-botsearch]
+enabled  = true
+backend  = auto
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 8
+bantime  = 6h
+
+# Exceso de errores 4xx: alguien probando rutas al azar.
+[nginx-bad-request]
+enabled  = true
+backend  = auto
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 25
+findtime = 5m
+bantime  = 2h
+
+# Quien acumula respuestas 429 esta forzando el limite a proposito.
+[nginx-limite]
+enabled  = true
+backend  = auto
+filter   = nginx-limite
+port     = http,https
+logpath  = /var/log/nginx/access.log
+maxretry = 15
+findtime = 5m
+bantime  = 4h

@@ -299,644 +299,141 @@ suscribirPerfilSesion();
 // SISTEMA AVATAR
 // ==============================
 
-const CAPAS_IMG={
-  // Selector de modelo
-  tora:"imagenes/tora.png",
-  cereza:"imagenes/cereza.png",
-  fiora:"imagenes/fiora.png",
-  max:"imagenes/max.png",
-  fenglei:"imagenes/fenglei.png",
-  fengchao: "imagenes/fengchao.png",
+// ==============================
+// EL CATÁLOGO DE PRENDAS
+// ==============================
+// Acá vivía CAPAS_IMG: 622 pares valor -> ruta escritos a mano. Hacía
+// dos trabajos a la vez —traducir rutas y hacer de catálogo de lo que
+// existe— y obligaba a escribir cada prenda nueva en tres sitios: el
+// fichero en disco, el div de perfil.html y este mapa. Nada obligaba a
+// que los tres coincidieran, y no coincidían: cinco prendas estaban en
+// el disco sin aparecer nunca en el editor, y ocho bocas de tora no
+// funcionaron jamás porque su nombre llevaba mayúscula y espacio.
+//
+// Ahora el catálogo lo manda el servidor
+// (/api/content?action=avatar-catalogo) y de ahí sale todo: qué prendas
+// hay, cómo se llaman, de qué ranura son, cuánto cuestan y dónde está
+// su dibujo. Publicar una prenda deja de necesitar un despliegue.
 
-  // ---- Guardarropa de TORA ----
-  tora_fondo1:"imagenes/tora/fondo1.png",
-  tora_fondo2:"imagenes/tora/fondo2.png",
-  tora_fondo3:"imagenes/tora/fondo3.png",
-  tora_fondo4:"imagenes/tora/fondo4.png",
-  tora_fondo5:"imagenes/tora/fondo5.png",
-  tora_fondo6:"imagenes/tora/fondo6.png",
-  tora_fondo7:"imagenes/tora/fondo7.png",
-  tora_fondo8:"imagenes/tora/fondo8.png",
-  tora_fondo9:"imagenes/tora/fondo9.png",
-  tora_fondo10:"imagenes/tora/fondo10.png",
-  tora_fondo11:"imagenes/tora/fondo11.png",
-  tora_fondo12:"imagenes/tora/fondo12.png",
-  tora_fondo13:"imagenes/tora/fondo13.png",
-  tora_fondo14:"imagenes/tora/fondo14.png",
-  tora_fondo15:"imagenes/tora/fondo15.png",
-  tora_fondo16:"imagenes/tora/fondo16.png",
-  tora_fondo17:"imagenes/tora/fondo17.png",
-  tora_fondo18:"imagenes/tora/fondo18.png",
-  tora_fondo19:"imagenes/tora/fondo19.png",
-  tora_fondo20:"imagenes/tora/fondo20.png",
-  tora_fondo21:"imagenes/tora/fondo21.png",
-  tora_fondo22:"imagenes/tora/fondo22.png",
-  tora_fondo23:"imagenes/tora/fondo23.png",
-  tora_piel1:"imagenes/tora/piel1.png",
-  tora_piel2:"imagenes/tora/piel2.png",
-  tora_piel3:"imagenes/tora/piel3.png",
-  tora_ojos1:"imagenes/tora/ojos1.png",
-  tora_ojos2:"imagenes/tora/ojos2.png",
-  tora_ojos3:"imagenes/tora/ojos3.png",
-  tora_ojos4:"imagenes/tora/ojos4.png",
-  tora_ojos5:"imagenes/tora/ojos5.png",
-  tora_ojos6:"imagenes/tora/ojos6.png",
-  tora_boca1:"imagenes/tora/boca1.png",
-  tora_boca2:"imagenes/tora/boca2.png",
-  tora_boca3:"imagenes/tora/boca3.png",
-  tora_boca4:"imagenes/tora/boca4.png",
-  tora_boca5:"imagenes/tora/boca5.png",
-  tora_boca6:"imagenes/tora/boca6.png",
-  tora_boca7:"imagenes/tora/boca7.png",
-  tora_pantalon1:"imagenes/tora/pantalon1.png",
-  tora_pantalon2:"imagenes/tora/pantalon2.png",
-  tora_pantalon3:"imagenes/tora/pantalon3.png",
-  tora_pantalon4:"imagenes/tora/pantalon4.png",
-  tora_botas1:"imagenes/tora/botas1.png",
-  tora_botas2:"imagenes/tora/botas2.png",
-  tora_botas3:"imagenes/tora/botas3.png",
-  tora_botas4:"imagenes/tora/botas4.png",
-  tora_botas5:"imagenes/tora/botas5.png",
-  tora_botas6:"imagenes/tora/botas6.png",
-  tora_pelo1:"imagenes/tora/pelo1.png",
-  tora_pelo2:"imagenes/tora/pelo2.png",
-  tora_pelo3:"imagenes/tora/pelo3.png",
-  tora_pelo4:"imagenes/tora/pelo4.png",
-  tora_remera1:"imagenes/tora/remera1.png",
-  tora_remera2:"imagenes/tora/remera2.png",
-  tora_remera3:"imagenes/tora/remera3.png",
-  tora_remera4:"imagenes/tora/remera4.png",
-  tora_guantes1:"imagenes/tora/guantes1.png",
-  tora_guantes2:"imagenes/tora/guantes2.png",
-  tora_guantes3:"imagenes/tora/guantes3.png",
-  tora_guantes4:"imagenes/tora/guantes4.png",
-  tora_espalda1:"imagenes/tora/espalda1.png",
-  tora_espalda2:"imagenes/tora/espalda2.png",
-  tora_accesorio1:"imagenes/tora/accesorio1.png",
-  tora_accesorio2:"imagenes/tora/accesorio2.png",
-  tora_accesorio3:"imagenes/tora/accesorio3.png",
-  tora_accesorio4:"imagenes/tora/accesorio4.png",
-  tora_accesorio5:"imagenes/tora/accesorio5.png",
-  tora_accesorio6:"imagenes/tora/accesorio6.png",
-  tora_accesorio7:"imagenes/tora/accesorio7.png",
-  tora_accesorio8:"imagenes/tora/accesorio8.png",
-  tora_accesorio9:"imagenes/tora/accesorio9.png",
-  tora_accesorio10:"imagenes/tora/accesorio10.png",
-  tora_cara1:"imagenes/tora/cara1.png",
-  tora_cara2:"imagenes/tora/cara2.png",
-  tora_cara3:"imagenes/tora/cara3.png",
-  tora_cara4:"imagenes/tora/cara4.png",
-  tora_cara5:"imagenes/tora/cara5.png",
-  tora_cara6:"imagenes/tora/cara6.png",
-  tora_cara7:"imagenes/tora/cara7.png",
-  tora_cara8:"imagenes/tora/cara8.png",
-  tora_mascota1:"imagenes/tora/mascota1.png",
-  tora_mascota2:"imagenes/tora/mascota2.png",
-  tora_mascota3:"imagenes/tora/mascota3.png",
-  tora_mascota4:"imagenes/tora/mascota4.png",
-  tora_mascota5:"imagenes/tora/mascota5.png",
-  tora_mascota6:"imagenes/tora/mascota6.png",
-  tora_mascota7:"imagenes/tora/mascota7.png",
-  tora_mascota8:"imagenes/tora/mascota8.png",
-  tora_mascota9:"imagenes/tora/mascota9.png",
-  tora_borde1:"imagenes/tora/borde1.png",
-  tora_borde2:"imagenes/tora/borde2.png",
-  tora_borde3:"imagenes/tora/borde3.png",
-  tora_borde4:"imagenes/tora/borde4.png",
-  tora_borde5:"imagenes/tora/borde5.png",
-  tora_borde6:"imagenes/tora/borde6.png",
-  tora_borde7:"imagenes/tora/borde7.png",
-  tora_borde8:"imagenes/tora/borde8.png",
-  tora_borde9:"imagenes/tora/borde9.png",
-  tora_borde10:"imagenes/tora/borde10.png",
-  tora_borde11:"imagenes/tora/borde11.png",
-  tora_borde12:"imagenes/tora/borde12.png",
-  tora_borde13:"imagenes/tora/borde13.png",
-  tora_borde14:"imagenes/tora/borde14.png",
-  tora_borde15:"imagenes/tora/borde15.png",
-  tora_borde16:"imagenes/tora/borde16.png",
+let CATALOGO = null;
+const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo
+let _promesaCatalogo = null;
 
-  // ---- Guardarropa de CEREZA ----
-  cereza_fondo1:"imagenes/cereza/fondo1.png",
-  cereza_fondo2:"imagenes/cereza/fondo2.png",
-  cereza_fondo3:"imagenes/cereza/fondo3.png",
-  cereza_fondo4:"imagenes/cereza/fondo4.png",
-  cereza_fondo5:"imagenes/cereza/fondo5.png",
-  cereza_fondo6:"imagenes/cereza/fondo6.png",
-  cereza_fondo7:"imagenes/cereza/fondo7.png",
-  cereza_fondo8:"imagenes/cereza/fondo8.png",
-  cereza_fondo9:"imagenes/cereza/fondo9.png",
-  cereza_fondo10:"imagenes/cereza/fondo10.png",
-  cereza_fondo11:"imagenes/cereza/fondo11.png",
-  cereza_fondo12:"imagenes/cereza/fondo12.png",
-  cereza_fondo13:"imagenes/cereza/fondo13.png",
-  cereza_fondo14:"imagenes/cereza/fondo14.png",
-  cereza_fondo15:"imagenes/cereza/fondo15.png",
-  cereza_fondo16:"imagenes/cereza/fondo16.png",
-  cereza_fondo17:"imagenes/cereza/fondo17.png",
-  cereza_fondo18:"imagenes/cereza/fondo18.png",
-  cereza_fondo19:"imagenes/cereza/fondo19.png",
-  cereza_fondo20:"imagenes/cereza/fondo20.png",
-  cereza_fondo21:"imagenes/cereza/fondo21.png",
-  cereza_fondo22:"imagenes/cereza/fondo22.png",
-  cereza_fondo23:"imagenes/cereza/fondo23.png",
-  cereza_piel1:"imagenes/cereza/piel1.png",
-  cereza_piel2:"imagenes/cereza/piel2.png",
-  cereza_piel3:"imagenes/cereza/piel3.png",
-  cereza_ojos1:"imagenes/cereza/ojos1.png",
-  cereza_ojos2:"imagenes/cereza/ojos2.png",
-  cereza_ojos3:"imagenes/cereza/ojos3.png",
-  cereza_ojos4:"imagenes/cereza/ojos4.png",
-  cereza_ojos5:"imagenes/cereza/ojos5.png",
-  cereza_ojos6:"imagenes/cereza/ojos6.png",
-  cereza_ojos7:"imagenes/cereza/ojos7.png",
-  cereza_ojos8:"imagenes/cereza/ojos8.png",
-  cereza_ojos9:"imagenes/cereza/ojos9.png",
-  cereza_ojos10:"imagenes/cereza/ojos10.png",
-  cereza_ojos11:"imagenes/cereza/ojos11.png",
-  cereza_ojos12:"imagenes/cereza/ojos12.png",
-  cereza_boca1:"imagenes/cereza/boca1.png",
-  cereza_boca2:"imagenes/cereza/boca2.png",
-  cereza_pantalon1:"imagenes/cereza/pantalon1.png",
-  cereza_pantalon2:"imagenes/cereza/pantalon2.png",
-  cereza_botas1:"imagenes/cereza/botas1.png",
-  cereza_botas2:"imagenes/cereza/botas2.png",
-  cereza_pelo1:"imagenes/cereza/pelo1.png",
-  cereza_pelo2:"imagenes/cereza/pelo2.png",
-  cereza_pelo3:"imagenes/cereza/pelo3.png",
-  cereza_pelo4:"imagenes/cereza/pelo4.png",
-  cereza_remera1:"imagenes/cereza/remera1.png",
-  cereza_remera2:"imagenes/cereza/remera2.png",
-  cereza_guantes1:"imagenes/cereza/guantes1.png",
-  cereza_guantes2:"imagenes/cereza/guantes2.png",
-  cereza_accesorio1:"imagenes/cereza/accesorio1.png",
-  cereza_accesorio2:"imagenes/cereza/accesorio2.png",
-  cereza_espalda1:"imagenes/cereza/espalda1.png",
-  cereza_espalda2:"imagenes/cereza/espalda2.png",
-  cereza_cara1:"imagenes/cereza/cara1.png",
-  cereza_cara2:"imagenes/cereza/cara2.png",
-  cereza_mascota1:"imagenes/cereza/mascota1.png",
-  cereza_mascota2:"imagenes/cereza/mascota2.png",
-  cereza_mascota5:"imagenes/cereza/mascota5.png",
-  cereza_mascota6:"imagenes/cereza/mascota6.png",
-  cereza_mascota7:"imagenes/cereza/mascota7.png",
-  cereza_mascota8:"imagenes/cereza/mascota8.png",
-  cereza_mascota9:"imagenes/cereza/mascota9.png",
-  cereza_borde1:"imagenes/cereza/borde1.png",
-  cereza_borde2:"imagenes/cereza/borde2.png",
-  cereza_borde3:"imagenes/cereza/borde3.png",
-  cereza_borde4:"imagenes/cereza/borde4.png",
-  cereza_borde5:"imagenes/cereza/borde5.png",
-  cereza_borde6:"imagenes/cereza/borde6.png",
-  cereza_borde7:"imagenes/cereza/borde7.png",
-  cereza_borde8:"imagenes/cereza/borde8.png",
-  cereza_borde9:"imagenes/cereza/borde9.png",
-  cereza_borde10:"imagenes/cereza/borde10.png",
-  cereza_borde11:"imagenes/cereza/borde11.png",
-  cereza_borde12:"imagenes/cereza/borde12.png",
-  cereza_borde13:"imagenes/cereza/borde13.png",
-  cereza_borde14:"imagenes/cereza/borde14.png",
-  cereza_borde15:"imagenes/cereza/borde15.png",
-  cereza_borde16:"imagenes/cereza/borde16.png",
+function cargarCatalogo(){
+  if(_promesaCatalogo) return _promesaCatalogo;
 
-  // ---- Guardarropa de FENGCHAO ----
+  _promesaCatalogo = fetch("/api/content?action=avatar-catalogo")
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+    .then(datos => {
+      if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
+      CATALOGO = datos;
+      RUTAS_PRENDA.clear();
+      datos.modelos.forEach(m => RUTAS_PRENDA.set(m.valor, m.url));
+      datos.prendas.forEach(p => RUTAS_PRENDA.set(p.valor, p.url));
+      return datos;
+    })
+    .catch(error => {
+      console.warn("MacroReborn: no se pudo cargar el catálogo de avatares.", error);
+      CATALOGO = null;
+      return null;
+    });
 
-  // ---- Prendas nuevas de TORA ----
-  tora_fondo24:"imagenes/tora/fondo24.png",
-  tora_fondo25:"imagenes/tora/fondo25.png",
-  tora_fondo26:"imagenes/tora/fondo26.png",
-  tora_fondo27:"imagenes/tora/fondo27.png",
-  tora_fondo28:"imagenes/tora/fondo28.png",
-  tora_fondo29:"imagenes/tora/fondo29.png",
-  tora_fondo30:"imagenes/tora/fondo30.png",
-  tora_fondo31:"imagenes/tora/fondo31.png",
-  tora_fondo32:"imagenes/tora/fondo32.png",
-  tora_fondo33:"imagenes/tora/fondo33.png",
-  tora_fondo34:"imagenes/tora/fondo34.png",
-  tora_fondo35:"imagenes/tora/fondo35.png",
-  tora_fondo36:"imagenes/tora/fondo36.png",
-  tora_fondo37:"imagenes/tora/fondo37.png",
-  tora_fondo38:"imagenes/tora/fondo38.png",
-  tora_fondo39:"imagenes/tora/fondo39.png",
-  tora_piel4:"imagenes/tora/piel4.png",
-  tora_piel5:"imagenes/tora/piel5.png",
-  tora_piel6:"imagenes/tora/piel6.png",
-  tora_boca8:"imagenes/tora/boca8.png",
-  tora_botas7:"imagenes/tora/botas7.png",
-  tora_botas8:"imagenes/tora/botas8.png",
-  tora_pantalon5:"imagenes/tora/pantalon5.png",
-  tora_pantalon6:"imagenes/tora/pantalon6.png",
-  tora_pantalon7:"imagenes/tora/pantalon7.png",
-  tora_pantalon8:"imagenes/tora/pantalon8.png",
-  tora_pantalon9:"imagenes/tora/pantalon9.png",
-  tora_pantalon10:"imagenes/tora/pantalon10.png",
-  tora_pantalon11:"imagenes/tora/pantalon11.png",
-  tora_pantalon12:"imagenes/tora/pantalon12.png",
-  tora_remera5:"imagenes/tora/remera5.png",
-  tora_remera6:"imagenes/tora/remera6.png",
-  tora_remera7:"imagenes/tora/remera7.png",
-  tora_remera8:"imagenes/tora/remera8.png",
-  tora_remera9:"imagenes/tora/remera9.png",
-  tora_remera10:"imagenes/tora/remera10.png",
-  tora_remera11:"imagenes/tora/remera11.png",
-  tora_remera12:"imagenes/tora/remera12.png",
-  tora_remera13:"imagenes/tora/remera13.png",
-  tora_remera14:"imagenes/tora/remera14.png",
-  tora_remera15:"imagenes/tora/remera15.png",
-  tora_remera16:"imagenes/tora/remera16.png",
-  tora_remera17:"imagenes/tora/remera17.png",
-  tora_remera18:"imagenes/tora/remera18.png",
-  tora_remera19:"imagenes/tora/remera19.png",
-  tora_accesorio11:"imagenes/tora/accesorio11.png",
-  tora_accesorio12:"imagenes/tora/accesorio12.png",
-  tora_accesorio13:"imagenes/tora/accesorio13.png",
-  tora_accesorio14:"imagenes/tora/accesorio14.png",
-  tora_accesorio15:"imagenes/tora/accesorio15.png",
-  tora_accesorio16:"imagenes/tora/accesorio16.png",
-  tora_accesorio17:"imagenes/tora/accesorio17.png",
-  tora_accesorio18:"imagenes/tora/accesorio18.png",
-  tora_accesorio19:"imagenes/tora/accesorio19.png",
-  tora_accesorio20:"imagenes/tora/accesorio20.png",
-  tora_accesorio21:"imagenes/tora/accesorio21.png",
-  tora_accesorio22:"imagenes/tora/accesorio22.png",
-  tora_accesorio23:"imagenes/tora/accesorio23.png",
-  tora_espalda3:"imagenes/tora/espalda3.png",
-  tora_pelo5:"imagenes/tora/pelo5.png",
-  tora_pelo6:"imagenes/tora/pelo6.png",
-  tora_pelo7:"imagenes/tora/pelo7.png",
-  tora_pelo8:"imagenes/tora/pelo8.png",
-  tora_pelo9:"imagenes/tora/pelo9.png",
-  tora_pelo10:"imagenes/tora/pelo10.png",
-  tora_pelo11:"imagenes/tora/pelo11.png",
-  tora_pelo12:"imagenes/tora/pelo12.png",
-  tora_pelo13:"imagenes/tora/pelo13.png",
-  tora_pelo14:"imagenes/tora/pelo14.png",
-  tora_pelo15:"imagenes/tora/pelo15.png",
-  tora_mascota10:"imagenes/tora/mascota10.png",
-  tora_mascota11:"imagenes/tora/mascota11.png",
-  tora_mascota12:"imagenes/tora/mascota12.png",
-  tora_mascota13:"imagenes/tora/mascota13.png",
-  tora_mascota14:"imagenes/tora/mascota14.png",
-  tora_mascota15:"imagenes/tora/mascota15.png",
-  tora_mascota16:"imagenes/tora/mascota16.png",
-  tora_mascota17:"imagenes/tora/mascota17.png",
-  tora_mascota18:"imagenes/tora/mascota18.png",
-  tora_mascota19:"imagenes/tora/mascota19.png",
-  tora_mascota20:"imagenes/tora/mascota20.png",
-  tora_mascota21:"imagenes/tora/mascota21.png",
-  tora_mascota22:"imagenes/tora/mascota22.png",
-  tora_borde17:"imagenes/tora/borde17.png",
-  tora_borde18:"imagenes/tora/borde18.png",
-  // ---- Prendas nuevas de CEREZA ----
-  cereza_fondo24:"imagenes/cereza/fondo24.png",
-  cereza_fondo25:"imagenes/cereza/fondo25.png",
-  cereza_fondo26:"imagenes/cereza/fondo26.png",
-  cereza_fondo27:"imagenes/cereza/fondo27.png",
-  cereza_fondo28:"imagenes/cereza/fondo28.png",
-  cereza_fondo29:"imagenes/cereza/fondo29.png",
-  cereza_fondo30:"imagenes/cereza/fondo30.png",
-  cereza_fondo31:"imagenes/cereza/fondo31.png",
-  cereza_fondo32:"imagenes/cereza/fondo32.png",
-  cereza_fondo33:"imagenes/cereza/fondo33.png",
-  cereza_fondo34:"imagenes/cereza/fondo34.png",
-  cereza_fondo35:"imagenes/cereza/fondo35.png",
-  cereza_fondo36:"imagenes/cereza/fondo36.png",
-  cereza_fondo37:"imagenes/cereza/fondo37.png",
-  cereza_fondo38:"imagenes/cereza/fondo38.png",
-  cereza_fondo39:"imagenes/cereza/fondo39.png",
-  cereza_piel6:"imagenes/cereza/piel6.png",
-  cereza_piel7:"imagenes/cereza/piel7.png",
-  cereza_boca3:"imagenes/cereza/boca3.png",
-  cereza_boca4:"imagenes/cereza/boca4.png",
-  cereza_boca5:"imagenes/cereza/boca5.png",
-  cereza_boca6:"imagenes/cereza/boca6.png",
-  cereza_boca7:"imagenes/cereza/boca7.png",
-  cereza_boca8:"imagenes/cereza/boca8.png",
-  cereza_boca9:"imagenes/cereza/boca9.png",
-  cereza_botas3:"imagenes/cereza/botas3.png",
-  cereza_botas4:"imagenes/cereza/botas4.png",
-  cereza_botas5:"imagenes/cereza/botas5.png",
-  cereza_botas6:"imagenes/cereza/botas6.png",
-  cereza_botas7:"imagenes/cereza/botas7.png",
-  cereza_botas8:"imagenes/cereza/botas8.png",
-  cereza_pantalon3:"imagenes/cereza/pantalon3.png",
-  cereza_pantalon4:"imagenes/cereza/pantalon4.png",
-  cereza_pantalon5:"imagenes/cereza/pantalon5.png",
-  cereza_pantalon6:"imagenes/cereza/pantalon6.png",
-  cereza_pantalon7:"imagenes/cereza/pantalon7.png",
-  cereza_remera3:"imagenes/cereza/remera3.png",
-  cereza_remera4:"imagenes/cereza/remera4.png",
-  cereza_remera5:"imagenes/cereza/remera5.png",
-  cereza_remera6:"imagenes/cereza/remera6.png",
-  cereza_remera7:"imagenes/cereza/remera7.png",
-  cereza_remera8:"imagenes/cereza/remera8.png",
-  cereza_remera9:"imagenes/cereza/remera9.png",
-  cereza_remera10:"imagenes/cereza/remera10.png",
-  cereza_accesorio3:"imagenes/cereza/accesorio3.png",
-  cereza_accesorio4:"imagenes/cereza/accesorio4.png",
-  cereza_accesorio5:"imagenes/cereza/accesorio5.png",
-  cereza_accesorio6:"imagenes/cereza/accesorio6.png",
-  cereza_accesorio7:"imagenes/cereza/accesorio7.png",
-  cereza_accesorio8:"imagenes/cereza/accesorio8.png",
-  cereza_accesorio9:"imagenes/cereza/accesorio9.png",
-  cereza_accesorio10:"imagenes/cereza/accesorio10.png",
-  cereza_accesorio11:"imagenes/cereza/accesorio11.png",
-  cereza_accesorio12:"imagenes/cereza/accesorio12.png",
-  cereza_accesorio13:"imagenes/cereza/accesorio13.png",
-  cereza_espalda4:"imagenes/cereza/espalda4.png",
-  cereza_espalda5:"imagenes/cereza/espalda5.png",
-  cereza_espalda6:"imagenes/cereza/espalda6.png",
-  cereza_espalda7:"imagenes/cereza/espalda7.png",
-  cereza_espalda8:"imagenes/cereza/espalda8.png",
-  cereza_espalda9:"imagenes/cereza/espalda9.png",
-  cereza_espalda10:"imagenes/cereza/espalda10.png",
-  cereza_espalda11:"imagenes/cereza/espalda11.png",
-  cereza_espalda12:"imagenes/cereza/espalda12.png",
-  cereza_espalda13:"imagenes/cereza/espalda13.png",
-  cereza_espalda14:"imagenes/cereza/espalda14.png",
-  cereza_espalda15:"imagenes/cereza/espalda15.png",
-  cereza_espalda16:"imagenes/cereza/espalda16.png",
-  cereza_espalda17:"imagenes/cereza/espalda17.png",
-  cereza_espalda18:"imagenes/cereza/espalda18.png",
-  cereza_espalda19:"imagenes/cereza/espalda19.png",
-  cereza_espalda20:"imagenes/cereza/espalda20.png",
-  cereza_espalda22:"imagenes/cereza/espalda22.png",
-  cereza_cara5:"imagenes/cereza/cara5.png",
-  cereza_cara6:"imagenes/cereza/cara6.png",
-  cereza_pelo8:"imagenes/cereza/pelo8.png",
-  cereza_pelo9:"imagenes/cereza/pelo9.png",
-  cereza_pelo10:"imagenes/cereza/pelo10.png",
-  cereza_pelo11:"imagenes/cereza/pelo11.png",
-  cereza_pelo12:"imagenes/cereza/pelo12.png",
-  cereza_pelo13:"imagenes/cereza/pelo13.png",
-  cereza_pelo14:"imagenes/cereza/pelo14.png",
-  cereza_pelo15:"imagenes/cereza/pelo15.png",
-  cereza_pelo16:"imagenes/cereza/pelo16.png",
-  cereza_pelo17:"imagenes/cereza/pelo17.png",
-  cereza_pelo18:"imagenes/cereza/pelo18.png",
-  cereza_pelo19:"imagenes/cereza/pelo19.png",
-  cereza_pelo20:"imagenes/cereza/pelo20.png",
-  cereza_mascota10:"imagenes/cereza/mascota10.png",
-  cereza_mascota11:"imagenes/cereza/mascota11.png",
-  cereza_mascota12:"imagenes/cereza/mascota12.png",
-  cereza_mascota13:"imagenes/cereza/mascota13.png",
-  cereza_mascota14:"imagenes/cereza/mascota14.png",
-  cereza_mascota15:"imagenes/cereza/mascota15.png",
-  cereza_mascota16:"imagenes/cereza/mascota16.png",
-  cereza_mascota17:"imagenes/cereza/mascota17.png",
-  cereza_mascota18:"imagenes/cereza/mascota18.png",
-  cereza_mascota19:"imagenes/cereza/mascota19.png",
-  cereza_mascota20:"imagenes/cereza/mascota20.png",
-  cereza_mascota21:"imagenes/cereza/mascota21.png",
-  cereza_mascota22:"imagenes/cereza/mascota22.png",
-  cereza_borde17:"imagenes/cereza/borde17.png",
-  cereza_borde18:"imagenes/cereza/borde18.png",
-  // ---- Prendas nuevas de FENGCHAO ----
-  fengchao_fondo1:"imagenes/fengchao/fondo1.png",
-  fengchao_fondo2:"imagenes/fengchao/fondo2.png",
-  fengchao_fondo3:"imagenes/fengchao/fondo3.png",
-  fengchao_fondo4:"imagenes/fengchao/fondo4.png",
-  fengchao_fondo5:"imagenes/fengchao/fondo5.png",
-  fengchao_fondo6:"imagenes/fengchao/fondo6.png",
-  fengchao_fondo7:"imagenes/fengchao/fondo7.png",
-  fengchao_fondo8:"imagenes/fengchao/fondo8.png",
-  fengchao_fondo9:"imagenes/fengchao/fondo9.png",
-  fengchao_fondo10:"imagenes/fengchao/fondo10.png",
-  fengchao_fondo11:"imagenes/fengchao/fondo11.png",
-  fengchao_fondo12:"imagenes/fengchao/fondo12.png",
-  fengchao_fondo13:"imagenes/fengchao/fondo13.png",
-  fengchao_fondo14:"imagenes/fengchao/fondo14.png",
-  fengchao_fondo15:"imagenes/fengchao/fondo15.png",
-  fengchao_fondo16:"imagenes/fengchao/fondo16.png",
-  fengchao_fondo17:"imagenes/fengchao/fondo17.png",
-  fengchao_fondo18:"imagenes/fengchao/fondo18.png",
-  fengchao_fondo19:"imagenes/fengchao/fondo19.png",
-  fengchao_boca1:"imagenes/fengchao/boca1.png",
-  fengchao_boca2:"imagenes/fengchao/boca2.png",
-  fengchao_boca3:"imagenes/fengchao/boca3.png",
-  fengchao_boca4:"imagenes/fengchao/boca4.png",
-  fengchao_boca5:"imagenes/fengchao/boca5.png",
-  fengchao_boca6:"imagenes/fengchao/boca6.png",
-  fengchao_boca7:"imagenes/fengchao/boca7.png",
-  fengchao_boca8:"imagenes/fengchao/boca8.png",
-  fengchao_boca9:"imagenes/fengchao/boca9.png",
-  fengchao_botas1:"imagenes/fengchao/botas1.png",
-  fengchao_botas2:"imagenes/fengchao/botas2.png",
-  fengchao_botas3:"imagenes/fengchao/botas3.png",
-  fengchao_pantalon1:"imagenes/fengchao/pantalon1.png",
-  fengchao_remera1:"imagenes/fengchao/remera1.png",
-  fengchao_remera2:"imagenes/fengchao/remera2.png",
-  fengchao_remera3:"imagenes/fengchao/remera3.png",
-  fengchao_remera4:"imagenes/fengchao/remera4.png",
-  fengchao_accesorio1:"imagenes/fengchao/accesorio1.png",
-  fengchao_accesorio2:"imagenes/fengchao/accesorio2.png",
-  fengchao_accesorio3:"imagenes/fengchao/accesorio3.png",
-  fengchao_accesorio4:"imagenes/fengchao/accesorio4.png",
-  fengchao_accesorio5:"imagenes/fengchao/accesorio5.png",
-  fengchao_espalda1:"imagenes/fengchao/espalda1.png",
-  fengchao_cara1:"imagenes/fengchao/cara1.png",
-  fengchao_pelo1:"imagenes/fengchao/pelo1.png",
-  fengchao_pelo2:"imagenes/fengchao/pelo2.png",
-  fengchao_mascota1:"imagenes/fengchao/mascota1.png",
-  fengchao_mascota2:"imagenes/fengchao/mascota2.png",
-  fengchao_mascota3:"imagenes/fengchao/mascota3.png",
-  fengchao_mascota4:"imagenes/fengchao/mascota4.png",
-  fengchao_mascota5:"imagenes/fengchao/mascota5.png",
-  fengchao_mascota6:"imagenes/fengchao/mascota6.png",
-  fengchao_mascota7:"imagenes/fengchao/mascota7.png",
-  fengchao_mascota8:"imagenes/fengchao/mascota8.png",
-  fengchao_mascota9:"imagenes/fengchao/mascota9.png",
-  fengchao_mascota10:"imagenes/fengchao/mascota10.png",
-  fengchao_mascota11:"imagenes/fengchao/mascota11.png",
-  fengchao_mascota12:"imagenes/fengchao/mascota12.png",
-  fengchao_mascota13:"imagenes/fengchao/mascota13.png",
-  fengchao_borde1:"imagenes/fengchao/borde1.png",
-  fengchao_borde2:"imagenes/fengchao/borde2.png",
-  // ---- Prendas nuevas de FENGLEI ----
-  fenglei_fondo1:"imagenes/fenglei/fondo1.png",
-  fenglei_fondo2:"imagenes/fenglei/fondo2.png",
-  fenglei_fondo3:"imagenes/fenglei/fondo3.png",
-  fenglei_fondo4:"imagenes/fenglei/fondo4.png",
-  fenglei_fondo5:"imagenes/fenglei/fondo5.png",
-  fenglei_fondo6:"imagenes/fenglei/fondo6.png",
-  fenglei_fondo7:"imagenes/fenglei/fondo7.png",
-  fenglei_fondo8:"imagenes/fenglei/fondo8.png",
-  fenglei_fondo9:"imagenes/fenglei/fondo9.png",
-  fenglei_fondo10:"imagenes/fenglei/fondo10.png",
-  fenglei_fondo11:"imagenes/fenglei/fondo11.png",
-  fenglei_fondo12:"imagenes/fenglei/fondo12.png",
-  fenglei_fondo13:"imagenes/fenglei/fondo13.png",
-  fenglei_fondo14:"imagenes/fenglei/fondo14.png",
-  fenglei_fondo15:"imagenes/fenglei/fondo15.png",
-  fenglei_fondo16:"imagenes/fenglei/fondo16.png",
-  fenglei_fondo17:"imagenes/fenglei/fondo17.png",
-  fenglei_fondo18:"imagenes/fenglei/fondo18.png",
-  fenglei_fondo19:"imagenes/fenglei/fondo19.png",
-  fenglei_boca1:"imagenes/fenglei/boca1.png",
-  fenglei_boca2:"imagenes/fenglei/boca2.png",
-  fenglei_boca3:"imagenes/fenglei/boca3.png",
-  fenglei_boca4:"imagenes/fenglei/boca4.png",
-  fenglei_boca5:"imagenes/fenglei/boca5.png",
-  fenglei_boca6:"imagenes/fenglei/boca6.png",
-  fenglei_boca7:"imagenes/fenglei/boca7.png",
-  fenglei_boca8:"imagenes/fenglei/boca8.png",
-  fenglei_boca9:"imagenes/fenglei/boca9.png",
-  fenglei_pantalon1:"imagenes/fenglei/pantalon1.png",
-  fenglei_remera1:"imagenes/fenglei/remera1.png",
-  fenglei_remera2:"imagenes/fenglei/remera2.png",
-  fenglei_accesorio1:"imagenes/fenglei/accesorio1.png",
-  fenglei_accesorio2:"imagenes/fenglei/accesorio2.png",
-  fenglei_accesorio3:"imagenes/fenglei/accesorio3.png",
-  fenglei_accesorio4:"imagenes/fenglei/accesorio4.png",
-  fenglei_espalda1:"imagenes/fenglei/espalda1.png",
-  fenglei_cara1:"imagenes/fenglei/cara1.png",
-  fenglei_mascota1:"imagenes/fenglei/mascota1.png",
-  fenglei_mascota2:"imagenes/fenglei/mascota2.png",
-  fenglei_mascota3:"imagenes/fenglei/mascota3.png",
-  fenglei_mascota4:"imagenes/fenglei/mascota4.png",
-  fenglei_mascota5:"imagenes/fenglei/mascota5.png",
-  fenglei_mascota6:"imagenes/fenglei/mascota6.png",
-  fenglei_mascota7:"imagenes/fenglei/mascota7.png",
-  fenglei_mascota8:"imagenes/fenglei/mascota8.png",
-  fenglei_mascota9:"imagenes/fenglei/mascota9.png",
-  fenglei_mascota10:"imagenes/fenglei/mascota10.png",
-  fenglei_mascota11:"imagenes/fenglei/mascota11.png",
-  fenglei_mascota12:"imagenes/fenglei/mascota12.png",
-  fenglei_mascota13:"imagenes/fenglei/mascota13.png",
-  fenglei_borde1:"imagenes/fenglei/borde1.png",
-  fenglei_borde2:"imagenes/fenglei/borde2.png",
-  // ---- Prendas nuevas de FIORA ----
-  fiora_fondo1:"imagenes/fiora/fondo1.png",
-  fiora_fondo2:"imagenes/fiora/fondo2.png",
-  fiora_fondo3:"imagenes/fiora/fondo3.png",
-  fiora_fondo4:"imagenes/fiora/fondo4.png",
-  fiora_fondo5:"imagenes/fiora/fondo5.png",
-  fiora_fondo6:"imagenes/fiora/fondo6.png",
-  fiora_fondo7:"imagenes/fiora/fondo7.png",
-  fiora_fondo8:"imagenes/fiora/fondo8.png",
-  fiora_fondo9:"imagenes/fiora/fondo9.png",
-  fiora_fondo10:"imagenes/fiora/fondo10.png",
-  fiora_fondo11:"imagenes/fiora/fondo11.png",
-  fiora_fondo12:"imagenes/fiora/fondo12.png",
-  fiora_fondo13:"imagenes/fiora/fondo13.png",
-  fiora_fondo14:"imagenes/fiora/fondo14.png",
-  fiora_fondo15:"imagenes/fiora/fondo15.png",
-  fiora_fondo16:"imagenes/fiora/fondo16.png",
-  fiora_fondo17:"imagenes/fiora/fondo17.png",
-  fiora_fondo18:"imagenes/fiora/fondo18.png",
-  fiora_fondo19:"imagenes/fiora/fondo19.png",
-  fiora_boca1:"imagenes/fiora/boca1.png",
-  fiora_boca2:"imagenes/fiora/boca2.png",
-  fiora_boca3:"imagenes/fiora/boca3.png",
-  fiora_boca4:"imagenes/fiora/boca4.png",
-  fiora_boca5:"imagenes/fiora/boca5.png",
-  fiora_boca6:"imagenes/fiora/boca6.png",
-  fiora_boca7:"imagenes/fiora/boca7.png",
-  fiora_boca8:"imagenes/fiora/boca8.png",
-  fiora_boca9:"imagenes/fiora/boca9.png",
-  fiora_botas1:"imagenes/fiora/botas1.png",
-  fiora_botas2:"imagenes/fiora/botas2.png",
-  fiora_pantalon1:"imagenes/fiora/pantalon1.png",
-  fiora_pantalon2:"imagenes/fiora/pantalon2.png",
-  fiora_pantalon3:"imagenes/fiora/pantalon3.png",
-  fiora_pantalon4:"imagenes/fiora/pantalon4.png",
-  fiora_pantalon5:"imagenes/fiora/pantalon5.png",
-  fiora_remera1:"imagenes/fiora/remera1.png",
-  fiora_remera2:"imagenes/fiora/remera2.png",
-  fiora_remera3:"imagenes/fiora/remera3.png",
-  fiora_remera4:"imagenes/fiora/remera4.png",
-  fiora_remera5:"imagenes/fiora/remera5.png",
-  fiora_accesorio1:"imagenes/fiora/accesorio1.png",
-  fiora_accesorio2:"imagenes/fiora/accesorio2.png",
-  fiora_accesorio3:"imagenes/fiora/accesorio3.png",
-  fiora_espalda1:"imagenes/fiora/espalda1.png",
-  fiora_cara1:"imagenes/fiora/cara1.png",
-  fiora_pelo1:"imagenes/fiora/pelo1.png",
-  fiora_mascota1:"imagenes/fiora/mascota1.png",
-  fiora_mascota2:"imagenes/fiora/mascota2.png",
-  fiora_mascota3:"imagenes/fiora/mascota3.png",
-  fiora_mascota4:"imagenes/fiora/mascota4.png",
-  fiora_mascota5:"imagenes/fiora/mascota5.png",
-  fiora_mascota6:"imagenes/fiora/mascota6.png",
-  fiora_mascota7:"imagenes/fiora/mascota7.png",
-  fiora_mascota8:"imagenes/fiora/mascota8.png",
-  fiora_mascota9:"imagenes/fiora/mascota9.png",
-  fiora_mascota10:"imagenes/fiora/mascota10.png",
-  fiora_mascota11:"imagenes/fiora/mascota11.png",
-  fiora_mascota12:"imagenes/fiora/mascota12.png",
-  fiora_mascota13:"imagenes/fiora/mascota13.png",
-  fiora_borde1:"imagenes/fiora/borde1.png",
-  fiora_borde2:"imagenes/fiora/borde2.png",
-  // ---- Prendas nuevas de MAX ----
-  max_fondo1:"imagenes/max/fondo1.png",
-  max_fondo2:"imagenes/max/fondo2.png",
-  max_fondo3:"imagenes/max/fondo3.png",
-  max_fondo4:"imagenes/max/fondo4.png",
-  max_fondo5:"imagenes/max/fondo5.png",
-  max_fondo6:"imagenes/max/fondo6.png",
-  max_fondo7:"imagenes/max/fondo7.png",
-  max_fondo8:"imagenes/max/fondo8.png",
-  max_fondo9:"imagenes/max/fondo9.png",
-  max_fondo10:"imagenes/max/fondo10.png",
-  max_fondo11:"imagenes/max/fondo11.png",
-  max_fondo12:"imagenes/max/fondo12.png",
-  max_fondo13:"imagenes/max/fondo13.png",
-  max_fondo14:"imagenes/max/fondo14.png",
-  max_fondo15:"imagenes/max/fondo15.png",
-  max_fondo16:"imagenes/max/fondo16.png",
-  max_fondo17:"imagenes/max/fondo17.png",
-  max_fondo18:"imagenes/max/fondo18.png",
-  max_fondo19:"imagenes/max/fondo19.png",
-  max_boca1:"imagenes/max/boca1.png",
-  max_boca2:"imagenes/max/boca2.png",
-  max_boca3:"imagenes/max/boca3.png",
-  max_boca4:"imagenes/max/boca4.png",
-  max_boca5:"imagenes/max/boca5.png",
-  max_boca6:"imagenes/max/boca6.png",
-  max_boca7:"imagenes/max/boca7.png",
-  max_boca8:"imagenes/max/boca8.png",
-  max_boca9:"imagenes/max/boca9.png",
-  max_botas1:"imagenes/max/botas1.png",
-  max_botas2:"imagenes/max/botas2.png",
-  max_botas3:"imagenes/max/botas3.png",
-  max_pantalon1:"imagenes/max/pantalon1.png",
-  max_pantalon2:"imagenes/max/pantalon2.png",
-  max_pantalon3:"imagenes/max/pantalon3.png",
-  max_remera1:"imagenes/max/remera1.png",
-  max_remera2:"imagenes/max/remera2.png",
-  max_remera3:"imagenes/max/remera3.png",
-  max_remera4:"imagenes/max/remera4.png",
-  max_accesorio1:"imagenes/max/accesorio1.png",
-  max_accesorio2:"imagenes/max/accesorio2.png",
-  max_accesorio3:"imagenes/max/accesorio3.png",
-  max_accesorio4:"imagenes/max/accesorio4.png",
-  max_accesorio5:"imagenes/max/accesorio5.png",
-  max_accesorio6:"imagenes/max/accesorio6.png",
-  max_accesorio7:"imagenes/max/accesorio7.png",
-  max_accesorio8:"imagenes/max/accesorio8.png",
-  max_accesorio9:"imagenes/max/accesorio9.png",
-  max_accesorio10:"imagenes/max/accesorio10.png",
-  max_espalda1:"imagenes/max/espalda1.png",
-  max_cara1:"imagenes/max/cara1.png",
-  max_cara2:"imagenes/max/cara2.png",
-  max_pelo1:"imagenes/max/pelo1.png",
-  max_pelo2:"imagenes/max/pelo2.png",
-  max_mascota1:"imagenes/max/mascota1.png",
-  max_mascota2:"imagenes/max/mascota2.png",
-  max_mascota3:"imagenes/max/mascota3.png",
-  max_mascota4:"imagenes/max/mascota4.png",
-  max_mascota5:"imagenes/max/mascota5.png",
-  max_mascota6:"imagenes/max/mascota6.png",
-  max_mascota7:"imagenes/max/mascota7.png",
-  max_mascota8:"imagenes/max/mascota8.png",
-  max_mascota9:"imagenes/max/mascota9.png",
-  max_mascota10:"imagenes/max/mascota10.png",
-  max_mascota11:"imagenes/max/mascota11.png",
-  max_mascota12:"imagenes/max/mascota12.png",
-  max_mascota13:"imagenes/max/mascota13.png",
-  max_borde1:"imagenes/max/borde1.png",
-  max_borde2:"imagenes/max/borde2.png",
-};
+  return _promesaCatalogo;
+}
+
+// Traduce un valor ("tora_pelo3") a la URL de su dibujo.
+//
+// Mientras el catálogo no esté cargado se usa la ruta de siempre en
+// imagenes/, que es lo que hacen el resto de páginas del sitio. Así, si
+// el catálogo tarda o falla, los avatares se siguen dibujando en vez de
+// quedarse en blanco: degradar a lo de antes es mejor que no mostrar
+// nada.
+//
+// Con el catálogo cargado manda él, y eso es una mejora sobre CAPAS_IMG:
+// un valor que ya no existe —como "tora_piel7", que tres cuentas tienen
+// guardado y cuyo fichero se borró hace tiempo— deja de pedirse, así que
+// deja de dar un 404 en la consola.
+function rutaDePrenda(valor){
+  if(!valor || valor === "ninguno") return null;
+  if(RUTAS_PRENDA.size) return RUTAS_PRENDA.get(valor) || null;
+  return typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(valor) : null;
+}
+
+// Los valores que el catálogo reconoce. Sustituye a Object.keys(CAPAS_IMG).
+function valoresDelCatalogo(){
+  return [...RUTAS_PRENDA.keys()];
+}
+
+// ==============================
+// CONSTRUIR LAS OPCIONES DEL EDITOR
+// ==============================
+// perfil.html trae los 15 botones de categoría y los 15 contenedores,
+// que son fijos y tienen sus etiquetas y sus emojis. Lo que ya no trae
+// son los 622 divs de prenda: se generan acá desde el catálogo.
+//
+// Se arma con createElement y createTextNode, no con innerHTML. El
+// nombre de una prenda sale de la base, y en cuanto el equipo de arte
+// pueda subir prendas ese texto lo habrá escrito una persona: pegarlo
+// como HTML sería meter un agujero de scripting en el editor.
+function construirOpcionesDelEditor(){
+  if(!CATALOGO) return false;
+
+  const porCapa = new Map();
+  CATALOGO.modelos.forEach(m => {
+    if(!porCapa.has("modelo")) porCapa.set("modelo", []);
+    porCapa.get("modelo").push(m);
+  });
+  CATALOGO.prendas.forEach(p => {
+    if(!porCapa.has(p.capa)) porCapa.set(p.capa, []);
+    porCapa.get(p.capa).push(p);
+  });
+
+  document.querySelectorAll(".grupo-opcion").forEach(grupo => {
+    const capa = grupo.dataset.grupo;
+    const fila = grupo.querySelector(".fila-opciones");
+    if(!fila) return;
+
+    fila.textContent = "";
+
+    (porCapa.get(capa) || []).forEach(item => {
+      const div = document.createElement("div");
+      div.className = "opcion-item";
+      div.dataset.capa = capa;
+      div.dataset.valor = item.valor;
+      // El modelo solo se marca en las prendas: es lo que usa
+      // filtrarOpcionesPorModelo() para ocultar la ropa de otro
+      // personaje. En la propia capa "modelo" no tiene sentido.
+      if(capa !== "modelo") div.dataset.modelo = item.modelo;
+
+      const img = document.createElement("img");
+      img.src = item.url;
+      // Con setAttribute y no con la propiedad: no todos los motores
+      // reflejan img.loading al atributo, y el atributo es lo que
+      // entienden todos. El HTML de antes también los traía así.
+      img.setAttribute("loading", "lazy");
+      img.setAttribute("decoding", "async");
+      img.setAttribute("alt", "");
+
+      div.appendChild(img);
+      div.appendChild(document.createTextNode(item.nombre));
+      fila.appendChild(div);
+    });
+  });
+
+  return true;
+}
+
+// Si el catálogo no llega, el editor se quedaría vacío y sin explicación.
+// Antes esto no podía pasar porque los divs venían en el HTML.
+function avisarCatalogoCaido(){
+  document.querySelectorAll(".grupo-opcion .fila-opciones").forEach(fila => {
+    if(fila.children.length) return;
+    const aviso = document.createElement("p");
+    aviso.className = "sin-opciones";
+    aviso.textContent = "No se pudieron cargar las prendas. Probá recargar la página.";
+    fila.appendChild(aviso);
+  });
+}
 
 let editorCapas={
   fondo:"ninguno",
@@ -956,11 +453,9 @@ let editorCapas={
   borde:"ninguno"
 };
 
-const ORDEN_CAPAS=[
-  "fondo","espalda","modelo","piel","ojos","boca",
-  "botas","pantalon","remera","guantes","accesorio",
-  "cara","pelo","mascota","borde"
-];
+// La lista de capas viene de js/core.js, que se carga antes que este
+// archivo. Acá solo se le da el nombre local de siempre.
+const ORDEN_CAPAS=ORDEN_CAPAS_AVATAR;
 
 
 // ---------- AVATAR (Neon: users.avatar) ----------
@@ -1177,6 +672,14 @@ insigniasPerfilPropioListas.then(lista=>{
       prepararPanelAvatarAdminPng();
     }
   }
+
+  // El panel de arte se ofrece a quien puede usarlo. El enlace no protege
+  // nada: arte.html comprueba el rol contra el servidor al abrirse. Esto
+  // es para que quien lo tiene lo encuentre sin que se lo expliquen.
+  if(Array.isArray(lista) && (lista.includes("artista") || lista.includes("administrador"))){
+    const enlace = document.getElementById("enlaceArtePanel");
+    if(enlace) enlace.style.display = "";
+  }
 });
 
 
@@ -1248,10 +751,10 @@ function actualizarPreview(){
   if(!preview)return;
   preview.innerHTML="";
   ORDEN_CAPAS.forEach(tipo=>{
-    let valor=editorCapas[tipo];
-    if(valor!="ninguno" && CAPAS_IMG[valor]){
+    const ruta=rutaDePrenda(editorCapas[tipo]);
+    if(ruta){
       let img=document.createElement("img");
-      img.src=CAPAS_IMG[valor];
+      img.src=ruta;
       img.className="capa";
       preview.appendChild(img);
     }
@@ -1287,13 +790,13 @@ function actualizarAvatarPrincipal(){
   let rutasCapas = [];
 
   ORDEN_CAPAS.forEach(tipo=>{
-    let valor=avatar[tipo];
-    if(valor && valor!="ninguno" && CAPAS_IMG[valor]){
+    const ruta=rutaDePrenda(avatar[tipo]);
+    if(ruta){
       let capa=document.createElement("img");
-      capa.src=CAPAS_IMG[valor];
+      capa.src=ruta;
       capa.setAttribute("style", estiloCapa);
       contenedor.appendChild(capa);
-      rutasCapas.push(CAPAS_IMG[valor]);
+      rutasCapas.push(ruta);
     }
   });
 
@@ -1427,12 +930,12 @@ document.getElementById("guardarAvatar")?.addEventListener("click", async ()=>{
 
 
 // ---------- AVATAR ALEATORIO ----------
-// Elige un modelo al azar (solo entre los que ya tienen guardarropa
-// cargado en CAPAS_IMG) y, para cada categoría, una opción al azar
-// entre las disponibles para ese modelo.
+// Elige un modelo al azar (solo entre los que ya tienen guardarropa) y,
+// para cada categoría, una opción al azar entre las disponibles para
+// ese modelo.
 
 function modelosConGuardarropa(){
-  const claves = Object.keys(CAPAS_IMG);
+  const claves = valoresDelCatalogo();
   const modelosBase = claves.filter(k => !k.includes("_"));
   return modelosBase.filter(m => claves.some(k => k.startsWith(m + "_")));
 }
@@ -1452,7 +955,7 @@ document.getElementById("avatarAleatorio")?.addEventListener("click", ()=>{
   ORDEN_CAPAS.forEach(tipo=>{
     if(tipo === "modelo") return;
 
-    const opciones = Object.keys(CAPAS_IMG)
+    const opciones = valoresDelCatalogo()
       .filter(k => k.startsWith(modeloElegido + "_" + tipo));
 
     if(opciones.length > 0){
@@ -1468,8 +971,20 @@ document.getElementById("avatarAleatorio")?.addEventListener("click", ()=>{
 
 // ---------- OPCIONES EDITOR (con toggle para deseleccionar) ----------
 
-document.querySelectorAll(".opcion-item").forEach(opcion=>{
-  opcion.onclick=()=>{
+// Se engancha UN listener al contenedor del editor, en vez de uno por
+// cada una de las 622 opciones.
+//
+// No es solo por economía: los divs ya no vienen en el HTML, se
+// construyen cuando llega el catálogo. Con el enganche de antes
+// —recorrer .opcion-item al cargar el script— no habría ninguno todavía
+// y ningún clic haría nada. La delegación hace que deje de importar
+// cuándo se crean, y también que no haya que volver a enganchar nada
+// cuando el equipo de arte publique una prenda nueva.
+document.getElementById("editorAvatar")?.addEventListener("click", (evento)=>{
+  const opcion = evento.target.closest(".opcion-item");
+  if(!opcion) return;
+
+  {
     const capa = opcion.dataset.capa;
     const valor = opcion.dataset.valor;
 
@@ -1517,7 +1032,29 @@ document.querySelectorAll(".opcion-item").forEach(opcion=>{
     }
 
     actualizarPreview();
-  };
+  }
+});
+
+
+// ---------- ARRANQUE DEL EDITOR ----------
+// El catálogo llega por red, así que todo lo que necesita que los divs
+// existan tiene que esperarlo. Antes esto no hacía falta porque los 622
+// divs venían escritos en perfil.html.
+
+cargarCatalogo().then(()=>{
+  if(!construirOpcionesDelEditor()){
+    avisarCatalogoCaido();
+    return;
+  }
+
+  // Ahora que las opciones existen, se les aplica el estado que el
+  // resto del archivo ya calculó: qué prendas están bloqueadas por la
+  // tienda, qué ropa corresponde al modelo elegido y cuál lleva puesta.
+  aplicarBloqueosTienda();
+  filtrarTodosLosGrupos();
+  sincronizarSeleccionadas();
+  actualizarPreview();
+  actualizarAvatarPrincipal();
 });
 
 
@@ -1779,10 +1316,10 @@ async function renderAmigosPerfil(){
 
     if(avatar){
       ORDEN_CAPAS.forEach(tipo=>{
-        const valor = avatar[tipo];
-        if(valor && valor!=="ninguno" && CAPAS_IMG[valor]){
-          capas += `<img class="capa-tarjeta" src="${CAPAS_IMG[valor]}" alt="" loading="lazy">`;
-          rutasCapas.push(CAPAS_IMG[valor]);
+        const ruta = rutaDePrenda(avatar[tipo]);
+        if(ruta){
+          capas += `<img class="capa-tarjeta" src="${ruta}" alt="" loading="lazy">`;
+          rutasCapas.push(ruta);
         }
       });
     }
@@ -1922,10 +1459,10 @@ function obtenerAvatarComentario(nombre){
   let capas = "";
   let rutasCapas = [];
   ORDEN_CAPAS.forEach(tipo=>{
-    let valor = avatar[tipo];
-    if(valor && valor !== "ninguno" && CAPAS_IMG[valor]){
-      capas += `<img class="capa-comentario" src="${CAPAS_IMG[valor]}" alt="" loading="lazy">`;
-      rutasCapas.push(CAPAS_IMG[valor]);
+    const ruta = rutaDePrenda(avatar[tipo]);
+    if(ruta){
+      capas += `<img class="capa-comentario" src="${ruta}" alt="" loading="lazy">`;
+      rutasCapas.push(ruta);
     }
   });
 

@@ -1,0 +1,25 @@
+[Unit]
+Description=MacroReborn (sitio + API)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=azureuser
+WorkingDirectory=/home/azureuser/MacroReborn
+ExecStart=/usr/bin/node cluster.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=NODE_ENV=production
+
+# Endurecimiento basico: el servicio no necesita nada fuera de su carpeta.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/azureuser/MacroReborn
+
+[Install]
+WantedBy=multi-user.target

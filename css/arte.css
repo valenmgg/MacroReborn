@@ -1,0 +1,284 @@
+/* ==============================
+   PANEL DEL EQUIPO DE ARTE — css/arte.css
+   ==============================
+   Usa las variables de css/inicio.css, que es donde vive el sistema de
+   colores del sitio. Nada de colores sueltos acá. */
+
+.arte-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  font-family: var(--font-body);
+  color: var(--texto, #e8edf2);
+}
+
+.arte-cabecera { margin-bottom: 28px; }
+
+.arte-cabecera h1 {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4vw, 34px);
+  margin: 0 0 8px;
+}
+
+.arte-cabecera p {
+  margin: 0;
+  opacity: .78;
+  max-width: 62ch;
+  line-height: 1.55;
+}
+
+/* ---------- aviso de acceso ---------- */
+
+.arte-aviso {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 20px 22px;
+  margin: 24px 0;
+}
+.arte-aviso.malo { border-left-color: var(--danger); }
+.arte-aviso h2 { margin: 0 0 8px; font-size: 18px; font-family: var(--font-display); }
+.arte-aviso p { margin: 0 0 6px; opacity: .8; line-height: 1.55; }
+
+/* ---------- secciones ---------- */
+
+.arte-seccion {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.arte-seccion > h2 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.arte-seccion > .arte-ayuda {
+  margin: 0 0 18px;
+  opacity: .72;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 68ch;
+}
+
+/* ---------- controles ---------- */
+
+.arte-campo { display: flex; flex-direction: column; gap: 5px; }
+
+.arte-campo label {
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+
+.arte-main select,
+.arte-main input[type="text"],
+.arte-main input[type="number"] {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  color: inherit;
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 14px;
+  min-width: 0;
+  width: 100%;
+}
+
+.arte-main select:focus-visible,
+.arte-main input:focus-visible,
+.arte-main button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.arte-main input[type="file"] {
+  color: inherit;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+/* ---------- "aplicar a todas" ---------- */
+
+.arte-comunes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: end;
+  background: var(--bg-panel-alt, rgba(255,255,255,.03));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 16px 0;
+}
+
+/* ---------- filas de subida ---------- */
+
+.arte-fila {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  align-items: start;
+}
+
+.arte-fila-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.arte-fila-nombrearchivo {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  opacity: .65;
+  word-break: break-all;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.arte-quitar {
+  background: none;
+  border: 0;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 0;
+  flex: none;
+}
+
+/* ---------- previsualización sobre el personaje ---------- */
+
+.arte-vista {
+  position: relative;
+  width: 96px;
+  aspect-ratio: 327 / 504;
+  background: var(--control-bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  flex: none;
+}
+
+.arte-vista img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.arte-medidas { font-size: 11px; opacity: .6; margin-top: 4px; text-align: center; }
+.arte-medidas.ojo { color: var(--gold); opacity: 1; }
+
+/* ---------- resultados ---------- */
+
+.arte-resultados { margin-top: 18px; display: grid; gap: 6px; }
+
+.arte-resultado {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 13.5px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--control-bg);
+  border-left: 3px solid var(--green);
+}
+.arte-resultado.malo { border-left-color: var(--danger); }
+.arte-resultado .que { opacity: .65; word-break: break-all; }
+.arte-resultado .dice { margin-left: auto; text-align: right; }
+
+/* ---------- catálogo ---------- */
+
+.arte-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.arte-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.arte-tarjeta {
+  background: var(--control-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arte-tarjeta.retirada { opacity: .58; border-style: dashed; }
+
+.arte-tarjeta .arte-vista { width: 100%; }
+
+.arte-tarjeta .nom {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.arte-tarjeta .meta { font-size: 11.5px; opacity: .62; line-height: 1.45; }
+
+.arte-etiqueta {
+  display: inline-block;
+  font-size: 10.5px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--chip-bg);
+}
+.arte-etiqueta.precio { color: var(--gold); }
+.arte-etiqueta.apagada { color: var(--danger); }
+
+.arte-tarjeta button {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  color: inherit;
+  border-radius: 6px;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  margin-top: auto;
+}
+.arte-tarjeta button:hover { background: var(--control-hover); }
+.arte-tarjeta button[disabled] { opacity: .45; cursor: default; }
+
+.arte-vacio { opacity: .6; padding: 20px 0; }
+
+.arte-contador { font-size: 12.5px; opacity: .6; font-weight: 400; }
+
+@media (max-width: 560px) {
+  .arte-fila { grid-template-columns: 72px 1fr; }
+  .arte-vista { width: 72px; }
+}
+
+/* El personaje y la ranura a los que va a parar cada archivo. Va
+   destacado porque equivocarse acá archiva el dibujo donde nadie lo
+   busca: el editor solo enseña la ropa del personaje que uno lleva
+   puesto, así que una prenda en el personaje equivocado es invisible. */
+.arte-destino {
+  color: var(--accent);
+  font-weight: 600;
+}

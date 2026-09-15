@@ -64,25 +64,16 @@ function obtenerAvatar(nombre, avatarCrudo){
     }
 
 
-    const capas = [
-
-        "fondo",
-        "espalda",
-        "modelo",
-        "piel",
-        "ojos",
-        "boca",
-        "pantalon",
-        "botas",
-        "remera",
-        "guantes",
-        "accesorio",
-        "cara",
-        "pelo",
-        "mascota",
-        "borde"
-
-    ];
+    // El orden de capas y la resolución de rutas vienen de js/core.js,
+    // que se carga antes que este archivo.
+    //
+    // Hasta ahora esta copia tenía "pantalon" antes que "botas", al revés
+    // que el resto del sitio. Como el orden es el orden de dibujo, el
+    // mismo avatar se veía con las botas encima del pantalón acá y debajo
+    // en cualquier otra página. Al pasar a la lista compartida, las botas
+    // vuelven a quedar bajo el pantalón, como en el editor donde la gente
+    // arma su avatar.
+    const capas = ORDEN_CAPAS_AVATAR;
 
 
 
@@ -94,38 +85,10 @@ function obtenerAvatar(nombre, avatarCrudo){
     capas.forEach(tipo=>{
 
 
-        let valor = avatar[tipo];
+        const ruta = rutaCapaAvatar(avatar[tipo]);
 
 
-        if(valor && valor !== "ninguno"){
-
-
-            let ruta;
-
-
-            if(valor.includes("_")){
-
-
-                let partes = valor.split("_");
-
-                ruta =
-                "imagenes/" +
-                partes[0] +
-                "/" +
-                partes.slice(1).join("_") +
-                ".png";
-
-
-            }else{
-
-
-                ruta =
-                "imagenes/" +
-                valor +
-                ".png";
-
-
-            }
+        if(ruta){
 
 
             html += `
@@ -269,35 +232,63 @@ async function obtenerPosicionRanking(nombre){
 // ==============================
 // Cada vez que se calcula el ranking (ranking.html, perfil.html o
 // usuario.html, que también cargan este archivo) se revisa la posición
-// de todos los usuarios y se desbloquean los logros correspondientes.
-// desbloquearLogro() ya evita duplicados, así que es seguro llamarla
-// repetidamente.
+// de QUIEN TIENE LA SESIÓN ABIERTA y se le desbloquean los logros que
+// le correspondan. desbloquearLogro() ya evita duplicados, así que es
+// seguro llamarla repetidamente.
 //
 // Usa el rank_actual real que manda el servidor (no la posición del
 // usuario dentro del array): así, si todavía nadie tiene una posición
 // calculada (sitio recién levantado, antes del primer lunes), no se
 // le adjudica de arranque un top100/top10/etc. a todo el mundo.
+//
+// ----------------------------------------------------------------
+// POR QUÉ SOLO EL PROPIO USUARIO
+// ----------------------------------------------------------------
+// Hasta ahora esto recorría a TODOS los usuarios del ranking y pedía
+// el logro para cada uno. Venía de cuando los logros vivían en
+// localStorage y el navegador podía escribir los de cualquiera. Desde
+// que están en el servidor, api/social.js rechaza con 403 todo intento
+// de tocar los logros de otra persona — y hace bien.
+//
+// O sea que esas llamadas no concedían nada: solo gastaban. Medido en
+// el log de nginx de un solo día: 19.692 peticiones a
+// ?action=achievements, de las cuales 14.000 devolvieron 403. Era el
+// segundo endpoint POST más golpeado del sitio, y el 71% de su tráfico
+// no servía para nada, en una máquina de 950 MB y dos núcleos.
+//
+// Pedir solo el propio logro no quita ninguna funcionalidad: lo demás
+// ya fallaba. Lo que SÍ queda pendiente es conceder los logros de los
+// demás, que nunca se dieron por esta vía. Eso corresponde al servidor
+// —dentro del recálculo de ranking que ya corre los lunes por cron en
+// api/system.js— y no al navegador de quien pase por la página.
 
 async function revisarLogrosRanking(){
 
     if(typeof desbloquearLogro !== "function") return;
 
+    // Sin sesión no hay a quién darle nada.
+    const yo = activoRanking && activoRanking.nombre;
+    if(!yo) return;
+
     const ranking = await obtenerListaRanking();
 
-    ranking.forEach((usuario)=>{
+    const mio = ranking.find(usuario =>
+        usuario && typeof usuario.nombre === "string" &&
+        usuario.nombre.toLowerCase() === String(yo).toLowerCase()
+    );
 
-        const puesto = Number(usuario.rank_actual);
+    if(!mio) return;
 
-        if(!puesto) return; // todavía no se calculó (se calcula los lunes)
+    const puesto = Number(mio.rank_actual);
 
-        if(puesto <= 100) desbloquearLogro(usuario.nombre,"top100");
-        if(puesto <= 50) desbloquearLogro(usuario.nombre,"top50");
-        if(puesto <= 10) desbloquearLogro(usuario.nombre,"top10");
-        if(puesto <= 3) desbloquearLogro(usuario.nombre,"top3");
-        if(puesto === 2) desbloquearLogro(usuario.nombre,"subcampeon");
-        if(puesto === 1) desbloquearLogro(usuario.nombre,"numeroUno");
+    if(!puesto) return; // todavía no se calculó (se calcula los lunes)
 
-    });
+    if(puesto <= 100) desbloquearLogro(mio.nombre,"top100");
+    if(puesto <= 50) desbloquearLogro(mio.nombre,"top50");
+    if(puesto <= 10) desbloquearLogro(mio.nombre,"top10");
+    if(puesto <= 3) desbloquearLogro(mio.nombre,"top3");
+    if(puesto === 2) desbloquearLogro(mio.nombre,"subcampeon");
+    if(puesto === 1) desbloquearLogro(mio.nombre,"numeroUno");
 
 }
 
