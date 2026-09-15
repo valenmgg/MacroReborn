@@ -273,3 +273,12 @@
   .arte-fila { grid-template-columns: 72px 1fr; }
   .arte-vista { width: 72px; }
 }
+
+/* El personaje y la ranura a los que va a parar cada archivo. Va
+   destacado porque equivocarse acá archiva el dibujo donde nadie lo
+   busca: el editor solo enseña la ropa del personaje que uno lleva
+   puesto, así que una prenda en el personaje equivocado es invisible. */
+.arte-destino {
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -281,3 +281,98 @@ describe("los nombres se pintan como texto", () => {
     assert.equal(tarjeta.querySelectorAll("img").length, 2);
   });
 });
+
+// ==============================
+// Elegir archivos, simulado
+// ==============================
+// jsdom trae FileReader y File, pero no decodifica imágenes: un
+// new Image() con un data URL no dispararía nunca onload y la lectura se
+// quedaría colgada. Se sustituye por uno que contesta enseguida con unas
+// medidas fijas.
+function prepararEleccionDeArchivos(dom, ancho, alto) {
+  dom.window.Image = class {
+    set src(_) {
+      this.naturalWidth = ancho;
+      this.naturalHeight = alto;
+      setTimeout(() => { if (this.onload) this.onload(); }, 0);
+    }
+  };
+}
+
+async function elegir(dom, doc, nombres) {
+  const input = doc.getElementById("arteArchivos");
+  const archivos = nombres.map(n =>
+    new dom.window.File([Buffer.from("png-de-mentira")], n, { type: "image/png" }));
+
+  Object.defineProperty(input, "files", { value: archivos, configurable: true });
+  input.dispatchEvent(new dom.window.Event("change"));
+
+  for (let i = 0; i < 12; i++) await new Promise(r => setTimeout(r, 0));
+}
+
+describe("a qué personaje va a parar cada archivo", () => {
+  test("si el nombre del archivo trae el personaje, se usa ese", async () => {
+    // Es el arreglo de un caso real: el desplegable venía con el primero
+    // de la lista —"cereza", por orden alfabético— y quien subía una
+    // prenda de tora sin fijarse la archivaba en cereza. Después no la
+    // encontraba en el editor, porque el editor solo enseña la ropa del
+    // personaje que uno lleva puesto.
+    const { dom, doc } = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(dom, 327, 504);
+
+    await elegir(dom, doc, ["tora_botas3.png"]);
+
+    const filas = doc.querySelectorAll(".arte-fila");
+    assert.equal(filas.length, 1, "debería haber una fila");
+
+    const select = filas[0].querySelector("select");
+    assert.equal(select.value, "tora", "debería haber adivinado tora");
+  });
+
+  test("si no lo trae, se usa el del desplegable", async () => {
+    const { dom, doc } = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(dom, 327, 504);
+
+    doc.getElementById("arteTodosModelo").value = "cereza";
+    await elegir(dom, doc, ["fondo7.png"]);
+
+    const select = doc.querySelector(".arte-fila select");
+    assert.equal(select.value, "cereza");
+  });
+
+  test("la fila dice en voz alta dónde va a acabar", async () => {
+    const { dom, doc } = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(dom, 327, 504);
+
+    await elegir(dom, doc, ["tora_botas3.png"]);
+
+    const destino = doc.querySelector(".arte-destino");
+    assert.ok(destino, "debería decir el destino");
+    assert.match(destino.textContent, /Tora/);
+    assert.match(destino.textContent, /Botas/);
+  });
+
+  test("también adivina la ranura cuando el nombre lleva personaje delante", async () => {
+    const { dom, doc } = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(dom, 327, 504);
+
+    await elegir(dom, doc, ["tora_pelo9.png"]);
+
+    const selects = doc.querySelectorAll(".arte-fila select");
+    assert.equal(selects[0].value, "tora");
+    assert.equal(selects[1].value, "pelo");
+  });
+
+  test("una medida distinta a 327x504 se avisa, pero no se bloquea", async () => {
+    const { dom, doc } = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(dom, 500, 500);
+
+    await elegir(dom, doc, ["tora_botas3.png"]);
+
+    const medidas = doc.querySelector(".arte-medidas");
+    assert.match(medidas.textContent, /500/);
+    assert.ok(medidas.classList.contains("ojo"), "debería quedar resaltada");
+    // Y aun así se puede subir: exigir el lienzo quedó para más adelante.
+    assert.equal(doc.getElementById("arteAcciones").hidden, false);
+  });
+});

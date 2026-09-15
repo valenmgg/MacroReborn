@@ -70,7 +70,23 @@
   // adivina. Es solo una comodidad: siempre se puede cambiar.
   function capaDesdeArchivo(archivo, capas) {
     const base = archivo.toLowerCase().replace(/\.[^.]+$/, "");
-    return capas.find(c => base.startsWith(c)) || capas[0];
+    const sinModelo = base.replace(/^[a-z0-9]+[_-]/, "");
+    return capas.find(c => base.startsWith(c)) ||
+           capas.find(c => sinModelo.startsWith(c)) ||
+           capas[0];
+  }
+
+  // Y el personaje, si el archivo lo trae delante: "tora_botas3.png".
+  //
+  // Existe porque el desplegable venia con el primero de la lista, que
+  // es "cereza" por orden alfabetico. Quien subia una prenda de tora sin
+  // fijarse la archivaba en cereza, y despues no la encontraba en el
+  // editor: no porque fallara nada, sino porque el editor solo enseña la
+  // ropa del personaje que tenes puesto. Paso de verdad la primera vez
+  // que se uso el panel.
+  function modeloDesdeArchivo(archivo, modelos) {
+    const base = archivo.toLowerCase().replace(/\.[^.]+$/, "");
+    return modelos.find(m => base === m || base.startsWith(m + "_") || base.startsWith(m + "-")) || null;
   }
 
   // ==============================
@@ -203,7 +219,7 @@
         dataUrl: leido.dataUrl,
         ancho: leido.ancho,
         alto: leido.alto,
-        modelo: $("arteTodosModelo").value,
+        modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) || $("arteTodosModelo").value,
         capa: capaDesdeArchivo(file.name, DATOS.capas),
         nombre: nombreDesdeArchivo(file.name),
         precio: 0
@@ -291,8 +307,15 @@
       const datos = elem("div", "arte-fila-datos");
 
       const cabecera = elem("div", "arte-fila-nombrearchivo");
-      cabecera.appendChild(elem("span", null,
-        item.archivo + " · " + Math.max(1, Math.round(item.peso / 1024)) + " kB"));
+      const izq = elem("span");
+      izq.appendChild(elem("span", null,
+        item.archivo + " · " + Math.max(1, Math.round(item.peso / 1024)) + " kB · "));
+      // El destino, en voz alta. El editor solo enseña la ropa del
+      // personaje que uno lleva puesto, asi que equivocarse acá es
+      // archivar el dibujo donde nadie lo va a buscar.
+      izq.appendChild(elem("strong", "arte-destino",
+        "irá a " + conMayuscula(item.modelo) + " · " + conMayuscula(item.capa)));
+      cabecera.appendChild(izq);
       const quitar = elem("button", "arte-quitar", "Quitar");
       quitar.type = "button";
       quitar.addEventListener("click", () => {
@@ -454,9 +477,34 @@
       const fila = elem("div", "arte-resultado" + (r.ok ? "" : " malo"));
       fila.appendChild(elem("span", null, r.ok ? "✓" : "✕"));
       fila.appendChild(elem("span", "que", r.archivo));
-      fila.appendChild(elem("span", "dice", r.ok ? r.valor + " · " + r.medidas : r.error));
+      fila.appendChild(elem("span", "dice", r.ok ? destinoDe(r.valor) + " · " + r.medidas : r.error));
       caja.appendChild(fila);
     });
+
+    // Recordar donde quedaron. Sin esto, alguien publica una prenda, la
+    // busca en el editor con otro personaje puesto y no la encuentra.
+    const personajes = [...new Set(resultados.filter(r => r.ok).map(r => modeloDe(r.valor)))];
+    if (personajes.length) {
+      const nota = elem("p", "arte-ayuda");
+      nota.style.marginTop = "12px";
+      nota.textContent = "Para verlas en el editor de avatares hay que tener puesto el personaje " +
+        "correspondiente (" + personajes.map(conMayuscula).join(", ") + "): " +
+        "el editor solo muestra la ropa del personaje elegido.";
+      caja.appendChild(nota);
+    }
+  }
+
+  // "cereza_piel4" -> "cereza"
+  function modeloDe(valor) {
+    const i = String(valor).indexOf("_");
+    return i === -1 ? String(valor) : String(valor).slice(0, i);
+  }
+
+  // "cereza_piel4" -> "Cereza · Piel"
+  function destinoDe(valor) {
+    const modelo = modeloDe(valor);
+    const resto = String(valor).slice(modelo.length + 1).replace(/\d+$/, "");
+    return conMayuscula(modelo) + " · " + conMayuscula(resto);
   }
 
   // ==============================
