@@ -474,3 +474,124 @@ describe("el personaje del paso 1 manda sobre lo que se trae después", () => {
     assert.strictEqual(personaje.options[personaje.selectedIndex].textContent, "Tora");
   });
 });
+
+// ==============================
+
+// El lienzo sólo se toca en el paso de colocar.
+//
+// El vestidor no sabe que los pasos existen: acepta un arrastre en cuanto
+// hay prenda activa y montada, y eso es cierto desde el paso de fichar. Así
+// que en fichar, en probar y en publicar se podía mover el dibujo sin
+// querer, y el ajuste quedaba guardado hasta la subida. En el paso de
+// probar es peor: ahí se están comparando conjuntos y el cambio pasa
+// desapercibido.
+describe("mover la prenda sólo se puede en el paso de colocar", () => {
+  function puntero(win, lienzo, tipo, x, y) {
+    const e = new win.PointerEvent(tipo, { bubbles: true, clientX: x, clientY: y });
+    Object.defineProperty(e, "pointerId", { value: 7 });
+    lienzo.dispatchEvent(e);
+  }
+
+  function tecla(win, doc, key) {
+    doc.dispatchEvent(new win.KeyboardEvent("keydown", { key: key, bubbles: true }));
+  }
+
+  function arrastrar(win, doc) {
+    const lienzo = $(doc, "vestLienzo");
+    puntero(win, lienzo, "pointerdown", 100, 100);
+    puntero(win, lienzo, "pointermove", 130, 100);
+    puntero(win, lienzo, "pointerup", 130, 100);
+  }
+
+  // Deja el taller en FICHAR, con la prenda elegida y puesta: todo lo que el
+  // arrastre pide cumplido menos el paso.
+  async function enFichar() {
+    const { win, doc } = await montar();
+    await abrir(doc);
+    $(doc, "tallerSeguir").click();
+    await traer(win, doc, "tora_accesorio.png", 327, 504);
+    $(doc, "tallerSeguir").click();
+    doc.querySelector(".taller-ficha").click();
+    return { win, doc };
+  }
+
+  async function enColocar() {
+    const m = await enFichar();
+    $(m.doc, "tallerSeguir").click();
+    assert.strictEqual(pasoActual(m.doc), 4);
+    return m;
+  }
+
+  test("en fichar, arrastrar no mueve nada", async () => {
+    const { win, doc } = await enFichar();
+    assert.strictEqual(pasoActual(doc), 3);
+
+    arrastrar(win, doc);
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+  });
+
+  test("y en colocar, sí", async () => {
+    const { win, doc } = await enColocar();
+
+    arrastrar(win, doc);
+
+    assert.strictEqual($(doc, "vestDx").value, "30");
+  });
+
+  test("las flechas tampoco mueven fuera de colocar", async () => {
+    const { win, doc } = await enFichar();
+
+    tecla(win, doc, "ArrowRight");
+    tecla(win, doc, "ArrowDown");
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+    assert.strictEqual($(doc, "vestDy").value, "0");
+  });
+
+  test("y en colocar las flechas mueven de a un píxel", async () => {
+    const { win, doc } = await enColocar();
+
+    tecla(win, doc, "ArrowRight");
+    tecla(win, doc, "ArrowDown");
+
+    assert.strictEqual($(doc, "vestDx").value, "1");
+    assert.strictEqual($(doc, "vestDy").value, "1");
+  });
+
+  // Volver atrás desde colocar tiene que volver a cerrar la puerta: si no,
+  // bastaba con pasar una vez por el paso 4 para dejarla abierta el resto
+  // de la sesión.
+  test("volver atrás desde colocar la cierra otra vez", async () => {
+    const { win, doc } = await enColocar();
+    $(doc, "tallerAtras").click();
+    assert.strictEqual(pasoActual(doc), 3);
+
+    arrastrar(win, doc);
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+  });
+
+  // Y se nota mirando: un cursor de agarrar sobre algo que no se mueve es
+  // una promesa que el taller no piensa cumplir.
+  test("fuera de colocar el lienzo no ofrece la mano de agarrar", async () => {
+    const { doc } = await enFichar();
+    assert.ok($(doc, "vestLienzo").classList.contains("vest-quieto"));
+  });
+
+  test("y en colocar sí la ofrece", async () => {
+    const { doc } = await enColocar();
+    assert.strictEqual($(doc, "vestLienzo").classList.contains("vest-quieto"), false);
+  });
+
+  // Lo que NO se apaga: el fondo es una ayuda para mirar -encontrar un borde
+  // blanco sobre fondo blanco- y no toca la prenda.
+  test("cambiar el fondo sigue valiendo en cualquier paso", async () => {
+    const { win, doc } = await enFichar();
+    const antes = $(doc, "vestLienzo").className;
+
+    tecla(win, doc, "b");
+
+    assert.notStrictEqual($(doc, "vestLienzo").className, antes);
+  });
+});

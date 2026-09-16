@@ -486,6 +486,23 @@ async function elegir(win, doc, nombres) {
 
 // Monta la página, mete un PNG de la medida pedida, abre el vestidor y deja
 // esa prenda elegida y puesta en el maniquí.
+// Deja el taller en el paso de COLOCAR, que es el único donde se puede
+// mover la prenda: el taller apaga el arrastre y las flechas en los otros
+// cinco. Antes daba igual en qué paso estuviera la página.
+//
+// Se llega pulsando Seguir, como una persona, y no encendiendo la puerta a
+// mano: así, si algún día la puerta deja pasar cuando no debe, estas
+// pruebas se enteran en vez de saltársela.
+async function alPasoDeColocar(doc) {
+  for (let i = 0; i < 3; i++) {
+    $(doc, "tallerSeguir").click();
+    await new Promise(r => setTimeout(r, 0));
+  }
+  const hito = doc.querySelector(".taller-hito[aria-current=step] .taller-bolita");
+  assert.strictEqual(hito && hito.textContent, "4",
+    "el fixture no llegó a colocar: quedó en el paso " + (hito && hito.textContent));
+}
+
 async function conPrenda(ancho, alto, nombre, respuestas) {
   const m = await montar(respuestas);
   prepararEleccion(m.win, ancho, alto);
@@ -493,6 +510,7 @@ async function conPrenda(ancho, alto, nombre, respuestas) {
 
   $(m.doc, "vestAbrir").click();
   m.doc.querySelector(".vest-prueba").click();
+  await alPasoDeColocar(m.doc);
 
   return m;
 }
@@ -807,6 +825,7 @@ async function conDosPrendas(respuestas) {
   await elegir(m.win, m.doc, ["tora_remera.png"]);
 
   $(m.doc, "vestAbrir").click();
+  await alPasoDeColocar(m.doc);
   return m;
 }
 

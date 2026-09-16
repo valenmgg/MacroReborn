@@ -443,6 +443,10 @@
 
 #vestLienzo.vest-arrastrando { cursor: grabbing; }
 
+/* Fuera del paso de colocar el lienzo es para mirar. Sin esto seguiría
+   ofreciendo la mano de agarrar sobre algo que ya no se mueve. */
+#vestLienzo.vest-quieto { cursor: default; }
+
 /* A partir de 2x se cuentan los píxeles en vez de mirar una mancha
    interpolada, que es justo lo que hace falta para decidir si sobra uno. */
 #vestLienzo.vest-nitido img { image-rendering: pixelated; }

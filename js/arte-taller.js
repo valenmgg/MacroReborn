@@ -679,6 +679,20 @@
     $("vestGuardarropa").hidden = !libre && paso !== 4 ? true : $("vestGuardarropa").hidden;
     if (libre) $("vestGuardarropa").hidden = false;
 
+    // Mover la prenda sólo se puede en el paso de colocar. Los otros son
+    // para mirar -en fichar se reparten ranuras, en probar se comparan
+    // conjuntos- y un arrastre de más ahí cambiaba el dibujo sin que nadie
+    // lo notara, con el ajuste guardado hasta publicar.
+    //
+    // El vestidor no sabe que los pasos existen: nace dejando ajustar, para
+    // seguir siendo usable solo, y es el taller quien lo apaga. Va en
+    // pintarTodo() y no en irA() porque hay más caminos que cambian de
+    // paso -el carril, Seguir, Atrás, el modo libre- y todos pasan por acá.
+    //
+    // En modo libre tampoco: ahí no hay paso 4, no se ven los números, y
+    // mover a ciegas es justo lo que se está arreglando.
+    if (V() && V().permitirAjuste) V().permitirAjuste(!libre && paso === 4);
+
     pintarCarril();
     pintarNav();
 

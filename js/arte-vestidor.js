@@ -701,6 +701,13 @@ function vestBytesDeCuerpo(texto) {
 
   let abierto = false;
 
+  // Si AHORA MISMO se puede mover la prenda con el ratón o el teclado.
+  //
+  // Nace en true a propósito: el vestidor no sabe que los pasos existen y
+  // tiene que seguir siendo usable solo. Es el taller quien lo apaga fuera
+  // del paso de colocar, con permitirAjuste().
+  let ajustable = true;
+
   let modeloActual = null;      // el personaje que lleva puesto el maniquí
   let puesto = {};              // capa -> valor del catálogo
   let montadas = [];            // claves de las prendas en prueba, en orden
@@ -1464,6 +1471,26 @@ function vestBytesDeCuerpo(texto) {
     original.hidden = !item.ajuste;
   }
 
+  // ---------- CUÁNDO SE PUEDE AJUSTAR ----------
+
+  // El taller lleva a la gente por seis pasos y sólo uno, el de colocar,
+  // es para mover la prenda. En los otros el lienzo está para MIRAR: en el
+  // de fichar se reparten ranuras y en el de probar se comparan conjuntos.
+  // Un arrastre de más ahí cambiaba el dibujo sin que nadie lo notara, y el
+  // ajuste se quedaba guardado hasta publicar.
+  //
+  // Se apagan las dos entradas que ESCRIBEN un ajuste -el ratón y las
+  // teclas- y además se quita el cursor de agarrar, que si no el lienzo
+  // sigue invitando a arrastrar algo que no se va a mover.
+  //
+  // Lo que NO se apaga: Escape, el fondo (b) y el conjunto al azar (r). No
+  // tocan la prenda, son ayudas para mirar.
+  function permitirAjuste(si) {
+    ajustable = si !== false;
+    const lienzo = $("vestLienzo");
+    if (lienzo) lienzo.classList.toggle("vest-quieto", !ajustable);
+  }
+
   // ---------- EL ARRASTRE ----------
 
   // De píxeles de pantalla a píxeles del lienzo. Con el zoom, el lienzo
@@ -1480,6 +1507,7 @@ function vestBytesDeCuerpo(texto) {
   let arrastre = null;
 
   function empezarArrastre(e) {
+    if (!ajustable) return;
     const item = itemActivo();
     if (!item || !vestPuedeAjustarse(item)) return;
     if (montadas.indexOf(item.clave) === -1) return;
@@ -1534,11 +1562,19 @@ function vestBytesDeCuerpo(texto) {
     const donde = e.target && e.target.tagName;
     if (donde === "INPUT" || donde === "SELECT" || donde === "TEXTAREA") return;
 
+    // Deshacer también escribe un ajuste, así que va del lado apagado.
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      if (!ajustable) return;
       if (e.shiftKey) rehacer(); else deshacer();
       e.preventDefault();
       return;
     }
+
+    // El fondo y el conjunto al azar son para mirar: siguen valiendo.
+    if (e.key.toLowerCase() === "b") { ciclarFondo(); return; }
+    if (e.key.toLowerCase() === "r") { alAzar(); return; }
+
+    if (!ajustable) return;
 
     const item = itemActivo();
     if (!item) return;
@@ -1551,8 +1587,6 @@ function vestBytesDeCuerpo(texto) {
     else if (e.key === "ArrowUp") { cambiarAjuste({ dy: a.dy - paso }); e.preventDefault(); }
     else if (e.key === "ArrowDown") { cambiarAjuste({ dy: a.dy + paso }); e.preventDefault(); }
     else if (e.key.toLowerCase() === "e") { cambiarAjuste({ espejo: !a.espejo }); }
-    else if (e.key.toLowerCase() === "b") { ciclarFondo(); }
-    else if (e.key.toLowerCase() === "r") { alAzar(); }
   }
 
   // ---------- ELEGIR QUÉ SE AJUSTA ----------
@@ -1863,6 +1897,7 @@ function vestBytesDeCuerpo(texto) {
     cerrar,
     avisarDeCambio,
     activar,
+    permitirAjuste,
     deshacer,
     rehacer,
     resumenDeAjuste: vestResumenDeAjuste,
