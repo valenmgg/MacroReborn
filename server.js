@@ -11,7 +11,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-// Carga el archivo .env (DATABASE_URL, SESSION_SECRET, PUSHER_*) antes
+// Carga el archivo .env (DATABASE_URL, SESSION_SECRET, CRON_SECRET) antes
 // que cualquier otro require, porque los handlers de api/ resuelven su
 // conexión a la base en el momento de importarse.
 //
