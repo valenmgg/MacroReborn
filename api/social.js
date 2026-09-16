@@ -1,5 +1,5 @@
 const { setCors, hayBloqueoEntreUsuarios, usuarioBloqueaA } = require("./_utils");
-const { getPusher, canalNotificaciones } = require("./_pusher");
+const { avisar, canalNotificaciones } = require("./_avisos");
 const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
@@ -412,13 +412,13 @@ async function achievements(req, res) {
 
     // Push en tiempo real: refresca la pestaña "Logros" sin recargar.
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(username),
         "nuevo-logro",
         { achievementId }
       );
     } catch (error) {
-      console.warn("Pusher: no se pudo avisar el nuevo logro en vivo.", error);
+      console.warn("Avisos: no se pudo avisar el nuevo logro en vivo.", error);
     }
 
     return res.status(200).json({ success: true, nuevo: true });
@@ -607,13 +607,13 @@ async function blocks(req, res) {
       await sql`DELETE FROM user_blocks WHERE blocker_id = ${userId} AND blocked_id = ${targetId};`;
 
       try {
-        await getPusher().trigger(
+        await avisar(
           canalNotificaciones(targetUsername),
           "estado-bloqueo",
           { bloqueado: false, por: username }
         );
-      } catch (pusherError) {
-        console.warn("Pusher bloqueos (unblock):", pusherError.message);
+      } catch (errorDeAviso) {
+        console.warn("Avisos bloqueos (unblock):", errorDeAviso.message);
       }
 
       return res.status(200).json({ success: true, bloqueado: false });
@@ -632,13 +632,13 @@ async function blocks(req, res) {
       WHERE status = 'pendiente' AND ((from_user_id = ${userId} AND to_user_id = ${targetId}) OR (from_user_id = ${targetId} AND to_user_id = ${userId}));`;
 
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(targetUsername),
         "estado-bloqueo",
         { bloqueado: true, por: username }
       );
-    } catch (pusherError) {
-      console.warn("Pusher bloqueos (block):", pusherError.message);
+    } catch (errorDeAviso) {
+      console.warn("Avisos bloqueos (block):", errorDeAviso.message);
     }
 
     return res.status(200).json({ success: true, bloqueado: true });

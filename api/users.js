@@ -1,5 +1,5 @@
 const { setCors } = require("./_utils");
-const { getPusher, canalNotificaciones } = require("./_pusher");
+const { avisar, canalNotificaciones } = require("./_avisos");
 const { obtenerSql } = require("./_db");
 const { PasswordService } = require("./_password");
 const { requerirAuth } = require("./_auth");
@@ -113,7 +113,7 @@ function xpNecesaria(nivel) {
 //
 // Si falla (por lo que sea), no debe romper el XP en sí: se llama
 // siempre dentro de un try/catch, igual que ya se hacía con el aviso
-// de Pusher en heartbeat().
+// en vivo de heartbeat().
 async function registrarTickTiempoJugado(userId, gameId) {
 
   if (!gameId) return; // sin juego asociado (no debería pasar, pero por las dudas)
@@ -485,13 +485,13 @@ async function heartbeat(req, res) {
   // el de otra persona) ve "Última conexión" y el estado 🟢/⚪
   // actualizarse solos, sin recargar.
   try {
-    await getPusher().trigger(
+    await avisar(
       canalNotificaciones(actualizado[0].username),
       "latido",
       { last_login: actualizado[0].last_login }
     );
   } catch (error) {
-    console.warn("Pusher: no se pudo avisar el latido en vivo.", error);
+    console.warn("Avisos: no se pudo avisar el latido en vivo.", error);
   }
 
   return res.status(200).json({ success: true, last_login: actualizado[0].last_login });

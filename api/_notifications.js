@@ -1,6 +1,6 @@
 const { obtenerSql } = require('./_db');
 const { getUserId, hayBloqueoEntreUsuarios } = require('./_utils');
-const { getPusher, canalNotificaciones } = require('./_pusher');
+const { avisar, canalNotificaciones } = require('./_avisos');
 
 const sql = obtenerSql();
 
@@ -24,13 +24,13 @@ async function crearNotificacionServidor(username, titulo, mensaje, origenNombre
     const notif = filas[0];
 
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(username),
         'nueva-notificacion',
         notif
       );
     } catch (error) {
-      console.warn('Pusher: no se pudo enviar la notificación en tiempo real.', error);
+      console.warn('Avisos: no se pudo enviar la notificación en tiempo real.', error);
     }
 
     return { success: true, notificacion: notif };

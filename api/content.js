@@ -1,5 +1,5 @@
 const { setCors, hayBloqueoEntreUsuarios } = require("./_utils");
-const { getPusher, canalNotificaciones } = require("./_pusher");
+const { avisar, canalNotificaciones } = require("./_avisos");
 const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
@@ -764,16 +764,16 @@ async function comments(req, res) {
     // Push en tiempo real: avisa a quien tenga el perfil abierto (el
     // suyo o el de otra persona) para que la lista de comentarios se
     // repinte sola, sin recargar la página. Mismo criterio que las
-    // notificaciones: si Pusher falla, el comentario ya quedó guardado
+    // notificaciones: si el aviso falla, el comentario ya quedó guardado
     // igual, así que no rompemos la respuesta por esto.
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(profileUsername),
         "nuevo-comentario",
         filas[0]
       );
     } catch (error) {
-      console.warn("Pusher: no se pudo avisar el nuevo comentario en vivo.", error);
+      console.warn("Avisos: no se pudo avisar el nuevo comentario en vivo.", error);
     }
 
     return res.status(200).json({ success: true, comentario: filas[0] });
@@ -804,13 +804,13 @@ async function comments(req, res) {
       await sql`DELETE FROM profile_comments WHERE profile_user_id = ${profileId};`;
 
       try {
-        await getPusher().trigger(
+        await avisar(
           canalNotificaciones(profileUsername),
           "comentarios-vaciados",
           {}
         );
       } catch (error) {
-        console.warn("Pusher: no se pudo avisar el vaciado de comentarios en vivo.", error);
+        console.warn("Avisos: no se pudo avisar el vaciado de comentarios en vivo.", error);
       }
 
       return res.status(200).json({ success: true });
@@ -843,14 +843,14 @@ async function comments(req, res) {
     try {
       const filasPerfil = await sql`SELECT username FROM users WHERE id = ${borrado[0].profile_user_id};`;
       if (filasPerfil.length) {
-        await getPusher().trigger(
+        await avisar(
           canalNotificaciones(filasPerfil[0].username),
           "nuevo-comentario",
           {}
         );
       }
     } catch (error) {
-      console.warn("Pusher: no se pudo avisar la eliminación en vivo.", error);
+      console.warn("Avisos: no se pudo avisar la eliminación en vivo.", error);
     }
 
     return res.status(200).json({ success: true });
@@ -1148,13 +1148,13 @@ async function activity(req, res) {
     // Push en tiempo real: quien tenga este perfil abierto ve la
     // actividad nueva sin recargar.
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(username),
         "nueva-actividad",
         { tipo, detalle: detalle || "" }
       );
     } catch (error) {
-      console.warn("Pusher: no se pudo avisar la nueva actividad en vivo.", error);
+      console.warn("Avisos: no se pudo avisar la nueva actividad en vivo.", error);
     }
 
     return res.status(200).json({ success: true });
@@ -1392,13 +1392,13 @@ async function gameHistory(req, res) {
 
     // Push en tiempo real: refresca "Últimos jugados" sin recargar.
     try {
-      await getPusher().trigger(
+      await avisar(
         canalNotificaciones(username),
         "nuevo-historial",
         { gameId: idTexto }
       );
     } catch (error) {
-      console.warn("Pusher: no se pudo avisar el nuevo juego jugado en vivo.", error);
+      console.warn("Avisos: no se pudo avisar el nuevo juego jugado en vivo.", error);
     }
 
     return res.status(200).json({
