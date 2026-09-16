@@ -484,161 +484,6 @@ function vestBytesDeCuerpo(texto) {
 }
 
 
-
-// ---------- EL NOMBRE ----------
-
-// Las cinco prendas que se subieron por el panel en toda su historia se
-// publicaron con el nombre del archivo: "teto", "pearto", "Pearto",
-// "Mascara MR." y "Captura de pantalla 2026 09 15 113043". Los tres
-// primeros son nombres de trabajo y el último es, literalmente, lo que
-// puso el teléfono.
-//
-// Esto NO rechaza cualquier nombre de archivo: "gorro_rojo.png" da
-// "Gorro rojo", que es un nombre perfecto y sería absurdo tirarlo. Solo
-// caza lo que no es un nombre: lo que pone la cámara, el móvil o el
-// programa de dibujo cuando nadie eligió nada.
-const VEST_NOMBRE_DE_MAQUINA = [
-  /captura\s*de\s*pantalla/i,
-  /screen\s*shot|screenshot/i,
-  /whatsapp|telegram|messenger/i,
-  /^(img|image|imagen|foto|photo|dsc|pxl|mvimg)[\s._-]*\d+$/i,
-  /^(sin\s*t[ií]tulo|untitled|nuevo|new)[\s._-]*\d*$/i,
-  /^\d[\d\s._-]*$/,                       // solo cifras
-  /\d{4}[\s._-]?\d{2}[\s._-]?\d{2}/       // una fecha dentro
-];
-
-function vestNombreEsDeMaquina(nombre) {
-  const t = String(nombre || "").trim();
-  if (!t) return true;
-  if (t.length > 40) return true;
-  return VEST_NOMBRE_DE_MAQUINA.some(r => r.test(t));
-}
-
-// "gorro_rojo.png" -> "Gorro rojo"
-function vestNombreDesdeArchivo(archivo) {
-  const base = String(archivo || "").replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
-  if (!base) return "";
-  return base.charAt(0).toUpperCase() + base.slice(1);
-}
-
-// El primer número libre para esa ranura, mirando los nombres que YA
-// existen en el catálogo. Se mira el nombre visible y no el valor
-// interno: el valor lo reparte el servidor y no lo sabemos hasta
-// publicar, pero dos prendas llamadas "Accesorio 12" son un lío para
-// quien las busque en el editor.
-function vestSiguienteNombre(capa, usados) {
-  const etiqueta = String(capa || "prenda");
-  const titulo = etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
-  const tomados = new Set();
-
-  for (const u of (usados || [])) {
-    const m = new RegExp("^" + titulo + "\\s+(\\d+)$", "i").exec(String(u || "").trim());
-    if (m) tomados.add(Number(m[1]));
-  }
-
-  let n = 1;
-  while (tomados.has(n)) n++;
-  return titulo + " " + n;
-}
-
-// Lo que propone la herramienta. Si el archivo ya trae un nombre bueno,
-// se respeta; si no, se propone uno por la ranura. Siempre se puede
-// cambiar: esto es una propuesta, no una imposición.
-function vestNombrePropuesto(archivo, capa, usados) {
-  const delArchivo = vestNombreDesdeArchivo(archivo);
-  if (delArchivo && !vestNombreEsDeMaquina(delArchivo)) return delArchivo;
-  return vestSiguienteNombre(capa, usados);
-}
-
-
-// ---------- LA PUERTA ----------
-
-// Cada prenda lleva tres marcas, y el taller no deja pasar de un paso
-// mientras alguna de la cola siga sin resolver la suya. Lo importante:
-// OBLIGA A MIRAR, NO A TECLEAR. Cuarenta prendas bien dibujadas pasan
-// cada paso en un clic, porque las tres marcas se ponen solas.
-//
-//   medida    ¿mide el lienzo?
-//   ficha     ¿tiene personaje, ranura y un nombre que sea un nombre?
-//   colocada  ¿se decidió qué hacer con la que no medía?
-//
-// El cuarto paso -probar- no es una marca por prenda: es una
-// confirmación de la tanda entera, porque mirar seis conjuntos no es
-// algo que se pueda calcular.
-const VEST_PASOS = ["personaje", "traer", "fichar", "colocar", "probar", "publicar"];
-
-function vestEstadoDePrenda(item) {
-  const i = item || {};
-  const legible = vestPuedeAjustarse(i);
-  const mideElLienzo = i.ancho === VEST_LIENZO_ANCHO && i.alto === VEST_LIENZO_ALTO;
-
-  const medida = !legible ? "rota" : (mideElLienzo ? "ok" : "revisar");
-
-  const nombre = String(i.nombre || "").trim();
-  const ficha = (i.modelo && i.capa && nombre && !vestNombreEsDeMaquina(nombre) &&
-    Number.isInteger(Number(i.precio)) && Number(i.precio) >= 0) ? "ok" : "revisar";
-
-  // Una prenda que mide el lienzo no hay nada que decidir. Una que no,
-  // tiene que haber pasado por "Llevar al lienzo" o por el "publicar tal
-  // cual" explícito, que es pequeño y secundario a propósito.
-  let colocada = "ok";
-  if (legible && !mideElLienzo) {
-    const a = i.ajuste;
-    colocada = (a && a.alLienzo === true) || i.talCual === true ? "ok" : "revisar";
-  }
-  if (!legible) colocada = "rota";
-
-  return { medida, ficha, colocada };
-}
-
-// ¿Está resuelto lo que ese paso exige, para TODAS las prendas elegidas?
-function vestPasoResuelto(items, paso, probado) {
-  const lista = (items || []);
-
-  if (paso === "personaje") return true;
-  if (paso === "traer") return lista.length > 0;
-  if (paso === "probar") return probado === true;
-  if (paso === "publicar") return false;   // publicar no "se resuelve": se pulsa
-
-  const marca = paso === "fichar" ? "ficha" : "colocada";
-  return lista.length > 0 && lista.every(i => vestEstadoDePrenda(i)[marca] === "ok");
-}
-
-// Lo que falta, dicho para una persona. Es lo que va al lado del botón
-// apagado: un botón que no se enciende y no dice por qué es una trampa.
-function vestQueFalta(items, paso, probado) {
-  const lista = (items || []);
-
-  if (paso === "traer" && !lista.length) return "Traé al menos un dibujo";
-  if (paso === "probar" && !probado) return "Mirá los conjuntos y confirmá";
-  if (paso === "personaje" || paso === "publicar") return "";
-
-  const marca = paso === "fichar" ? "ficha" : "colocada";
-  const faltan = lista.filter(i => vestEstadoDePrenda(i)[marca] !== "ok");
-  if (!faltan.length) return "";
-
-  const cuantas = faltan.length === 1 ? "1 prenda" : faltan.length + " prendas";
-  if (paso === "fichar") return cuantas + " sin fichar";
-  return cuantas + " sin decidir qué hacer con su medida";
-}
-
-// El recuento para el carril de pasos y los resúmenes.
-function vestResumenDeCola(items) {
-  const lista = (items || []);
-  const r = { total: lista.length, miden: 0, descuadradas: 0, rotas: 0, fichadas: 0, colocadas: 0, sePublican: 0, seHornean: 0 };
-
-  for (const i of lista) {
-    const e = vestEstadoDePrenda(i);
-    if (e.medida === "ok") r.miden++;
-    else if (e.medida === "rota") r.rotas++;
-    else r.descuadradas++;
-    if (e.ficha === "ok") r.fichadas++;
-    if (e.colocada === "ok") r.colocadas++;
-    if (vestHayQueHornear(i)) r.seHornean++; else r.sePublican++;
-  }
-  return r;
-}
-
 // ==============================
 // ZONA B — LA PANTALLA
 // ==============================
@@ -1426,11 +1271,19 @@ function vestResumenDeCola(items) {
     aplicarPaso(paso, false);
   }
 
+  // Quien gobierne el maniqui desde fuera -el taller- necesita enterarse
+  // cuando un ajuste cambia, o su puerta se queda con el texto viejo:
+  // pulsabas "Llevar al lienzo", la prenda quedaba resuelta, y el boton de
+  // Seguir seguia apagado diciendo "1 sin decidir".
+  const oyentes = [];
+  function alTocar(fn) { if (typeof fn === "function") oyentes.push(fn); }
+
   // Lo que hay que repintar cuando un ajuste cambia.
   function tocado() {
     refrescarEscenario();
     pintarPruebas();
     pintarAjuste();
+    for (const fn of oyentes) { try { fn(); } catch (_) {} }
   }
 
   // ---------- LO QUE SE ENSEÑA DEL AJUSTE ----------
@@ -1773,6 +1626,89 @@ function vestResumenDeCola(items) {
     pintarAjuste();
   }
 
+  // ---------- LO QUE EL TALLER NECESITA DEL MOTOR ----------
+  //
+  // El taller (js/arte-taller.js) NO tiene su propio maniquí: gobierna
+  // ESTE. Mismo lienzo, mismo guardarropa, mismo ajuste. Lo único que
+  // cambia entre "taller" y "vestidor libre" es si hay carril de pasos y
+  // si la puerta está activa.
+  //
+  // Por eso lo que sigue son mandos, no datos: el taller pide "ponele
+  // este personaje" o "vestilo al azar" y el motor hace lo de siempre.
+  // Si el taller no está cargado, nada de esto se llama y el vestidor
+  // funciona como hasta ahora.
+
+  function estado() {
+    return {
+      modelo: modeloActual,
+      puesto: Object.assign({}, puesto),
+      montadas: montadas.slice(),
+      activa: activa,
+      abierto: abierto
+    };
+  }
+
+  function ponerModelo(valor) {
+    if (!CTX || !valor) return;
+    const select = $("vestPersonaje");
+    if (select && select.value !== valor) select.value = valor;
+    modeloActual = valor;
+    puesto = {};
+    ranuraAbierta = null;
+    refrescarEscenario();
+    pintarRejilla();
+    pintarPruebas();
+  }
+
+  // Vestir el maniquí con un avatar de verdad: el de quien está mirando,
+  // o el de cualquiera. Es lo que pidió el equipo para poder ver la
+  // prenda nueva sobre gente real y no sobre un conjunto inventado.
+  //
+  // El avatar llega con la forma {capa: valor}; sólo se aceptan los
+  // valores que existen en el catálogo del personaje que se está
+  // probando, porque el guardarropa de uno no le sirve a otro.
+  function vestirComoAvatar(avatar) {
+    if (!avatar || typeof avatar !== "object") return 0;
+
+    const datos = CTX.datos();
+    puesto = {};
+    let puestas = 0;
+
+    for (const capa of ordenDeCapas()) {
+      if (capa === "modelo") continue;
+      const valor = avatar[capa];
+      if (!valor || valor === "ninguno") continue;
+      const p = datos.prendas.find(x => x.valor === valor && x.modelo === modeloActual);
+      if (!p) continue;
+      puesto[capa] = valor;
+      puestas++;
+    }
+
+    // Si el avatar trae personaje y lo tenemos, se respeta.
+    if (avatar.modelo && datos.modelos.some(m => m.valor === avatar.modelo)) {
+      modeloActual = avatar.modelo;
+      const select = $("vestPersonaje");
+      if (select) select.value = modeloActual;
+    }
+
+    refrescarEscenario();
+    pintarRejilla();
+    return puestas;
+  }
+
+  // Las rutas de las capas que lleva puestas ahora mismo, en orden de
+  // dibujo. Lo usa la rejilla de conjuntos del paso de probar, que pinta
+  // seis maniquíes pequeños sin duplicar la lógica de quién gana cada
+  // ranura.
+  function capasPuestas() {
+    const rutas = [];
+    for (const capa of ordenDeCapas()) {
+      const f = fuenteDeRanura(capa);
+      if (f && f.url) rutas.push({ capa: capa, url: f.url, esPrueba: !!f.esPrueba });
+    }
+    return rutas;
+  }
+
   window.MacroVestidor = {
     pngDeSubida,
     hornearPrenda,
@@ -1784,7 +1720,32 @@ function vestResumenDeCola(items) {
     activar,
     deshacer,
     rehacer,
-    resumenDeAjuste: vestResumenDeAjuste
+    resumenDeAjuste: vestResumenDeAjuste,
+
+    // La aritmetica y las medidas, expuestas a proposito.
+    //
+    // El taller es OTRO <script>, y aunque en el navegador los const de
+    // nivel superior se comparten entre scripts, apoyarse en eso es una
+    // dependencia invisible: no se puede probar por separado y se rompe
+    // sola si alguien envuelve este archivo de otra forma. Mejor un
+    // contrato explicito.
+    LIENZO: { ancho: VEST_LIENZO_ANCHO, alto: VEST_LIENZO_ALTO },
+    capas: () => ordenDeCapas(),
+    puedeAjustarse: vestPuedeAjustarse,
+    hayQueHornear: vestHayQueHornear,
+    esNeutro: vestEsNeutro,
+    escalaDeEncaje: vestEscalaDeEncaje,
+
+    // mandos para el taller
+    alTocar,
+    estado,
+    ponerModelo,
+    vestirComoAvatar,
+    capasPuestas,
+    desnudar,
+    loBasico,
+    alAzar,
+    montar
   };
 
 })(window);

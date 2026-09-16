@@ -34,6 +34,7 @@
   // Borrar js/arte-vestidor.js, su <script>, su sección del HTML y su
   // banda de CSS deja este panel exactamente como estaba.
   const V = () => window.MacroVestidor || null;
+  const T = () => window.MacroTaller || null;
 
   let DATOS = null;      // lo que devuelve avatar-panel
   let ARCHIVOS = [];     // lo que hay preparado para subir
@@ -200,12 +201,28 @@
       repintarLista: pintarLista,
       publicar,
       quitarArchivo,
+      agregarArchivos,
       urlDelModelo,
       modelosDisponibles,
       conMayuscula,
       modeloDe,
       destinoDe
     });
+
+    if (T()) {
+      T().conectar({
+        datos: () => DATOS,
+        archivos: () => ARCHIVOS,
+        agregarArchivos,
+        quitarArchivo,
+        publicar,
+        repintarLista: pintarLista,
+        urlDelModelo,
+        modelosDisponibles,
+        conMayuscula
+      });
+      T().llenarCapas();
+    }
   }
 
   // ==============================
@@ -227,8 +244,16 @@
     });
   }
 
-  async function alElegirArchivos(evento) {
-    const elegidos = Array.from(evento.target.files || []);
+  // El taller trae archivos por tres caminos -el <input>, soltarlos y
+  // pegarlos- y los tres tienen que entrar por AQUI, no por una copia:
+  // lo que se prueba tiene que ser lo que se publica.
+  //
+  // El Array.from va PRIMERO, siempre: evento.target.files es una
+  // FileList VIVA, y limpiar el input la vacia. El cuerpo de una funcion
+  // async corre sincrono hasta el primer await, asi que con la copia
+  // delante la instantanea esta tomada antes de que nada pueda pasar.
+  async function agregarArchivos(lista) {
+    const elegidos = Array.from(lista || []);
     if (!elegidos.length) return;
 
     $("arteEstado").textContent = "Leyendo " + elegidos.length + " archivo(s)…";
@@ -256,10 +281,16 @@
       });
     }
 
-    // Se limpia para poder volver a elegir el mismo archivo si hace falta.
-    evento.target.value = "";
     $("arteEstado").textContent = "";
     pintarLista();
+  }
+
+  async function alElegirArchivos(evento) {
+    const elegidos = Array.from(evento.target.files || []);
+    // Se limpia DESPUES de la copia, para poder volver a elegir el mismo
+    // archivo si hace falta.
+    evento.target.value = "";
+    await agregarArchivos(elegidos);
   }
 
   function aplicarATodas() {
@@ -312,9 +343,11 @@
     const lista = $("arteLista");
     vaciar(lista);
 
-    // El rail del vestidor pinta ESTA misma lista, no una copia: si
-    // tuviera la suya, se podría ajustar algo que nunca llega a subirse.
+    // El rail del vestidor y las fichas del taller pintan ESTA misma
+    // lista, no una copia: si tuvieran la suya, se podria ajustar algo
+    // que nunca llega a subirse.
     if (V()) V().avisarDeCambio();
+    if (T()) T().avisarDeCambio();
 
     $("arteComunes").hidden = ARCHIVOS.length === 0;
     $("arteAcciones").hidden = ARCHIVOS.length === 0;
