@@ -133,7 +133,13 @@ async function montar(respuestas, pagina) {
 
   for (let i = 0; i < 6; i++) await new Promise(r => setTimeout(r, 0));
 
-  return { dom, win, doc: win.document, puestos, llamadas, rotos };
+  // A dónde se fue el taller al cerrar o al terminar de publicar. jsdom no
+  // navega: sin esta costura, cada cierre suelta un "Not implemented:
+  // navigation" en la consola y no habría forma de comprobar el destino.
+  const salidas = [];
+  if (win.MacroVestidor) win.MacroVestidor.alSalir(url => salidas.push(url));
+
+  return { dom, win, doc: win.document, puestos, llamadas, rotos, salidas };
 }
 
 const $ = (doc, id) => doc.getElementById(id);
@@ -1391,3 +1397,107 @@ describe("varias prendas para la misma ranura", () => {
   });
 });
 
+// ==============================
+
+// El taller es una página entera: debajo del maniquí no hay nada. Así que
+// "Cerrar" no puede limitarse a esconder el panel -eso dejaba la página en
+// blanco- y tampoco hacía falta el enlace que había en la cabecera.
+describe("salir del taller", () => {
+  test("cerrar lleva al panel de arte", async () => {
+    const { doc, salidas } = await montar();
+
+    $(doc, "vestCerrar").click();
+
+    assert.deepStrictEqual(salidas, ["arte.html"]);
+  });
+
+  test("y la cabecera ya no lleva su propio enlace", async () => {
+    const { doc } = await montar();
+    assert.strictEqual(doc.querySelector(".taller-volver"), null);
+  });
+
+  // La cola vive SÓLO en la memoria de la pestaña, y a cerrar se llega
+  // también con Escape. Salir sin avisar se lleva por delante cada ajuste.
+  test("con prendas sin publicar, pregunta antes", async () => {
+    const { win, doc, salidas } = await conPrenda(327, 504);
+    win.confirm = () => false;
+
+    $(doc, "vestCerrar").click();
+
+    assert.deepStrictEqual(salidas, [], "dijo que no y se fue igual");
+  });
+
+  test("y si se confirma, sale", async () => {
+    const { win, doc, salidas } = await conPrenda(327, 504);
+    win.confirm = () => true;
+
+    $(doc, "vestCerrar").click();
+
+    assert.deepStrictEqual(salidas, ["arte.html"]);
+  });
+
+  test("con la cola vacía no pregunta nada", async () => {
+    const { win, doc, salidas } = await montar();
+    win.confirm = () => { throw new Error("no tenía que preguntar"); };
+
+    $(doc, "vestCerrar").click();
+
+    assert.deepStrictEqual(salidas, ["arte.html"]);
+  });
+});
+
+// Antes el taller reaccionaba al CLIC de publicar con un setTimeout de 0 ms,
+// que se disparaba mucho antes de que la primera tanda saliera por la red.
+// Ahora se espera al final y se mira cómo fue.
+describe("al terminar de publicar", () => {
+  const esperar = async () => {
+    for (let i = 0; i < 30; i++) await new Promise(r => setTimeout(r, 0));
+  };
+
+  test("si entró todo, vuelve al panel de arte", async () => {
+    const { doc, salidas } = await conPrenda(327, 504, null, subidaOk);
+
+    $(doc, "vestPublicar").click();
+    await esperar();
+
+    assert.deepStrictEqual(salidas, ["arte.html"]);
+  });
+
+  // Lo que falla se queda en la cola CON su ajuste, para reintentar. Salir
+  // ahí sería tirar a la basura el trabajo que no entró.
+  test("pero si algo falló, se queda", async () => {
+    const roto = respondeSubida(() => ({
+      ok: false, status: 500, json: () => Promise.resolve({ success: false, error: "vaya" })
+    }));
+    const { doc, salidas } = await conPrenda(327, 504, null, roto);
+
+    $(doc, "vestPublicar").click();
+    await esperar();
+
+    assert.deepStrictEqual(salidas, [], "se fue y se llevó por delante lo que falló");
+    assert.strictEqual(doc.querySelectorAll(".vest-prueba").length, 1,
+      "la prenda que falló tiene que seguir en la cola");
+  });
+
+  test("y no se sale antes de que la subida termine", async () => {
+    let soltar;
+    const lenta = respondeSubida(prendas => new Promise(r => {
+      soltar = () => r({
+        ok: true, status: 200,
+        json: () => Promise.resolve({
+          success: true,
+          resultados: prendas.map(p => ({ archivo: p.archivo, ok: true, valor: "tora_accesorio9", medidas: "327x504" }))
+        })
+      });
+    }));
+    const { doc, salidas } = await conPrenda(327, 504, null, lenta);
+
+    $(doc, "vestPublicar").click();
+    await esperar();
+    assert.deepStrictEqual(salidas, [], "salió con la subida todavía en vuelo");
+
+    soltar();
+    await esperar();
+    assert.deepStrictEqual(salidas, ["arte.html"]);
+  });
+});

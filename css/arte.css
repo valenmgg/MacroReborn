@@ -1015,7 +1015,6 @@ body.taller-pagina {
 .taller-barra-sitio .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .taller-barra-sitio .nav-logo img { height: 24px; width: auto; }
 .taller-titulo { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin: 0; }
-.taller-volver { margin-left: auto; }
 
 body.taller-pagina > .arte-aviso { margin: 24px; }
 

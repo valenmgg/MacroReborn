@@ -708,6 +708,22 @@ function vestBytesDeCuerpo(texto) {
   // del paso de colocar, con permitirAjuste().
   let ajustable = true;
 
+  // A dónde se va al cerrar y al terminar de publicar.
+  //
+  // Es una variable con puerta trasera y no un window.location suelto por
+  // un motivo concreto: jsdom no navega. Sin esto no habría forma de
+  // comprobar en las pruebas que se sale al sitio correcto, y cada prueba
+  // que cierra el taller ensuciaría la consola con un "Not implemented:
+  // navigation" que además rompe el test que exige la consola limpia.
+  let salir = url => { window.location.href = url; };
+  function alSalir(fn) { if (typeof fn === "function") salir = fn; }
+
+  // Quién quiere enterarse de que una publicación terminó, y de cómo fue.
+  let avisoDePublicar = null;
+  function alPublicar(fn) { avisoDePublicar = fn; }
+
+  const enElTaller = () =>
+    document.body && document.body.classList.contains("taller-pagina");
   let modeloActual = null;      // el personaje que lleva puesto el maniquí
   let puesto = {};              // capa -> valor del catálogo
   let montadas = [];            // claves de las prendas en prueba, en orden
@@ -1717,6 +1733,23 @@ function vestBytesDeCuerpo(texto) {
   }
 
   function cerrar() {
+    // En taller.html no hay nada debajo del maniquí: la página ES el
+    // taller. Cerrar ahí es volver al panel de arte, y por eso el enlace
+    // que había en la cabecera sobraba.
+    //
+    // Con la cola llena se pregunta antes, y no por cortesía: esa cola vive
+    // SÓLO en la memoria de esta pestaña. Salir se lleva por delante cada
+    // ajuste colocado a mano, y a Cerrar se llega también con Escape.
+    if (enElTaller()) {
+      const cuantas = CTX ? CTX.archivos().length : 0;
+      if (cuantas && !window.confirm(
+        "Salir del taller con " + cuantas + " prenda(s) sin publicar." + "\n\n" +
+        "Se pierden los ajustes que hayas colocado: todavía no están " +
+        "guardadas en ninguna parte.")) return;
+      salir("arte.html");
+      return;
+    }
+
     abierto = false;
     esconder(["vestPanel", "vestAbrir"], true);
     esconder(["vestAbrir"], false);
@@ -1758,7 +1791,12 @@ function vestBytesDeCuerpo(texto) {
         "Aparecen en el editor de avatares enseguida. Retirarlas después se " +
         "puede, pero el identificador que gastan no vuelve nunca.");
       if (!seguro) return;
-      await CTX.publicar(lista);
+
+      // Se espera a que TERMINE. Antes el taller reaccionaba a este mismo
+      // clic con un setTimeout de 0 ms, que se disparaba mucho antes de que
+      // la primera tanda saliera siquiera por la red.
+      const resumen = await CTX.publicar(lista);
+      if (avisoDePublicar) avisoDePublicar(resumen || { bien: 0, mal: 0 });
     });
 
     // Los campos: cada uno escribe su parte del ajuste y nada más.
@@ -1898,6 +1936,8 @@ function vestBytesDeCuerpo(texto) {
     avisarDeCambio,
     activar,
     permitirAjuste,
+    alPublicar,
+    alSalir,
     deshacer,
     rehacer,
     resumenDeAjuste: vestResumenDeAjuste,

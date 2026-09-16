@@ -825,8 +825,25 @@
       if (nombre) vestirComoUsuario(nombre.trim());
     });
 
-    // Publicar deja la cola vacía: el taller vuelve al principio.
-    $("vestPublicar").addEventListener("click", () => { setTimeout(() => { paso = 1; pintarTodo(); }, 0); });
+    // Cuando la publicación TERMINA de verdad -no cuando se pulsa-, se
+    // decide a dónde va la persona.
+    //
+    // Si entró todo, el trabajo se acabó y lo siguiente que quiere ver es
+    // el catálogo con lo nuevo dentro: al panel de arte. La cola quedó
+    // vacía, así que no se pierde nada por salir.
+    //
+    // Si algo falló, NO se sale. Lo que falló sigue en la cola con su
+    // ajuste intacto para reintentar, y esa cola sólo vive en la memoria de
+    // esta pestaña: salir sería tirarla. Se queda en el paso de publicar,
+    // que es donde está escrito qué entró y qué no.
+    if (V() && V().alPublicar) V().alPublicar(resumen => {
+      if (resumen && resumen.mal === 0 && resumen.bien > 0) {
+        V().cerrar();
+        return;
+      }
+      paso = 6;
+      pintarTodo();
+    });
   }
 
   // js/arte.js avisa cuando su lista cambia.

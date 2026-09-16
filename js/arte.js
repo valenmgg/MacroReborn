@@ -675,6 +675,14 @@
         pintarCatalogo();
       }
     } catch (_) { /* el panel sigue usable con lo que ya tenía */ }
+
+    // Cómo fue, para quien haya llamado. El taller lo usa para decidir si
+    // el trabajo terminó -y entonces se vuelve al panel- o si algo quedó a
+    // medias y hay que quedarse a la vista de los resultados.
+    return {
+      bien: resultados.filter(e => e.r.ok).length,
+      mal: resultados.filter(e => !e.r.ok).length
+    };
   }
 
   function pintarResultados(resultados) {
