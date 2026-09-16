@@ -115,7 +115,12 @@ function atender(req, res, url) {
 
   let cerrado = false;
 
-  function escribir(evento, datos) {
+  // El canal viaja DENTRO del mensaje. SSE no tiene un sitio para el, y
+  // sin el no se puede saber por cual vino: una misma conexion escucha
+  // varios -js/usuario.js escucha el tuyo y el del perfil que miras- y
+  // los dos mandan los mismos eventos. Sin distinguirlos, un comentario
+  // en el perfil ajeno repintaria tambien el propio.
+  function escribir(canal, evento, datos) {
     if (cerrado) return;
 
     // El navegador dejo de leer y lo pendiente ya no cabe: se corta. Como
@@ -127,11 +132,13 @@ function atender(req, res, url) {
       return;
     }
 
+    const sobre = { canal: canal, datos: datos === undefined ? null : datos };
     res.write("event: " + evento + "\n");
-    res.write("data: " + JSON.stringify(datos === undefined ? null : datos) + "\n\n");
+    res.write("data: " + JSON.stringify(sobre) + "\n\n");
   }
 
-  const bajas = canales.map(canal => suscribir(canal, escribir));
+  const bajas = canales.map(canal =>
+    suscribir(canal, (evento, datos) => escribir(canal, evento, datos)));
 
   const latido = setInterval(() => {
     if (cerrado) return;

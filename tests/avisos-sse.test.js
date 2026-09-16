@@ -184,7 +184,25 @@ describe("lo que llega por la línea", () => {
 
     await avisos.avisar("notificaciones-luis", "nueva-notificacion", { titulo: "Hola" });
 
-    assert.equal(res.escrito, 'event: nueva-notificacion\ndata: {"titulo":"Hola"}\n\n');
+    assert.equal(res.escrito,
+      'event: nueva-notificacion\ndata: {"canal":"notificaciones-luis","datos":{"titulo":"Hola"}}\n\n');
+  });
+
+  test("y cada aviso dice por que canal vino", async () => {
+    // La razon de que el canal viaje dentro del mensaje. usuario.html
+    // escucha DOS canales por la misma conexion -el tuyo y el del perfil
+    // que miras- y los dos mandan los mismos eventos. Sin esto, un
+    // comentario en el perfil ajeno repintaria tambien el propio.
+    const { res } = abrir("notificaciones-luis,notificaciones-pepe");
+    res.escrito = "";
+
+    await avisos.avisar("notificaciones-pepe", "nuevo-comentario", { id: 3 });
+
+    const linea = res.escrito.split("\n").find(l => l.startsWith("data: "));
+    const sobre = JSON.parse(linea.slice("data: ".length));
+
+    assert.equal(sobre.canal, "notificaciones-pepe");
+    assert.deepStrictEqual(sobre.datos, { id: 3 });
   });
 
   test("un aviso de otro canal no se cuela", async () => {
@@ -211,7 +229,8 @@ describe("lo que llega por la línea", () => {
 
     const lineas = res.escrito.split("\n");
     assert.equal(lineas.filter(l => l.startsWith("data: ")).length, 1);
-    assert.equal(lineas[lineas.length - 3], 'data: {"mensaje":"primera\\nsegunda\\n\\ntercera"}');
+    assert.equal(lineas[lineas.length - 3],
+      'data: {"canal":"notificaciones-luis","datos":{"mensaje":"primera\\nsegunda\\n\\ntercera"}}');
   });
 
   test("sin datos manda null y no la palabra undefined", async () => {
@@ -220,7 +239,8 @@ describe("lo que llega por la línea", () => {
 
     await avisos.avisar("notificaciones-luis", "comentarios-vaciados");
 
-    assert.equal(res.escrito, "event: comentarios-vaciados\ndata: null\n\n");
+    assert.equal(res.escrito,
+      'event: comentarios-vaciados\ndata: {"canal":"notificaciones-luis","datos":null}\n\n');
   });
 });
 
@@ -329,7 +349,7 @@ describe("contra un servidor de verdad", () => {
     const recibido = trozos.join("");
     assert.match(recibido, /^retry: \d+\n: abierto\n\n/);
     assert.ok(
-      recibido.includes('event: nuevo-logro\ndata: {"achievementId":7}\n\n'),
+      recibido.includes('event: nuevo-logro\ndata: {"canal":"notificaciones-luis","datos":{"achievementId":7}}\n\n'),
       "no llegó el evento con el formato de SSE; llegó: " + JSON.stringify(recibido)
     );
 
