@@ -1,5 +1,5 @@
 // ==============================
-// ACTUALIZACIONES EN TIEMPO REAL DEL PERFIL PROPIO (Pusher)
+// ACTUALIZACIONES EN TIEMPO REAL DEL PERFIL PROPIO
 // ==============================
 // Se conecta al mismo canal público por usuario que ya usa
 // js/realtime.js para las notificaciones ("notificaciones-<nombre>")
@@ -19,7 +19,7 @@
 
 (function () {
 
-  // Eventos locales: funcionan incluso cuando Pusher no está disponible.
+  // Eventos locales: funcionan incluso sin línea con el servidor.
   // No hacen escrituras ni llamadas al backend por sí mismos; solo vuelven
   // a pintar lo que ya confirmó el servidor.
   if (typeof datosUsuario !== "undefined" && datosUsuario && datosUsuario.nombre) {
@@ -76,22 +76,16 @@
     });
   }
 
-  if (typeof Pusher === "undefined") {
-    console.warn("MacroReborn: pusher-js no cargó, actualizaciones Pusher del perfil desactivadas; eventos locales siguen activos.");
+  if (!window.MRAvisos) {
+    console.warn("MacroReborn: js/avisos.js no cargó; el perfil no se actualiza solo, pero los eventos locales siguen activos.");
     return;
   }
 
   if (typeof datosUsuario === "undefined" || !datosUsuario || !datosUsuario.nombre) return;
 
-  // Mismos valores que js/realtime.js (públicos a propósito, ver ese
-  // archivo para más detalle).
-  const PUSHER_KEY = "767a9d93fede4f8f7b52";
-  const PUSHER_CLUSTER = "sa1";
-
-  if (PUSHER_KEY === "TU_PUSHER_KEY") return;
-
-  const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-  let canalActual = null;
+  // Las bajas de las escuchas puestas en el canal actual, para poder
+  // soltarlas enteras cuando la sesión cambie de usuario.
+  let bajas = [];
   let nombreCanalActual = null;
 
   function obtenerNombreCanal() {
@@ -99,28 +93,49 @@
     return usuario && usuario.nombre ? String(usuario.nombre).toLowerCase() : "";
   }
 
+  function soltarCanal() {
+    for (const baja of bajas) baja();
+    bajas = [];
+    nombreCanalActual = null;
+  }
+
+  // Repintar lo que dependa del servidor. Se usa al recibir cada aviso y
+  // también al volver de una caída de la línea, porque mientras estuvo
+  // cortada no llegó nada y lo perdido no se guarda.
+  function repintarComentarios() {
+    if (typeof renderComentarios === "function") renderComentarios();
+  }
+  function repintarActividad() {
+    if (typeof renderActividadReciente === "function") renderActividadReciente();
+  }
+  function repintarHistorial() {
+    if (typeof renderHistorialPerfil === "function") renderHistorialPerfil();
+  }
+  function repintarLogros() {
+    const usuario = usuarioPerfilActual();
+    if (typeof cargarLogros === "function" && usuario && usuario.nombre) {
+      cargarLogros(usuario.nombre).then(function () {
+        if (typeof renderLogros === "function") renderLogros();
+        if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
+      }).catch(function () {});
+      return;
+    }
+    if (typeof renderLogros === "function") renderLogros();
+  }
+
   function enlazarCanal(nombre) {
     const normalizado = String(nombre || "").trim().toLowerCase();
     if (!normalizado || normalizado === nombreCanalActual) return;
 
-    if (canalActual && nombreCanalActual) {
-      try { pusher.unsubscribe("notificaciones-" + nombreCanalActual); } catch (_) {}
-    }
-
+    soltarCanal();
     nombreCanalActual = normalizado;
-    canalActual = pusher.subscribe("notificaciones-" + normalizado);
 
-    canalActual.bind("nuevo-comentario", function () {
-      if (typeof renderComentarios === "function") renderComentarios();
-    });
+    const canal = "notificaciones-" + normalizado;
+    const escuchar = (evento, fn) => bajas.push(MRAvisos.escuchar(canal, evento, fn));
 
-    canalActual.bind("comentarios-vaciados", function () {
-      if (typeof renderComentarios === "function") renderComentarios();
-    });
-
-    canalActual.bind("nueva-actividad", function () {
-      if (typeof renderActividadReciente === "function") renderActividadReciente();
-    });
+    escuchar("nuevo-comentario", repintarComentarios);
+    escuchar("comentarios-vaciados", repintarComentarios);
+    escuchar("nueva-actividad", repintarActividad);
 
     // "Actividad reciente" del perfil propio ahora es un buzón de
     // menciones recibidas (ver js/perfil-actividad.js), no la propia
@@ -129,31 +144,26 @@
     // "nueva-notificacion" sí llega al canal de la persona mencionada
     // (api/_notifications.js), así que también se usa acá para
     // refrescar la pestaña en vivo cuando a alguien lo mencionan.
-    canalActual.bind("nueva-notificacion", function () {
-      if (typeof renderActividadReciente === "function") renderActividadReciente();
-    });
+    escuchar("nueva-notificacion", repintarActividad);
 
-    canalActual.bind("nuevo-historial", function () {
-      if (typeof renderHistorialPerfil === "function") renderHistorialPerfil();
-    });
+    escuchar("nuevo-historial", repintarHistorial);
+    escuchar("nuevo-logro", repintarLogros);
 
-    canalActual.bind("nuevo-logro", function (payload) {
-      const usuario = usuarioPerfilActual();
-      if (typeof cargarLogros === "function" && usuario && usuario.nombre) {
-        cargarLogros(usuario.nombre).then(function(){
-          if (typeof renderLogros === "function") renderLogros();
-          if (typeof actualizarPuntosLogrosUI === "function") actualizarPuntosLogrosUI();
-        }).catch(function(){});
-        return;
-      }
-      if (typeof renderLogros === "function") renderLogros();
-    });
-
-    canalActual.bind("latido", function (datos) {
+    escuchar("latido", function (datos) {
       if (datos && datos.last_login) datosUsuario.ultimaConexion = datos.last_login;
       if (typeof pintarUltimaConexion === "function") pintarUltimaConexion();
     });
   }
+
+  // Al volver de una caída hay que repescar: durante el corte pudo haber
+  // comentarios, logros o actividad que no llegaron.
+  MRAvisos.alReconectar(function () {
+    if (!nombreCanalActual) return;
+    repintarComentarios();
+    repintarActividad();
+    repintarHistorial();
+    repintarLogros();
+  });
 
   enlazarCanal(obtenerNombreCanal());
 

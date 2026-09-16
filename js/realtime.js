@@ -1,91 +1,85 @@
 // ==============================
-// NOTIFICACIONES EN TIEMPO REAL (Pusher)
+// NOTIFICACIONES EN TIEMPO REAL
 // ==============================
-// Se conecta al canal público del usuario logueado y escucha el
-// evento "nueva-notificacion" que dispara api/content.js apenas se
-// crea una notificación (logro, mención con @usuario, XP, solicitud
-// de amistad, comentario...). No agrega ningún endpoint nuevo: usa
-// las mismas funciones de js/notificaciones.js (que se carga antes
-// que este script en el <head> de cada página) para refrescar la
-// campanita y el listado.
+// Se apunta al canal público del usuario logueado y escucha el evento
+// "nueva-notificacion" que dispara api/_notifications.js apenas se crea
+// una (logro, mención con @usuario, XP, solicitud de amistad,
+// comentario...). No agrega ningún endpoint nuevo: usa las mismas
+// funciones de js/notificaciones.js -que se carga antes que este script
+// en el <head> de cada página- para refrescar la campanita y el listado.
 //
-// PUSHER_KEY / PUSHER_CLUSTER no son secretos (Pusher los expone al
-// cliente a propósito), así que van hardcodeados acá. Reemplazá los
-// dos valores de abajo por los de tu app en
-// https://dashboard.pusher.com -> tu app -> App Keys.
-
-const PUSHER_KEY = "767a9d93fede4f8f7b52";
-const PUSHER_CLUSTER = "sa1";
+// La línea la sostiene js/avisos.js, que se carga justo antes en todas
+// las páginas. Antes esto abría su propio WebSocket contra Pusher; ahora
+// comparte una sola conexión con el resto de la página.
 
 (function () {
 
   function iniciarTiempoReal() {
-    if (typeof Pusher === "undefined") {
-    console.warn("MacroReborn: pusher-js no cargó, notificaciones en vivo desactivadas.");
-    return;
-  }
-
-  if (PUSHER_KEY === "TU_PUSHER_KEY") {
-    console.warn("MacroReborn: falta configurar PUSHER_KEY/PUSHER_CLUSTER en js/realtime.js.");
-    return;
-  }
-
-  const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-  let canalActual = null;
-  let nombreActual = "";
-
-  function usuarioActual() {
-    return (typeof obtenerUsuarioNotificaciones === "function")
-      ? obtenerUsuarioNotificaciones()
-      : (window.MRSession && typeof MRSession.get === "function" ? MRSession.get() : null);
-  }
-
-  function limpiarCanal() {
-    if (!canalActual || !nombreActual) return;
-    canalActual.unbind("nueva-notificacion");
-    pusher.unsubscribe("notificaciones-" + nombreActual);
-    canalActual = null;
-    nombreActual = "";
-  }
-
-  function suscribirUsuario(usuario) {
-    const nombre = String(usuario && (usuario.nombre || usuario.username) || "").trim().toLowerCase();
-
-    if (!nombre) {
-      limpiarCanal();
+    if (!window.MRAvisos) {
+      console.warn("MacroReborn: js/avisos.js no cargó, notificaciones en vivo desactivadas.");
       return;
     }
 
-    if (nombre === nombreActual && canalActual) return;
+    let cancelar = null;
+    let nombreActual = "";
 
-    limpiarCanal();
-    nombreActual = nombre;
-    canalActual = pusher.subscribe("notificaciones-" + nombre);
+    function usuarioActual() {
+      return (typeof obtenerUsuarioNotificaciones === "function")
+        ? obtenerUsuarioNotificaciones()
+        : (window.MRSession && typeof MRSession.get === "function" ? MRSession.get() : null);
+    }
 
-    canalActual.bind("nueva-notificacion", function (notif) {
-      // Pusher confirmó que hay una notificación nueva: invalidamos la
-      // caché local antes de volver a consultar Neon.
+    function soltar() {
+      if (cancelar) cancelar();
+      cancelar = null;
+      nombreActual = "";
+    }
+
+    // Repintar la campanita y el listado con lo que haya en el servidor.
+    // Se llama al recibir un aviso y TAMBIÉN al volver de una caída de la
+    // línea: mientras estuvo cortada no llegó nada, y lo que no se
+    // entregó no se guarda en ningún sitio.
+    function refrescar(nombre) {
       if (window.MRNotifications && typeof MRNotifications.invalidate === "function") {
         MRNotifications.invalidate(nombre);
       }
-
       if (typeof actualizarContador === "function") actualizarContador();
       if (typeof renderNotificaciones === "function") renderNotificaciones();
       if (typeof renderNotificacionesDropdown === "function") renderNotificacionesDropdown();
+    }
 
-      mostrarToastNotificacion(notif && notif.titulo, notif && notif.mensaje);
+    function suscribirUsuario(usuario) {
+      const nombre = String(usuario && (usuario.nombre || usuario.username) || "").trim().toLowerCase();
+
+      if (!nombre) { soltar(); return; }
+      if (nombre === nombreActual && cancelar) return;
+
+      soltar();
+      nombreActual = nombre;
+
+      cancelar = MRAvisos.escuchar(
+        "notificaciones-" + nombre,
+        "nueva-notificacion",
+        function (notif) {
+          refrescar(nombre);
+          mostrarToastNotificacion(notif && notif.titulo, notif && notif.mensaje);
+        }
+      );
+    }
+
+    suscribirUsuario(usuarioActual());
+
+    if (window.MRSession && typeof MRSession.subscribe === "function") {
+      MRSession.subscribe(function (detalle) {
+        suscribirUsuario((detalle && detalle.usuario) || usuarioActual());
+      });
+    }
+
+    MRAvisos.alReconectar(function () {
+      if (nombreActual) refrescar(nombreActual);
     });
-  }
 
-  suscribirUsuario(usuarioActual());
-
-  if (window.MRSession && typeof MRSession.subscribe === "function") {
-    MRSession.subscribe(function (detalle) {
-      suscribirUsuario((detalle && detalle.usuario) || usuarioActual());
-    });
-  }
-
-    window.addEventListener("beforeunload", limpiarCanal);
+    window.addEventListener("beforeunload", soltar);
   }
 
   // Layout.js de Morpho -> MRApp: el tiempo real espera a que la

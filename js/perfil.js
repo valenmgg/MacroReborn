@@ -215,7 +215,7 @@ document.getElementById("fechaRegistro").textContent =
 // datosUsuario.ultimaConexion).
 //
 // Queda en una función aparte (en vez de código suelto) para poder
-// volver a pintarla sola cuando llega un latido en vivo por Pusher
+// volver a pintarla sola cuando llega un latido en vivo del servidor
 // (por ejemplo, si iniciaste sesión en otro dispositivo), o cada
 // cierto tiempo, sin recargar la página.
 function pintarUltimaConexion(){

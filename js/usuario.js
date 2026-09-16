@@ -207,7 +207,7 @@ if (!usuario) {
   // últimos MINUTOS_CONECTADO minutos.
   //
   // Queda en una función aparte (en vez de código suelto) para poder
-  // volver a pintarla sola cuando llega un latido en vivo por Pusher,
+  // volver a pintarla sola cuando llega un latido en vivo del servidor,
   // o cada cierto tiempo (setInterval más abajo), sin recargar la
   // página.
   function pintarEstadoYUltimaConexion(){
@@ -946,31 +946,24 @@ function escaparHTML(texto) {
   renderLogrosUsuario();
 
 
-  // ---------- TIEMPO REAL (Pusher) ----------
-  // Mismo canal público por usuario que ya usa js/realtime.js para
-  // las notificaciones ("notificaciones-<nombre>", acá el nombre del
-  // PERFIL VISITADO, no el de quien está mirando). Escucha los
-  // eventos que dispara el servidor cada vez que alguien comenta,
-  // registra actividad, juega un juego o desbloquea un logro en este
-  // perfil, y vuelve a pintar solo esa sección, sin recargar.
+  // ---------- TIEMPO REAL ----------
+  // Mismo canal público por usuario que ya usa js/realtime.js para las
+  // notificaciones ("notificaciones-<nombre>"). Acá hacen falta DOS: el
+  // del PERFIL VISITADO y el de quien está mirando.
 
-  if (typeof Pusher !== "undefined") {
+  if (window.MRAvisos) {
 
-    // Mismos valores que js/realtime.js (públicos a propósito).
-    const PUSHER_KEY = "767a9d93fede4f8f7b52";
-    const PUSHER_CLUSTER = "sa1";
+    // DOS canales por la MISMA conexión. Con Pusher eran dos WebSockets
+    // -un new Pusher() cada uno- para hablar con el mismo servidor;
+    // js/avisos.js los junta y abre una sola línea.
 
-    if (PUSHER_KEY !== "TU_PUSHER_KEY") {
-
-      // Canal propio: recibe los cambios de bloqueo/desbloqueo que afectan
-      // a la cuenta que está navegando, para actualizar el perfil sin recargar.
-      if (activo && activo.nombre) {
-        const pusherEstadoBloqueo = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-        const canalEstadoBloqueo = pusherEstadoBloqueo.subscribe(
-          "notificaciones-" + activo.nombre.toLowerCase()
-        );
-
-        canalEstadoBloqueo.bind("estado-bloqueo", async (datos) => {
+    // El canal PROPIO: los cambios de bloqueo o desbloqueo que afectan a
+    // la cuenta que está navegando, para actualizar el perfil sin recargar.
+    if (activo && activo.nombre) {
+      MRAvisos.escuchar(
+        "notificaciones-" + activo.nombre.toLowerCase(),
+        "estado-bloqueo",
+        async (datos) => {
           if (!datos || !datos.por) return;
           if (String(datos.por).toLowerCase() !== String(usuario.nombre).toLowerCase()) return;
 
@@ -981,31 +974,55 @@ function escaparHTML(texto) {
 
           await cargarEstadoBloqueo();
           actualizarBotonBloquear();
-        });
-      }
-
-      const pusherPerfilVisitado = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-      const canalPerfilVisitado = pusherPerfilVisitado.subscribe("notificaciones-" + usuario.nombre.toLowerCase());
-
-      canalPerfilVisitado.bind("nuevo-comentario", () => renderComentarios());
-      canalPerfilVisitado.bind("comentarios-vaciados", () => renderComentarios());
-      canalPerfilVisitado.bind("nueva-actividad", () => {
-        if (typeof renderActividadUsuario === "function") renderActividadUsuario();
-      });
-      canalPerfilVisitado.bind("nuevo-historial", () => {
-        if (typeof renderHistorialUsuario === "function") renderHistorialUsuario();
-      });
-      canalPerfilVisitado.bind("nuevo-logro", () => renderLogrosUsuario());
-
-      // "Última conexión" / estado 🟢-⚪ en vivo: el servidor avisa
-      // por acá cada vez que este usuario tiene actividad (latido
-      // cada pocos minutos mientras navega, ver js/core.js).
-      canalPerfilVisitado.bind("latido", (datos) => {
-        if (datos && datos.last_login) usuario.last_login = datos.last_login;
-        pintarEstadoYUltimaConexion();
-      });
-
+        }
+      );
     }
+
+    // El canal del PERFIL VISITADO: lo que pase en este perfil -alguien
+    // comenta, registra actividad, juega o desbloquea un logro- repinta
+    // solo esa sección.
+    //
+    // Que los dos canales viajen por una sola conexión es justo el motivo
+    // de que cada aviso diga por cuál vino: los dos mandan los mismos
+    // eventos, y sin distinguirlos un comentario en el perfil ajeno
+    // repintaría también el propio.
+    const canalVisitado = "notificaciones-" + usuario.nombre.toLowerCase();
+    const escuchar = (evento, fn) => MRAvisos.escuchar(canalVisitado, evento, fn);
+
+    const repintarComentarios = () => renderComentarios();
+    const repintarActividad = () => {
+      if (typeof renderActividadUsuario === "function") renderActividadUsuario();
+    };
+    const repintarHistorial = () => {
+      if (typeof renderHistorialUsuario === "function") renderHistorialUsuario();
+    };
+
+    escuchar("nuevo-comentario", repintarComentarios);
+    escuchar("comentarios-vaciados", repintarComentarios);
+    escuchar("nueva-actividad", repintarActividad);
+    escuchar("nuevo-historial", repintarHistorial);
+    escuchar("nuevo-logro", () => renderLogrosUsuario());
+
+    // "Última conexión" / estado verde-gris en vivo: el servidor avisa
+    // por acá cada vez que este usuario tiene actividad (latido cada
+    // pocos minutos mientras navega, ver js/core.js).
+    escuchar("latido", (datos) => {
+      if (datos && datos.last_login) usuario.last_login = datos.last_login;
+      pintarEstadoYUltimaConexion();
+    });
+
+    // Al volver de una caída se repesca: durante el corte pudo comentar
+    // alguien, o cambiar el estado de bloqueo, sin que llegara el aviso.
+    MRAvisos.alReconectar(async () => {
+      repintarComentarios();
+      repintarActividad();
+      repintarHistorial();
+      renderLogrosUsuario();
+      if (activo && activo.nombre) {
+        await cargarEstadoBloqueo();
+        actualizarBotonBloquear();
+      }
+    });
 
   }
 
