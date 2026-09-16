@@ -208,6 +208,11 @@ Orden estricto (la migración SIEMPRE antes que el código que la usa):
 8. Recién entonces planificar una migración futura (borrar
    `users.password` y la rama legacy de `api/_password.js`).
 
+**Estado (16/09/2026)**: los pasos 1 a 7 están hechos. El backfill se
+corrió contra el VPS y no queda ni una contraseña en texto plano. El
+paso 8 sigue pendiente a propósito; el detalle está en
+`docs/SEGURIDAD.md` §5.
+
 Si se despliega el código sin la 013, registro y login fallan (la
 columna `password_hash` no existe). Si se despliega sin la 014,
 fallan por la restricción NOT NULL de `password`. Si se despliega sin la
@@ -521,9 +526,16 @@ segundos para 557.535 filas. Después queda guardada en
 
 **Baja datos de personas.** El respaldo trae las cuentas, las biografías,
 los comentarios de perfil y los mensajes de chat de 141 personas. No hay
-correos —`users` no tiene esa columna— pero sí contraseñas:
-`password_hash` con bcrypt y, en quien no haya entrado desde la migración
-perezosa, `password` **en texto plano**.
+correos —`users` no tiene esa columna— pero sí contraseñas, hoy todas
+picadas con bcrypt en `password_hash`.
+
+Hasta el 16/09/2026 el respaldo traía además `password` **en texto
+plano** para quien no hubiera entrado desde la migración perezosa. El
+backfill cerró ese hueco en la base (`docs/SEGURIDAD.md` §5), pero no en
+los respaldos ya sacados: **un `.sql.gz` anterior a esa fecha sigue
+llevando 17 contraseñas en claro**. Los del VPS se borran solos a los 14
+días; el que esté en `datos-locales/` de un portátil, no. Si hay uno
+viejo ahí, lo que corresponde es borrarlo y volver a bajar.
 
 Por eso, por defecto, **la copia local se queda sin credenciales**: todas
 las cuentas pasan a tener la misma clave conocida, `local1234`. No se

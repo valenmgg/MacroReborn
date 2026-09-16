@@ -120,6 +120,35 @@ Orden estricto:
    `users.password` y quitar la rama de comparación legacy de
    `api/_password.js`.
 
+### Estado (16/09/2026)
+
+Los pasos 1 a 6 están hechos. El backfill se corrió contra el VPS ese
+día y migró 17 cuentas: las que tenían texto plano y ningún hash, o sea
+las que no habían vuelto a entrar desde el despliegue (las otras 124 ya
+las había migrado el login). Hoy `SELECT COUNT(*) FROM users WHERE
+password IS NOT NULL` devuelve 0, y las 141 filas guardan un hash `$2b$`
+de 60 caracteres.
+
+Se comprobó además lo que el backfill no puede comprobar por sí solo:
+que nadie perdió el acceso. Con el respaldo anterior al cambio delante,
+se verificó con `bcrypt.compare` que las 17 contraseñas originales
+validan contra su hash nuevo. 17 de 17.
+
+Una trampa que casi se cuela, por si se repite la comprobación: verificar
+el formato con una expresión regular a través de `ssh ... psql -c "..."`
+no funciona. Los `$` se expanden por el camino, el patrón llega vacío y
+**devuelve 0 coincidencias sin error**, que es justo lo que uno quiere
+ver. Es más seguro agrupar por `left(password_hash, 4)`, que no lleva
+caracteres especiales.
+
+Queda el paso 7, y queda a propósito: `users.password` sigue existiendo y
+`api/_password.js` conserva su rama legacy.
+
+Lo que el backfill **no** limpia son los respaldos ya sacados: cualquier
+`.sql.gz` anterior al 16/09/2026 sigue llevando esas 17 contraseñas en
+claro. En el VPS se borran solos a los 14 días; una copia bajada a un
+portátil, no (ver `docs/DESARROLLO.md` §8).
+
 Si se despliega el código sin la 013, registro y login fallan (la
 columna `password_hash` no existe). Si se despliega sin la 014,
 registro y login fallan por la restricción NOT NULL de `password`.
