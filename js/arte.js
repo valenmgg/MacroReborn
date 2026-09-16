@@ -271,7 +271,18 @@
         dataUrl: leido.dataUrl,
         ancho: leido.ancho,
         alto: leido.alto,
-        modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) || $("arteTodosModelo").value,
+        // El personaje sale, por este orden: del nombre del archivo
+        // ("tora_botas3.png"), del que lleva puesto el maniquí, y sólo si
+        // no hay ninguno, del desplegable del formulario viejo.
+        //
+        // El maniquí va ANTES que el desplegable porque el taller elige el
+        // personaje en su primer paso y el maniquí es quien lo sabe. Sin
+        // esto, elegir Max en el paso 1 y soltar un PNG lo archivaba en
+        // Tora: exactamente el fallo que ese paso existe para evitar, y
+        // que ya había pasado con el desplegable alfabético.
+        modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) ||
+          (V() && V().estado ? V().estado().modelo : null) ||
+          $("arteTodosModelo").value,
         capa: capaDesdeArchivo(file.name, DATOS.capas),
         nombre: nombreDesdeArchivo(file.name),
         precio: 0,

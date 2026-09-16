@@ -415,3 +415,51 @@ describe("el modo libre y el panel de siempre", () => {
     assert.deepStrictEqual(rotos, []);
   });
 });
+
+describe("el personaje del paso 1 manda sobre lo que se trae después", () => {
+  // El fallo que esto evita ya había pasado dos veces: con el desplegable
+  // alfabético del formulario viejo, y otra vez acá -elegir un personaje
+  // en el paso 1 y soltar un PNG lo archivaba en el primero de la lista-.
+  // Una prenda archivada en el personaje equivocado no se pierde: se
+  // vuelve invisible, porque el editor sólo enseña la ropa del que uno
+  // lleva puesto.
+  test("un PNG sin pistas en el nombre hereda el personaje elegido", async () => {
+    const { win, doc } = await montar();
+    await abrir(doc);
+
+    // Se elige el SEGUNDO personaje, no el que viene por defecto.
+    const segundo = doc.querySelectorAll(".taller-personaje")[1];
+    const suNombre = segundo.querySelector(".nom").textContent;
+    segundo.click();
+    await new Promise(r => setTimeout(r, 0));
+
+    $(doc, "tallerSeguir").click();
+    await traer(win, doc, "gorro_rojo.png", 327, 504);
+    $(doc, "tallerSeguir").click();
+    doc.querySelector(".taller-ficha").click();
+
+    const personaje = [...doc.querySelectorAll("#tallerFichas select")]
+      .find(s => [...s.options].some(o => o.textContent === suNombre));
+    assert.ok(personaje, "no se encontró el desplegable de personaje");
+    assert.strictEqual(personaje.options[personaje.selectedIndex].textContent, suNombre,
+      "el PNG se archivó en otro personaje que el elegido en el paso 1");
+  });
+
+  // Pero si el nombre del archivo lo dice, el archivo gana: es lo que ya
+  // hacía el panel y es más específico que el maniquí.
+  test("pero un nombre que dice el personaje sigue mandando", async () => {
+    const { win, doc } = await montar();
+    await abrir(doc);
+    doc.querySelectorAll(".taller-personaje")[1].click();
+    await new Promise(r => setTimeout(r, 0));
+
+    $(doc, "tallerSeguir").click();
+    await traer(win, doc, "tora_gorro.png", 327, 504);
+    $(doc, "tallerSeguir").click();
+    doc.querySelector(".taller-ficha").click();
+
+    const personaje = [...doc.querySelectorAll("#tallerFichas select")]
+      .find(s => [...s.options].some(o => o.textContent === "Tora"));
+    assert.strictEqual(personaje.options[personaje.selectedIndex].textContent, "Tora");
+  });
+});
