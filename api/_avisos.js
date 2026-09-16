@@ -49,14 +49,15 @@ const CANAL_POSTGRES = "mr_avisos";
 // origino. Se deja margen para el sobre (canal, evento y comillas).
 const TOPE_CARGA = 7000;
 
-// Techo de conexiones abiertas por proceso. Antes este riesgo lo absorbia
-// Pusher; ahora lo absorbe una maquina de 950 MB. Una conexion SSE ocioso
-// cuesta poco, pero "poco" por infinitas sigue siendo la maquina.
-const TOPE_CONEXIONES = 400;
-
 // canal -> Set de funciones que escriben en una respuesta abierta.
 const oyentes = new Map();
-let conexiones = 0;
+
+// Cuantas escuchas hay apuntadas, sumando todos los canales. NO es lo
+// mismo que cuantas conexiones hay abiertas: una sola conexion puede
+// escuchar varios canales a la vez -js/usuario.js escucha el tuyo y el
+// del perfil que estas mirando-, y entonces cuenta como dos. El techo de
+// conexiones se lleva en api/_avisos-sse.js, que es quien las tiene.
+let escuchas = 0;
 
 // ---------- EL REGISTRO LOCAL ----------
 
@@ -70,7 +71,7 @@ function suscribir(canal, escucha) {
 
   if (!oyentes.has(canal)) oyentes.set(canal, new Set());
   oyentes.get(canal).add(escucha);
-  conexiones++;
+  escuchas++;
 
   let dadaDeBaja = false;
   return function cancelar() {
@@ -79,7 +80,7 @@ function suscribir(canal, escucha) {
     // esto la segunda vez descontaria una conexion que ya no existe.
     if (dadaDeBaja) return;
     dadaDeBaja = true;
-    conexiones--;
+    escuchas--;
 
     const grupo = oyentes.get(canal);
     if (!grupo) return;
@@ -117,12 +118,8 @@ function cuantosEscuchan(canal) {
   return grupo ? grupo.size : 0;
 }
 
-function cuantasConexiones() {
-  return conexiones;
-}
-
-function haySitio() {
-  return conexiones < TOPE_CONEXIONES;
+function cuantasEscuchas() {
+  return escuchas;
 }
 
 // ---------- EL PUENTE ENTRE PROCESOS ----------
@@ -259,12 +256,10 @@ module.exports = {
   suscribir,
   repartir,
   cuantosEscuchan,
-  cuantasConexiones,
-  haySitio,
+  cuantasEscuchas,
   arrancarBus,
   pararBus,
   busActivo,
   CANAL_POSTGRES,
-  TOPE_CARGA,
-  TOPE_CONEXIONES
+  TOPE_CARGA
 };

@@ -6,6 +6,7 @@
 //
 //   - Sirve los archivos estáticos del sitio (HTML, CSS, JS, imágenes).
 //   - Rutea /api/auth, /api/users y /api/content contra la base local
+//   - Y /api/avisos, la conexion abierta de los avisos en vivo
 //     (PGlite), usando los MISMOS handlers que corren en produccion.
 //
 // Uso:  npm run db:local     (o: node scripts/servidor-local.js)
@@ -42,6 +43,7 @@ const { abrirBaseReal } = require("./base-real");
 const MODO_REAL = process.argv.includes("--real") || process.env.MR_BASE === "real";
 const PGDATA = path.join(__dirname, "..", "datos-locales", "pgdata");
 const { usarSqlLocal } = require("../api/_db");
+const avisosSSE = require("../api/_avisos-sse");
 
 const PUERTO = Number(process.env.PORT) || 3001;
 const RAIZ = path.join(__dirname, "..");
@@ -116,6 +118,15 @@ async function main() {
 
   const servidor = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
+
+    // ----- Avisos en vivo -----
+    // Aqui SI funcionan, y sin puente: el servidor local es un solo
+    // proceso, asi que el reparto dentro del proceso es el reparto entero.
+    // Va antes del bloque de /api/ por el mismo motivo que en server.js:
+    // ese bloque junta el cuerpo y contesta de una vez.
+    if (url.pathname === "/api/avisos") {
+      return avisosSSE.atender(req, res, url);
+    }
 
     // ----- API local -----
     if (url.pathname.startsWith("/api/")) {

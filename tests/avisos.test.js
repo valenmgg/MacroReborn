@@ -11,9 +11,11 @@
 // entrega en local, que en un solo proceso es la entrega completa — y es
 // justo el camino que corre en `npm run db:local`.
 //
-// Lo que sí importa que esté sujeto acá es el conteo de conexiones: es
-// lo que sostiene el tope de 400, y el tope es lo único que separa a una
-// máquina de 950 MB de quedarse sin memoria por conexiones ociosas.
+// El conteo de escuchas sí importa que esté sujeto: una baja que
+// descuenta de más deja el contador en negativo, y de ese contador
+// cuelga el diagnóstico de cuánta gente hay escuchando. El tope de
+// conexiones abiertas vive en tests/avisos-sse.test.js, que es donde
+// vive la conexión.
 //
 // Correr:  npm test
 
@@ -35,7 +37,7 @@ function suscribir(canal, escucha) {
 beforeEach(() => {
   for (const cancelar of bajas) cancelar();
   bajas = [];
-  assert.equal(avisos.cuantasConexiones(), 0, "quedaron conexiones de un test anterior");
+  assert.equal(avisos.cuantasEscuchas(), 0, "quedaron conexiones de un test anterior");
 });
 
 describe("a quién le llega un aviso", () => {
@@ -94,21 +96,21 @@ describe("a quién le llega un aviso", () => {
   });
 });
 
-describe("el conteo de conexiones, que es lo que sostiene el tope", () => {
+describe("el conteo de escuchas", () => {
 
   test("sube al suscribirse y baja al darse de baja", () => {
-    assert.equal(avisos.cuantasConexiones(), 0);
+    assert.equal(avisos.cuantasEscuchas(), 0);
 
     const uno = suscribir("a", () => {});
-    assert.equal(avisos.cuantasConexiones(), 1);
+    assert.equal(avisos.cuantasEscuchas(), 1);
 
     const dos = suscribir("b", () => {});
-    assert.equal(avisos.cuantasConexiones(), 2);
+    assert.equal(avisos.cuantasEscuchas(), 2);
 
     uno();
-    assert.equal(avisos.cuantasConexiones(), 1);
+    assert.equal(avisos.cuantasEscuchas(), 1);
     dos();
-    assert.equal(avisos.cuantasConexiones(), 0);
+    assert.equal(avisos.cuantasEscuchas(), 0);
   });
 
   test("darse de baja dos veces no descuenta dos veces", () => {
@@ -122,19 +124,13 @@ describe("el conteo de conexiones, que es lo que sostiene el tope", () => {
     cancelar();
     cancelar();
 
-    assert.equal(avisos.cuantasConexiones(), 1, "el contador se descontó de más");
-  });
-
-  test("haySitio() se apaga al llegar al tope", () => {
-    assert.equal(avisos.haySitio(), true);
-    assert.equal(typeof avisos.TOPE_CONEXIONES, "number");
-    assert.ok(avisos.TOPE_CONEXIONES > 0);
+    assert.equal(avisos.cuantasEscuchas(), 1, "el contador se descontó de más");
   });
 
   test("una suscripción sin función no cuenta como conexión", () => {
     avisos.suscribir("a", null);
     avisos.suscribir("", () => {});
-    assert.equal(avisos.cuantasConexiones(), 0);
+    assert.equal(avisos.cuantasEscuchas(), 0);
   });
 });
 

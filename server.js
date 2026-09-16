@@ -128,6 +128,11 @@ const LIMITE_CUERPO = 12 * 1024 * 1024;
 // Para poder servir las prendas de avatar que viven en la base.
 const { obtenerSql } = require("./api/_db");
 
+// Avisos en vivo. No entra en HANDLERS a proposito: su ruta no pasa
+// por el despacho de /api/, por el motivo que explica mas abajo.
+const avisosSSE = require("./api/_avisos-sse");
+const avisos = require("./api/_avisos");
+
 const HANDLERS = {
   "/api/auth": require("./api/auth"),
   "/api/users": require("./api/users"),
@@ -254,6 +259,15 @@ async function main() {
 
     // ----- La URL canónica de las prendas -----
     traducirRutaCanonica(url);
+
+    // ----- Avisos en vivo -----
+    // Va ANTES del despacho de /api/ y fuera de HANDLERS porque ese
+    // despacho junta el cuerpo entero de la peticion y luego contesta de
+    // una sola vez con un `res` de mentira. Una conexion que no se cierra
+    // necesita justo lo contrario: el `res` de verdad, y no cerrarlo.
+    if (url.pathname === "/api/avisos") {
+      return avisosSSE.atender(req, res, url);
+    }
 
     // ----- API -----
     if (url.pathname.startsWith("/api/")) {
@@ -400,8 +414,18 @@ async function main() {
     });
   });
 
+  // El puente que lleva un aviso de un proceso del cluster al otro. Si no
+  // levanta -sin DATABASE_URL, o apuntando a Neon- el sitio funciona igual:
+  // los avisos se entregan dentro del proceso que los genera, que es lo
+  // correcto cuando solo hay uno.
+  const conPuente = await avisos.arrancarBus().catch((error) => {
+    console.warn("Avisos: sin puente entre procesos.", error.message);
+    return false;
+  });
+
   server.listen(PUERTO, () => {
     console.log(`Servidor de producción escuchando en el puerto ${PUERTO}`);
+    console.log(`[avisos] ${conPuente ? "con" : "sin"} puente entre procesos`);
   });
 }
 
