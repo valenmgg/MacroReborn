@@ -75,35 +75,9 @@ const monedasService = new MonedasService(sql);
 // La lectura de un usuario puntual (?username=X) NO se toca: ahí el
 // avatar es lo que se fue a buscar, y el editor del perfil necesita el
 // base64 completo para poder restaurarlo.
-function aligerarAvatarPNG(usuario) {
-  const avatar = usuario && usuario.avatar;
-
-  // Según el driver, un jsonb puede llegar ya parseado o como texto.
-  let datos = avatar;
-  if (typeof datos === "string") {
-    try { datos = JSON.parse(datos); } catch (_) { return usuario; }
-  }
-
-  if (!datos || typeof datos !== "object" || datos.tipo !== "png") return usuario;
-
-  // La consulta ya reemplazó el base64 por la huella; acá solo se arma
-  // la URL. Si no hay huella, el avatar no pasó por esa consulta y se
-  // deja como está antes que devolver un puntero roto.
-  if (typeof datos.huella !== "string" || !datos.huella) return usuario;
-
-  return {
-    ...usuario,
-    avatar: {
-      tipo: "png",
-      url: "/api/users?action=avatar-png&username=" +
-           encodeURIComponent(usuario.username) + "&v=" + datos.huella,
-      // "restaurar" es la receta de capas que la persona tenía antes de
-      // ponerse el PNG. Son unos pocos cientos de bytes y el perfil la
-      // necesita para el botón de volver al avatar normal.
-      restaurar: datos.restaurar || null
-    }
-  };
-}
+// Las dos piezas viven en api/_avatar-ligero.js, porque api/social.js
+// las necesita igual y durante meses no las tuvo.
+const { fragmentoAvatarLigero, aligerarAvatarPNG } = require("./_avatar-ligero");
 
 // XP necesaria por nivel (misma fórmula que js/motor/xp.js en el cliente).
 function xpNecesaria(nivel) {
@@ -223,15 +197,7 @@ async function listarUsuarios(req, res) {
   // que reservarle memoria en un servidor de 950 MB.
   //
   // Los avatares normales (recetas de capas) pasan enteros, intactos.
-  const avatarLigeroSQL = sql`
-    CASE WHEN u.avatar->>'tipo' = 'png'
-      THEN jsonb_build_object(
-             'tipo', 'png',
-             'huella', left(md5(u.avatar->>'src'), 12),
-             'restaurar', u.avatar->'restaurar'
-           )
-      ELSE u.avatar
-    END AS avatar`;
+  const avatarLigeroSQL = fragmentoAvatarLigero(sql);
 
   if (username) {
     // ?ligero=1 -> el avatar PNG viaja como puntero, igual que en las
@@ -268,7 +234,17 @@ async function listarUsuarios(req, res) {
       return res.status(404).json({ success: false, error: "Usuario no encontrado" });
     }
 
-    return res.status(200).json({ success: true, user: usuario[0] });
+    // Con ?ligero=1 la consulta dejó una "huella" en vez del base64, y
+    // hay que convertirla en la URL del puntero. Sin este paso la
+    // respuesta pesa poco y el avatar NO se dibuja: avatarPNGData() en
+    // js/core.js devuelve null porque no reconoce ese campo.
+    //
+    // Pasó: el parámetro se añadió sin esta línea y los avatares PNG de
+    // otras personas desaparecieron de las menciones y los comentarios.
+    return res.status(200).json({
+      success: true,
+      user: req.query.ligero ? aligerarAvatarPNG(usuario[0]) : usuario[0]
+    });
   }
 
   let usuarios;

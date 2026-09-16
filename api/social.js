@@ -3,6 +3,7 @@ const { getPusher, canalNotificaciones } = require("./_pusher");
 const { requerirAuth } = require("./_auth");
 const { crearNotificacionServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
+const { fragmentoAvatarLigero, aligerarAvatarPNG } = require("./_avatar-ligero");
 
 const sql = obtenerSql();
 
@@ -74,8 +75,16 @@ async function friends(req, res) {
       return res.status(404).json({ success: false, error: "Usuario no encontrado" });
     }
 
+    // El avatar SIN su base64: ver api/_avatar-ligero.js.
+    //
+    // Esta consulta mandaba u.avatar tal cual. La lista de amigos de una
+    // persona con 23 amigos pesaba 1.354.785 bytes, y 1.313 kB de esos
+    // eran el avatar PNG de UNO solo. El 97% de la respuesta.
+    //
+    // Es el mismo fallo que ca518e6 arregló en /api/users en septiembre,
+    // con el mismo tamaño casi exacto. Aquel arreglo no llegó hasta acá.
     const amigos = await sql`
-      SELECT u.username, u.level, u.xp, u.avatar
+      SELECT u.username, u.level, u.xp, ${fragmentoAvatarLigero(sql)}
       FROM friendships f
       JOIN users u ON u.id = f.friend_id
       WHERE f.user_id = ${userId}
@@ -100,7 +109,10 @@ async function friends(req, res) {
 
     return res.status(200).json({
       success: true,
-      amigos,
+      // La consulta dejó una "huella"; acá se convierte en la URL del
+      // puntero. Sin este paso el avatar PNG no se dibuja: el frontend
+      // solo entiende un "src" con data:image/png o una "url" propia.
+      amigos: amigos.map(aligerarAvatarPNG),
       solicitudesEntrantes,
       solicitudesSalientes
     });
