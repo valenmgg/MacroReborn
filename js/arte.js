@@ -188,7 +188,7 @@
 
     $("arteArchivos").addEventListener("change", alElegirArchivos);
     $("arteAplicarTodas").addEventListener("click", aplicarATodas);
-    $("arteSubirBtn").addEventListener("click", subir);
+    $("arteSubirBtn").addEventListener("click", () => publicar(ARCHIVOS));
 
     // Se le pasan GETTERS y no los objetos: subir() reasigna ARCHIVOS y
     // recarga DATOS, así que una referencia guardada dejaría al vestidor
@@ -198,6 +198,8 @@
       datos: () => DATOS,
       archivos: () => ARCHIVOS,
       repintarLista: pintarLista,
+      publicar,
+      quitarArchivo,
       urlDelModelo,
       modelosDisponibles,
       conMayuscula,
@@ -300,6 +302,12 @@
     return caja;
   }
 
+  function quitarArchivo(clave) {
+    const i = ARCHIVOS.findIndex(a => a.clave === clave);
+    if (i !== -1) ARCHIVOS.splice(i, 1);
+    pintarLista();
+  }
+
   function pintarLista() {
     const lista = $("arteLista");
     vaciar(lista);
@@ -350,10 +358,10 @@
       cabecera.appendChild(izq);
       const quitar = elem("button", "arte-quitar", "Quitar");
       quitar.type = "button";
-      quitar.addEventListener("click", () => {
-        ARCHIVOS.splice(indice, 1);
-        pintarLista();
-      });
+      // Por identidad y no por el indice del pintado: hoy funciona solo
+      // porque se repinta la lista entera despues de cada cambio, y
+      // cualquier repintado parcial borraria la fila equivocada.
+      quitar.addEventListener("click", () => quitarArchivo(item.clave));
       cabecera.appendChild(quitar);
       datos.appendChild(cabecera);
 
@@ -426,32 +434,87 @@
   // SUBIR
   // ==============================
 
-  async function subir() {
-    if (!ARCHIVOS.length) return;
+  // El presupuesto de una tanda, en BYTES DE LA CADENA que viaja. No en
+  // bytes del PNG: server.js corta el cuerpo a los 12 MB de lo RECIBIDO, y
+  // lo que se recibe es el base64, que abulta un tercio más. Medir un
+  // presupuesto de "9 MB" con los bytes del PNG manda 12 MB de cuerpo real.
+  const TOPE_CUERPO = 10 * 1024 * 1024;
+
+  // Hornea una prenda para subirla. Si el vestidor no está cargado, o si el
+  // artista no movió nada, salen los bytes originales tal cual.
+  async function prepararParaSubir(item) {
+    if (!V()) return { item, texto: item.dataUrl };
+    const r = await V().pngDeSubida(item);
+    if (r && r.error) return { item, error: r.error };
+    return { item, texto: r.texto, horneado: !!r.horneado };
+  }
+
+  // Sube las prendas que se le pasen, no siempre todas: el vestidor deja
+  // publicar unas y seguir probando las otras. Antes esto era subir() y
+  // mandaba ARCHIVOS entero.
+  async function publicar(items) {
+    if (!Array.isArray(items) || !items.length) return;
 
     const boton = $("arteSubirBtn");
     boton.disabled = true;
 
     const resultados = [];
-    // Se manda en tandas porque el servidor acepta 20 por petición: una
-    // tanda de cien PNG en un solo cuerpo son decenas de megas, y esta
-    // máquina tiene 950 MB.
-    const tandas = [];
-    for (let i = 0; i < ARCHIVOS.length; i += TOPE_POR_TANDA) {
-      tandas.push(ARCHIVOS.slice(i, i + TOPE_POR_TANDA));
-    }
+    const cola = items.slice();
+    let pendiente = null;      // lo ya horneado que no cupo en la tanda anterior
+    let tandaNumero = 0;
+    let cortado = null;
 
-    for (let t = 0; t < tandas.length; t++) {
-      $("arteEstado").textContent = "Subiendo tanda " + (t + 1) + " de " + tandas.length + "…";
+    while (cola.length || pendiente) {
+      const tanda = [];
+      let bytes = 0;
+
+      // Se hornea SOLO lo que entra en la tanda en curso. Hornearlo todo
+      // antes de trocear mantendría hasta 200 PNG horneados vivos en la
+      // memoria del navegador a la vez, sin ninguna necesidad. (Ocurre en
+      // el navegador del artista: no consume un byte del servidor.)
+      while (tanda.length < TOPE_POR_TANDA) {
+        let listo = pendiente;
+        pendiente = null;
+
+        if (!listo) {
+          const siguiente = cola.shift();
+          if (!siguiente) break;
+          $("arteEstado").textContent = "Preparando " + siguiente.archivo + "…";
+          listo = await prepararParaSubir(siguiente);
+        }
+
+        // Si el horno no pudo, se PARA. No se sube el original sin
+        // ajustar: el artista colocó la prenda, vio sus números y pulsó
+        // Publicar, así que darle un tick verde sobre otro dibujo le
+        // gastaría el identificador en algo que no aprobó.
+        if (listo.error) { cortado = listo; break; }
+
+        // No cabe y la tanda ya lleva algo: se guarda para la siguiente
+        // SIN volver a hornearlo. Si no cabe y la tanda está vacía, viaja
+        // sola, que es lo que evita el bucle infinito.
+        if (tanda.length && bytes + listo.texto.length > TOPE_CUERPO) {
+          pendiente = listo;
+          break;
+        }
+
+        tanda.push(listo);
+        bytes += listo.texto.length;
+      }
+
+      if (cortado) break;
+      if (!tanda.length) break;
+
+      tandaNumero++;
+      $("arteEstado").textContent = "Subiendo tanda " + tandaNumero + "…";
 
       const cuerpo = {
-        prendas: tandas[t].map(a => ({
-          archivo: a.archivo,
-          modelo: a.modelo,
-          capa: a.capa,
-          nombre: a.nombre,
-          precio: a.precio,
-          png: a.dataUrl
+        prendas: tanda.map(t => ({
+          archivo: t.item.archivo,
+          modelo: t.item.modelo,
+          capa: t.item.capa,
+          nombre: t.item.nombre,
+          precio: t.item.precio,
+          png: t.texto
         }))
       };
 
@@ -463,24 +526,53 @@
         });
         const datos = await r.json().catch(() => null);
 
-        if (!r.ok || !datos || !datos.success) {
+        // El emparejado va POR POSICIÓN, con la longitud comprobada.
+        //
+        // Antes se emparejaba por r.archivo, que el servidor trunca a 120
+        // caracteres y que se repite en cuanto hay dos exportaciones con
+        // el mismo nombre -y el vestidor invita a tenerlas-. La
+        // comprobación de longitud es imprescindible: el 400 de "máximo 20
+        // por tanda" no trae array de resultados, y emparejar por posición
+        // ahí correría los resultados una prenda.
+        const buenos = r.ok && datos && datos.success &&
+          Array.isArray(datos.resultados) && datos.resultados.length === tanda.length;
+
+        if (!buenos) {
           const mensaje = (datos && datos.error) ||
             (r.status === 413 ? "La tanda pesa demasiado, probá con menos archivos a la vez" : "No se pudo subir");
-          tandas[t].forEach(a => resultados.push({ archivo: a.archivo, ok: false, error: mensaje }));
+          tanda.forEach(t => resultados.push({
+            clave: t.item.clave, r: { archivo: t.item.archivo, ok: false, error: mensaje }
+          }));
         } else {
-          datos.resultados.forEach(x => resultados.push(x));
+          datos.resultados.forEach((x, k) => resultados.push({ clave: tanda[k].item.clave, r: x }));
         }
       } catch (error) {
-        tandas[t].forEach(a => resultados.push({ archivo: a.archivo, ok: false, error: "Se cortó la conexión" }));
+        tanda.forEach(t => resultados.push({
+          clave: t.item.clave, r: { archivo: t.item.archivo, ok: false, error: "Se cortó la conexión" }
+        }));
       }
     }
 
-    pintarResultados(resultados);
+    if (cortado) {
+      resultados.push({
+        clave: cortado.item.clave,
+        r: { archivo: cortado.item.archivo, ok: false, error: cortado.error }
+      });
+      // Lo que quedaba en la cola no se mandó: se dice, en vez de dejar al
+      // artista pensando que entró.
+      cola.forEach(a => resultados.push({
+        clave: a.clave,
+        r: { archivo: a.archivo, ok: false, error: "No se envió: se paró en " + cortado.item.archivo }
+      }));
+    }
 
-    // Lo que entró se quita de la lista; lo que falló se queda para poder
-    // arreglarlo y reintentar sin volver a elegir los archivos.
-    const fallaron = new Set(resultados.filter(r => !r.ok).map(r => r.archivo));
-    ARCHIVOS = ARCHIVOS.filter(a => fallaron.has(a.archivo));
+    pintarResultados(resultados.map(e => e.r));
+
+    // Lo que entró se quita; lo que falló se queda CON SU AJUSTE intacto
+    // para poder arreglarlo y reintentar; y lo que no se eligió ni se toca.
+    const enviadas = new Set(items.map(a => a.clave));
+    const fallaron = new Set(resultados.filter(e => !e.r.ok).map(e => e.clave));
+    ARCHIVOS = ARCHIVOS.filter(a => !enviadas.has(a.clave) || fallaron.has(a.clave));
 
     boton.disabled = false;
     pintarLista();

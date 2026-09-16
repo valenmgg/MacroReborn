@@ -1014,8 +1014,72 @@ function vestBytesDeCuerpo(texto) {
     const lista = CTX ? CTX.archivos() : [];
     $("vestSinPruebas").hidden = lista.length > 0;
 
+    // Toda prenda nueva nace elegida para publicar: lo normal es subir lo
+    // que se acaba de probar, y desmarcar es más raro que marcar.
+    const vivas = new Set(lista.map(a => a.clave));
+    for (const c of [...elegidas]) if (!vivas.has(c)) elegidas.delete(c);
+    for (const a of lista) if (!elegidas.has(a.clave)) elegidas.add(a.clave);
+
     for (const item of lista) caja.appendChild(filaDePrueba(item));
     pintarContador();
+    pintarPie();
+  }
+
+  // ---------- EL PIE ----------
+
+  function loElegido() {
+    if (!CTX) return [];
+    return CTX.archivos().filter(a => elegidas.has(a.clave));
+  }
+
+  function pintarPie() {
+    const pie = $("vestPie");
+    const boton = $("vestPublicar");
+    const elegidasAhora = loElegido();
+
+    pie.hidden = !CTX || CTX.archivos().length === 0;
+    boton.disabled = elegidasAhora.length === 0;
+    boton.textContent = elegidasAhora.length === 1
+      ? "Publicar 1 prenda"
+      : "Publicar " + elegidasAhora.length + " prendas";
+
+    const rotas = elegidasAhora.filter(a => !vestPuedeAjustarse(a) && vestHayQueHornear(a));
+    const conAjuste = elegidasAhora.filter(a => vestHayQueHornear(a)).length;
+    const descuadradas = elegidasAhora.filter(a =>
+      vestPuedeAjustarse(a) && !vestHayQueHornear(a) &&
+      (a.ancho !== VEST_LIENZO_ANCHO || a.alto !== VEST_LIENZO_ALTO));
+
+    const dice = [];
+    if (conAjuste) dice.push(conAjuste + " con el ajuste horneado dentro del PNG");
+    if (elegidasAhora.length - conAjuste) {
+      dice.push((elegidasAhora.length - conAjuste) + " tal cual, sin tocar un byte");
+    }
+    $("vestResumen").textContent = dice.join(" · ");
+
+    // El aviso, con nombres: no se bloquea nada, pero se dice antes de
+    // pulsar y no después. Publicar es irreversible en lo que importa: el
+    // identificador que gasta una prenda no vuelve nunca.
+    const aviso = $("vestAvisoLienzo");
+    vaciar(aviso);
+    if (descuadradas.length || rotas.length) {
+      aviso.hidden = false;
+      if (descuadradas.length) {
+        aviso.appendChild(elem("h2", null, "Se van a subir tal cual, sin llevar al lienzo"));
+        aviso.appendChild(elem("p", null,
+          descuadradas.map(a => a.archivo + " (" + a.ancho + "×" + a.alto + ")").join(", ") +
+          ". El sitio las encajará, que es lo que hace hoy con el arte que no mide " +
+          VEST_LIENZO_ANCHO + "×" + VEST_LIENZO_ALTO + ". Si preferís arreglarlas, " +
+          "elegí cada una y pulsá Llevar al lienzo."));
+      }
+      if (rotas.length) {
+        aviso.appendChild(elem("h2", null, "Estas no se van a poder hornear"));
+        aviso.appendChild(elem("p", null,
+          rotas.map(a => a.archivo).join(", ") +
+          ". No se pudo leer su tamaño, así que el ajuste no se puede dibujar dentro."));
+      }
+    } else {
+      aviso.hidden = true;
+    }
   }
 
   function filaDePrueba(item) {
@@ -1029,14 +1093,21 @@ function vestBytesDeCuerpo(texto) {
     // se para el evento ahí.
     fila.addEventListener("click", () => activar(item.clave));
 
-    const ver = document.createElement("input");
-    ver.type = "checkbox";
-    ver.className = "vest-check";
-    ver.checked = estaMontada;
-    ver.title = "Ponérsela al maniquí";
-    ver.addEventListener("change", () => montar(item.clave, ver.checked));
-    ver.addEventListener("click", e => e.stopPropagation());
-    fila.appendChild(ver);
+    // La casilla elige qué se PUBLICA, que no es lo mismo que qué se ve:
+    // se puede publicar media tanda y seguir probando la otra media. Hasta
+    // ahora la única salida era pulsar Quitar en las demás, que borra su
+    // ajuste sin vuelta atrás.
+    const elegir = document.createElement("input");
+    elegir.type = "checkbox";
+    elegir.className = "vest-check";
+    elegir.checked = elegidas.has(item.clave);
+    elegir.title = "Publicar esta";
+    elegir.addEventListener("change", () => {
+      if (elegir.checked) elegidas.add(item.clave); else elegidas.delete(item.clave);
+      pintarPie();
+    });
+    elegir.addEventListener("click", e => e.stopPropagation());
+    fila.appendChild(elegir);
 
     const mini = document.createElement("img");
     mini.src = item.dataUrl;      // ya está en memoria: cero red
@@ -1069,6 +1140,14 @@ function vestBytesDeCuerpo(texto) {
       datos.appendChild(elem("span", "vest-chip", "tapada por " + gana.archivo));
     }
 
+    const ojo = elem("button", "vest-tecla", estaMontada ? "Quitar del maniquí" : "Ponérsela");
+    ojo.type = "button";
+    ojo.addEventListener("click", e => {
+      e.stopPropagation();
+      montar(item.clave, !estaMontada);
+    });
+    datos.appendChild(ojo);
+
     fila.appendChild(datos);
     return fila;
   }
@@ -1093,6 +1172,7 @@ function vestBytesDeCuerpo(texto) {
   // EL AJUSTE
   // ==============================
 
+  const elegidas = new Set();   // qué se publica cuando se pulsa Publicar
   let activa = null;        // clave de la prenda que se está ajustando
   const hechos = [];        // pila de deshacer: { clave, antes, despues }
   let deshechos = 0;        // cuántos de la pila están deshechos
@@ -1445,6 +1525,17 @@ function vestBytesDeCuerpo(texto) {
     $("vestZoomMenos").addEventListener("click", () => cambiarZoom(-0.25));
     $("vestZoomUno").addEventListener("click", () => { zoom = 1; aplicarZoom(); });
     $("vestFondo").addEventListener("click", ciclarFondo);
+
+    $("vestPublicar").addEventListener("click", async () => {
+      const lista = loElegido();
+      if (!lista.length) return;
+      const seguro = window.confirm(
+        "Publicar " + lista.length + " prenda(s).\n\n" +
+        "Aparecen en el editor de avatares enseguida. Retirarlas después se " +
+        "puede, pero el identificador que gastan no vuelve nunca.");
+      if (!seguro) return;
+      await CTX.publicar(lista);
+    });
 
     // Los campos: cada uno escribe su parte del ajuste y nada más.
     $("vestDx").addEventListener("input", () => cambiarAjuste({ dx: $("vestDx").value }));

@@ -26,6 +26,9 @@ const HTML = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
 const VESTIDOR = fs.readFileSync(path.join(RAIZ, "js", "arte-vestidor.js"), "utf8");
 const ARTE = fs.readFileSync(path.join(RAIZ, "js", "arte.js"), "utf8");
 
+// Lo que devuelve el canvas de mentira cuando el horno le pide el PNG.
+const HORNEADO = "data:image/png;base64,HORNEADO";
+
 // Las 15 capas y el activador de imágenes perezosas viven en js/core.js.
 // Se inyectan en vez de evaluar core.js entero, que pide el catálogo por
 // red y monta un MutationObserver sobre todo el documento.
@@ -62,7 +65,7 @@ function panelDePrueba() {
   };
 }
 
-async function montar() {
+async function montar(respuestas) {
   const consola = new VirtualConsole();
   consola.on("jsdomError", () => {});
 
@@ -92,9 +95,28 @@ async function montar() {
     set(v) { puestos.push(v); desc.set.call(this, v); }
   });
 
+  // El canvas de mentira, para poder hornear en jsdom. Anota nada: acá
+  // solo interesa QUÉ cadena sale, no las órdenes del pincel; eso ya lo
+  // prueba tests/vestidor-horneado.test.js.
+  const crearOriginal = win.document.createElement.bind(win.document);
+  win.document.createElement = function (etiqueta) {
+    const nodo = crearOriginal(etiqueta);
+    if (String(etiqueta).toLowerCase() === "canvas") {
+      nodo.getContext = () => ({
+        clearRect() {}, drawImage() {}, setTransform() {}, translate() {},
+        scale() {}, save() {}, restore() {},
+        set imageSmoothingEnabled(_) {}, set imageSmoothingQuality(_) {}
+      });
+      nodo.toDataURL = () => HORNEADO;
+    }
+    return nodo;
+  };
+
   const llamadas = [];
   win.fetch = (url, opciones) => {
     llamadas.push({ url: String(url), opciones: opciones || {} });
+    const propia = respuestas && respuestas(String(url), opciones || {});
+    if (propia) return Promise.resolve(propia);
     return Promise.resolve({
       ok: true, status: 200, json: () => Promise.resolve(panelDePrueba())
     });
@@ -432,8 +454,8 @@ async function elegir(win, doc, nombres) {
 
 // Monta la página, mete un PNG de la medida pedida, abre el vestidor y deja
 // esa prenda elegida y puesta en el maniquí.
-async function conPrenda(ancho, alto, nombre) {
-  const m = await montar();
+async function conPrenda(ancho, alto, nombre, respuestas) {
+  const m = await montar(respuestas);
   prepararEleccion(m.win, ancho, alto);
   await elegir(m.win, m.doc, [nombre || "tora_accesorio.png"]);
 
@@ -708,5 +730,234 @@ describe("los dos presets", () => {
     assert.strictEqual(boton.hidden, false);
     assert.match(boton.textContent, /50 %/);
     assert.match(boton.textContent, /remuestrea/);
+  });
+});
+
+// ==============================
+// PUBLICAR DESDE EL VESTIDOR
+// ==============================
+
+// Recoge lo que se mandó a avatar-subir-prendas.
+function subidas(llamadas) {
+  return llamadas
+    .filter(l => l.url.indexOf("avatar-subir-prendas") !== -1)
+    .map(l => JSON.parse(l.opciones.body).prendas);
+}
+
+function respondeSubida(hecho) {
+  return (url, opciones) => {
+    if (url.indexOf("avatar-subir-prendas") === -1) return null;
+    const prendas = JSON.parse(opciones.body).prendas;
+    return hecho(prendas);
+  };
+}
+
+const subidaOk = respondeSubida(prendas => ({
+  ok: true, status: 200,
+  json: () => Promise.resolve({
+    success: true,
+    entraron: prendas.length,
+    fallaron: 0,
+    resultados: prendas.map((p, i) => ({
+      archivo: p.archivo, ok: true, id: 100 + i,
+      valor: p.modelo + "_" + p.capa + (i + 1),
+      url: "/prendas/zzz.png", medidas: "327x504", precio: p.precio
+    }))
+  })
+}));
+
+// Mete DOS prendas: una se ajusta y la otra no se toca.
+async function conDosPrendas(respuestas) {
+  const m = await montar(respuestas);
+  prepararEleccion(m.win, 327, 504);
+  await elegir(m.win, m.doc, ["tora_accesorio.png"]);
+  prepararEleccion(m.win, 327, 504);
+  await elegir(m.win, m.doc, ["tora_remera.png"]);
+
+  $(m.doc, "vestAbrir").click();
+  return m;
+}
+
+// ==============================
+
+describe("el pie de publicar", () => {
+  test("no se ve si no hay nada en prueba", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    assert.strictEqual($(doc, "vestPie").hidden, true);
+  });
+
+  test("y aparece en cuanto hay una, ya elegida", async () => {
+    const { doc } = await conPrenda(327, 504);
+
+    assert.strictEqual($(doc, "vestPie").hidden, false);
+    assert.strictEqual($(doc, "vestPublicar").disabled, false);
+    assert.match($(doc, "vestPublicar").textContent, /Publicar 1 prenda/);
+  });
+
+  test("dice cuántas llevan el ajuste dentro y cuántas viajan intactas", async () => {
+    const { win, doc } = await conDosPrendas();
+
+    doc.querySelector(".vest-prueba").click();
+    tecla(win, doc, "ArrowRight");
+
+    assert.match($(doc, "vestResumen").textContent, /1 con el ajuste horneado/);
+    assert.match($(doc, "vestResumen").textContent, /1 tal cual/);
+  });
+
+  test("desmarcar una la saca de la cuenta", async () => {
+    const { win, doc } = await conDosPrendas();
+
+    const casilla = doc.querySelector(".vest-prueba .vest-check");
+    casilla.checked = false;
+    casilla.dispatchEvent(new win.Event("change"));
+
+    assert.match($(doc, "vestPublicar").textContent, /Publicar 1 prenda/);
+  });
+});
+
+describe("lo que de verdad se sube", () => {
+  // LA PRUEBA QUE DEMUESTRA EL DISEÑO ENTERO. En el mismo envío: la que
+  // se ajustó lleva el PNG horneado, y la que no se tocó lleva sus bytes
+  // originales, sin pasar por el canvas. Eso es lo que mantiene viva la
+  // deduplicación por sha256 de avatar_archivos.
+  test("la ajustada va horneada y la intacta va byte a byte", async () => {
+    const { win, doc, llamadas } = await conDosPrendas(subidaOk);
+
+    // Se ajusta solo la primera.
+    doc.querySelector(".vest-prueba").click();
+    tecla(win, doc, "ArrowRight");
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    const enviadas = subidas(llamadas);
+    assert.strictEqual(enviadas.length, 1, "tenía que ir en una sola tanda");
+
+    const tanda = enviadas[0];
+    assert.strictEqual(tanda.length, 2);
+
+    const ajustada = tanda.find(p => p.archivo === "tora_accesorio.png");
+    const intacta = tanda.find(p => p.archivo === "tora_remera.png");
+
+    assert.strictEqual(ajustada.png, HORNEADO, "la ajustada tenía que ir horneada");
+    assert.notStrictEqual(intacta.png, HORNEADO, "la intacta NO tenía que pasar por el canvas");
+    assert.match(intacta.png, /^data:image\/png;base64,/);
+  });
+
+  test("y solo se manda lo elegido", async () => {
+    const { win, doc, llamadas } = await conDosPrendas(subidaOk);
+
+    const casilla = doc.querySelector(".vest-prueba .vest-check");
+    casilla.checked = false;
+    casilla.dispatchEvent(new win.Event("change"));
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    const tanda = subidas(llamadas)[0];
+    assert.strictEqual(tanda.length, 1);
+    assert.strictEqual(tanda[0].archivo, "tora_remera.png");
+  });
+
+  test("lo que se publicó desaparece del rail; lo que no se eligió se queda", async () => {
+    const { win, doc } = await conDosPrendas(subidaOk);
+
+    const casilla = doc.querySelector(".vest-prueba .vest-check");
+    casilla.checked = false;
+    casilla.dispatchEvent(new win.Event("change"));
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    const quedan = [...doc.querySelectorAll(".vest-prueba .nom")].map(n => n.textContent);
+    assert.deepStrictEqual(quedan, ["tora_accesorio.png"]);
+  });
+});
+
+describe("cuando algo sale mal", () => {
+  // El emparejado por posición, con la longitud comprobada. El 400 de
+  // "máximo 20 por tanda" no trae array de resultados: emparejar ahí por
+  // posición correría los resultados una prenda y el artista recuperaría
+  // el ajuste equivocado en la prenda equivocada.
+  test("si el servidor no devuelve un resultado por prenda, fallan todas", async () => {
+    const mentiroso = respondeSubida(() => ({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ success: true, resultados: [{ archivo: "x", ok: true }] })
+    }));
+
+    const { doc } = await conDosPrendas(mentiroso);
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    // Las dos siguen en la lista: no se dio ninguna por buena.
+    assert.strictEqual(doc.querySelectorAll(".vest-prueba").length, 2);
+  });
+
+  test("y lo que falla conserva su ajuste para reintentar", async () => {
+    const roto = respondeSubida(() => ({
+      ok: false, status: 500, json: () => Promise.resolve({ success: false, error: "vaya" })
+    }));
+
+    const { win, doc } = await conDosPrendas(roto);
+
+    doc.querySelector(".vest-prueba").click();
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+    assert.strictEqual($(doc, "vestDx").value, "10");
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    doc.querySelector(".vest-prueba").click();
+    assert.strictEqual($(doc, "vestDx").value, "10", "se perdió el ajuste");
+  });
+
+  // Si el horno no puede, se PARA. Nunca se sube el original sin ajustar
+  // con un tick verde: el identificador que gasta una prenda no vuelve.
+  test("si el horno no puede, no se sube nada de esa tanda", async () => {
+    const { win, doc, llamadas } = await conDosPrendas(subidaOk);
+
+    // Se le rompe el canvas a mitad de camino.
+    win.document.createElement = (function (original) {
+      return function (etiqueta) {
+        const nodo = original(etiqueta);
+        if (String(etiqueta).toLowerCase() === "canvas") nodo.getContext = () => null;
+        return nodo;
+      };
+    })(win.document.createElement.bind(win.document));
+
+    doc.querySelector(".vest-prueba").click();
+    tecla(win, doc, "ArrowRight");
+
+    $(doc, "vestPublicar").click();
+    for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual(subidas(llamadas).length, 0, "no tenía que haber mandado nada");
+    assert.match($(doc, "arteResultados").textContent, /canvas/);
+  });
+});
+
+describe("el aviso antes de publicar", () => {
+  test("nombra las que se suben descuadradas, sin bloquear nada", async () => {
+    const { doc } = await conPrenda(327, 505);
+
+    const aviso = $(doc, "vestAvisoLienzo");
+    assert.strictEqual(aviso.hidden, false);
+    assert.match(aviso.textContent, /tora_accesorio\.png \(327×505\)/);
+    assert.strictEqual($(doc, "vestPublicar").disabled, false, "avisar no es bloquear");
+  });
+
+  test("y desaparece en cuanto se las lleva al lienzo", async () => {
+    const { doc } = await conPrenda(327, 505);
+
+    $(doc, "vestAlLienzo").click();
+
+    assert.strictEqual($(doc, "vestAvisoLienzo").hidden, true);
+  });
+
+  test("una que ya mide el lienzo no dispara ningún aviso", async () => {
+    const { doc } = await conPrenda(327, 504);
+    assert.strictEqual($(doc, "vestAvisoLienzo").hidden, true);
   });
 });
