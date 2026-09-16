@@ -290,8 +290,20 @@
 
     const uno = elem("figure");
     uno.style.margin = "0";
+    const anchoLienzo = Math.round(V().LIENZO.ancho * escala);
+
+    // El tope del dibujo sale de lo que mida el rail, no de un número fijo.
+    // Con el 260 de antes, las dos cajas sumaban 14+45+18+260+14 = 351 px
+    // dentro de un rail de 320 y se salían SIEMPRE que un archivo no medía
+    // el lienzo, que es justo cuando este dibujo aparece.
+    //
+    // clientWidth es 0 en jsdom, que no maqueta; el 316 de respaldo es el
+    // rail de 320 menos su padding.
+    const hueco = caja.clientWidth || 316;
+    const tope = Math.max(90, hueco - 28 - 2 - 18 - anchoLienzo - 6);
+
     const cajaLienzo = elem("div", "taller-caja lienzo");
-    cajaLienzo.style.width = Math.round(V().LIENZO.ancho * escala) + "px";
+    cajaLienzo.style.width = anchoLienzo + "px";
     cajaLienzo.style.height = alto + "px";
     uno.appendChild(cajaLienzo);
     uno.appendChild(elem("figcaption", null, "el lienzo\n" + V().LIENZO.ancho + "×" + V().LIENZO.alto));
@@ -300,7 +312,7 @@
     const dos = elem("figure");
     dos.style.margin = "0";
     const cajaArchivo = elem("div", "taller-caja archivo");
-    cajaArchivo.style.width = Math.min(260, anchoArchivo) + "px";
+    cajaArchivo.style.width = Math.min(tope, anchoArchivo) + "px";
     cajaArchivo.style.height = Math.min(170, altoArchivo) + "px";
     dos.appendChild(cajaArchivo);
     dos.appendChild(elem("figcaption", null, p.archivo + "\n" + p.ancho + "×" + p.alto));

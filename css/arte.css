@@ -361,15 +361,25 @@
 
 .vest-panel {
   display: grid;
-  grid-template-columns: 290px 1fr 320px;
+  /* minmax(0, ...) y no 290px a secas: una pista de rejilla tiene por
+     mínimo automático el min-content de lo que lleva, así que un
+     <select> ancho o un dibujo a escala la empujaban y la columna se
+     salía. Con el 0 delante, manda la columna y no su contenido. */
+  grid-template-columns: minmax(0, 290px) minmax(0, 1fr) minmax(0, 320px);
   gap: 18px;
   align-items: start;
 }
 
+/* El overflow-x va DICHO. Si se deja en visible mientras el otro eje
+   es auto, el CSS lo convierte en auto por su cuenta y aparece la barra
+   horizontal en cuanto algo sobresale un píxel. Acá abajo, además, se
+   arregla lo que sobresalía; esto es la red. */
 .vest-rail {
   min-width: 0;
   max-height: 72vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
   padding-right: 4px;
 }
 
@@ -509,7 +519,7 @@
 
 .vest-prueba {
   display: grid;
-  grid-template-columns: auto 48px 1fr;
+  grid-template-columns: minmax(0, auto) 48px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   padding: 8px;
@@ -759,6 +769,11 @@
 .taller-comparar {
   display: flex;
   align-items: flex-end;
+  /* Las dos cajas suman hasta 14+45+18+260+14 = 351 px dentro de un
+     rail de 320: se salían siempre que un archivo no medía el lienzo,
+     que según la historia del panel es casi siempre. El JS ya las
+     dibuja al ancho que quepa; esto las apila si aún así no caben. */
+  flex-wrap: wrap;
   gap: 18px;
   margin-top: 12px;
   padding: 14px;
@@ -892,7 +907,7 @@
 
 .taller-linea {
   display: grid;
-  grid-template-columns: auto 34px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, auto) 34px minmax(0, 1fr) minmax(0, auto);
   gap: 10px;
   align-items: center;
   padding: 9px 10px;
@@ -1022,16 +1037,57 @@ body.taller-pagina > .arte-aviso { margin: 24px; }
   min-height: 0;
   align-items: stretch;
 }
-.taller-pagina .vest-rail { max-height: none; overflow-y: auto; }
-.taller-pagina .vest-escena { overflow-y: auto; }
+.taller-pagina .vest-rail { max-height: none; overflow-y: auto; overflow-x: hidden; }
+.taller-pagina .vest-escena { overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+
+/* ---------- que nada se salga de su columna ---------- */
+
+/* Las barras horizontales del taller no salían de un sitio: salían de
+   varios, y todos son controles o dibujos que traen su propio ancho y no
+   lo sueltan por su cuenta.
+
+   La más dura es el <input type="file">. Un file mide lo que mide su
+   texto -en español, «Seleccionar archivos · Ningún archivo seleccionado»
+   pasa de 350 px- y no se encoge por nada. En un rail de 320 se salía
+   siempre, en el paso 2, que es por donde pasa todo el mundo.
+
+   Y en esta página no había NADA que estilara los controles: las reglas
+   compartidas cuelgan de .arte-main, que es la clase de arte.html, y el
+   taller usa .taller-main. Así que cada select y cada input salían con su
+   ancho de fábrica. */
+.taller-pagina select,
+.taller-pagina input[type="text"],
+.taller-pagina input[type="number"],
+.taller-pagina input[type="file"] { max-width: 100%; }
+
+.taller-soltar input[type="file"] { width: 100%; }
+
+/* Un nombre de archivo no trae espacios donde partir: sin esto, un
+   «Captura_de_pantalla_2026_09_15_113043.png» estira lo que lo lleve. */
+.taller-comparar figcaption,
+.taller-descarga .que,
+.taller-descarga .como { overflow-wrap: anywhere; }
+
+.taller-comparar figure { min-width: 0; max-width: 100%; margin: 0; }
+.taller-caja { max-width: 100%; }
 .taller-pagina .vest-barra { position: static; padding-top: 4px; }
 .taller-pagina .taller-nav { flex-shrink: 0; }
 
 @media (max-width: 720px) {
-  body.taller-pagina { height: auto; min-height: 100dvh; overflow: visible; }
+  /* En el teléfono la página entera rueda, así que los raíles dejan de
+     tener scroll propio. Pero «visible» a secas devolvía la barra
+     horizontal: clip en un eje y visible en el otro es la única pareja
+     que el CSS NO convierte en auto, así que corta de ancho sin volver a
+     convertir la caja en un contenedor con scroll. */
+  body.taller-pagina {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
   .taller-main { padding: 0 16px 16px; }
   .taller-pagina .vest-rail,
-  .taller-pagina .vest-escena { overflow: visible; }
+  .taller-pagina .vest-escena { overflow-x: clip; overflow-y: visible; }
 }
 
 /* La invitacion que queda en arte.html en lugar del taller. */
