@@ -1075,3 +1075,65 @@ describe("y Volver al original no resucita el salto", () => {
     assert.match($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
   });
 });
+
+// ==============================
+// UNA CAPA ROTA NO MATA LA RANURA
+// ==============================
+// js/core.js esconde con display:none cualquier capa de avatar cuyo
+// dibujo no cargue, para que no quede la marca de "imagen no encontrada"
+// encima del maniquí (ver tests/capas-rotas.test.js).
+//
+// Pero el maniquí no es como el resto del sitio: las 15 <img> son SIEMPRE
+// las mismas y van cambiando de prenda toda la tarde. Un display:none
+// puesto a mano sobrevive al cambio de src, así que sin cuidado una sola
+// prenda que fallara dejaba esa ranura muerta hasta recargar.
+describe("una capa que no cargó vuelve al cambiar de prenda", () => {
+  const CORE = require("node:fs")
+    .readFileSync(require("node:path").join(__dirname, "..", "js", "core.js"), "utf8");
+
+  // El bloque de verdad, no una copia: si se mueve, esto deja de montar.
+  function escuchaDeCapasRotas() {
+    const i = CORE.indexOf("// UNA CAPA QUE NO CARGA NO DEJA MARCA");
+    const j = CORE.indexOf("function avatarMiniaturaHTML");
+    assert.ok(i !== -1 && j !== -1, "no se encontró el bloque en js/core.js");
+    return CORE.slice(i, j);
+  }
+
+  async function conPeloRoto() {
+    const { win, doc } = await montar();
+    win.eval(escuchaDeCapasRotas());
+
+    $(doc, "vestAbrir").click();
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+    doc.querySelector('.vest-opcion[data-valor="tora_pelo1"]').click();
+
+    const pelo = doc.querySelector('.vest-capa[data-ranura="pelo"]');
+    pelo.dispatchEvent(new win.Event("error"));
+
+    return { win, doc, pelo };
+  }
+
+  test("primero se esconde, que es lo que evita la marca", async () => {
+    const { pelo } = await conPeloRoto();
+
+    assert.strictEqual(pelo.style.display, "none");
+  });
+
+  test("y al ponerse otra prenda la ranura revive", async () => {
+    const { doc, pelo } = await conPeloRoto();
+
+    doc.querySelector('.vest-opcion[data-valor="tora_pelo2"]').click();
+
+    assert.strictEqual(pelo.style.display, "");
+    assert.strictEqual(pelo.hidden, false);
+    assert.strictEqual(pelo.getAttribute("src"), "/prendas/fff.png");
+  });
+
+  test("y no se queda la marca puesta de la vez anterior", async () => {
+    const { doc, pelo } = await conPeloRoto();
+
+    doc.querySelector('.vest-opcion[data-valor="tora_pelo2"]').click();
+
+    assert.strictEqual(pelo.dataset.capaRota, undefined);
+  });
+});

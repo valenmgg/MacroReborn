@@ -512,16 +512,115 @@ function rutaCapaAvatar(valor){
   const delCatalogo = RUTAS_DE_PRENDA.get(valor);
   if(delCatalogo) return delCatalogo;
 
-  // Sin catálogo todavía, o valor que el catálogo no conoce. Lo segundo
-  // NO es un error: el catálogo solo trae las prendas publicadas, y una
-  // prenda retirada tiene que seguir viéndose en el avatar de quien ya
-  // la llevaba puesta. Retirar la saca del editor, no de la gente.
-  const texto = String(valor);
-  const idx = texto.indexOf("_");
+  // Sin catálogo TODAVÍA: la ruta de siempre. Que la red falle o que el
+  // catálogo tarde en llegar no puede dejar a nadie sin avatar.
+  if(!RUTAS_DE_PRENDA.size){
+    const texto = String(valor);
+    const idx = texto.indexOf("_");
 
-  if(idx === -1) return "imagenes/" + texto + ".png";
+    if(idx === -1) return "imagenes/" + texto + ".png";
 
-  return "imagenes/" + texto.slice(0, idx) + "/" + texto.slice(idx + 1) + ".png";
+    return "imagenes/" + texto.slice(0, idx) + "/" + texto.slice(idx + 1) + ".png";
+  }
+
+  // CON catálogo y sin rastro del valor: la prenda está COLGANDO.
+  //
+  // Esto ya NO incluye a las retiradas. Antes sí, y por eso acá se
+  // adivinaba una ruta: una prenda retirada tiene que seguir dibujándose
+  // en quien ya la llevaba puesta. Desde que el servidor manda la lista
+  // "retiradas" con su URL con huella (ver construirCatalogo en
+  // api/content.js), una retirada entra en RUTAS_DE_PRENDA como
+  // cualquier otra y no llega hasta acá.
+  //
+  // Lo que llega es un valor que no existe en NINGUNA fila de
+  // avatar_prendas. Adivinarle "imagenes/<modelo>/<resto>.png" no lo
+  // arregla, porque ese fichero tampoco está: lo único que consigue es
+  // un 404, y un 404 en una <img> no se ve como un hueco sino como la
+  // marca de "imagen no encontrada" del navegador, pegada encima del
+  // avatar y con el tamaño que el CSS le dio a la capa.
+  //
+  // Medido contra la base de producción: "tora_piel7" está puesto cinco
+  // veces -tres cuentas y dos casilleros de galería- y no tiene fila ni
+  // fichero. Es el único caso hoy, y los cinco daban esa marca.
+  //
+  // Devolver null lo deja fuera, y el avatar se dibuja con el resto de
+  // las capas. Es lo mismo que hace rutaDePrenda() en js/perfil.js desde
+  // que se arregló ahí; esto pone de acuerdo a las otras siete páginas
+  // que dibujan avatares.
+  return null;
+}
+
+// ------------------------------------------------------------------
+// UNA CAPA QUE NO CARGA NO DEJA MARCA
+// ------------------------------------------------------------------
+// Cuando el dibujo de una capa no está, el navegador NO deja el hueco
+// vacío: pinta su marca de "imagen no encontrada" -un recuadro de borde
+// fino con el icono roto arriba a la izquierda- del tamaño que el CSS le
+// haya dado a la <img>. Encima de un avatar eso no se lee como un error
+// de red: se lee como una prenda rota que la persona lleva puesta.
+//
+// Lo de arriba (rutaCapaAvatar devolviendo null) tapa el caso conocido,
+// pero solo ese y solo después de que el catálogo llegue. Quedan otros
+// que no dependen de nosotros:
+//
+//   - El avatar se dibuja ANTES de que el catálogo cargue, que es lo
+//     normal: ahí todavía se adivina la ruta de siempre.
+//   - Un 404 que nginx marcó como immutable y el navegador se guardó
+//     treinta días (ya pasó: ver el comentario de "retiradas" en
+//     api/content.js).
+//   - Un fichero que desaparece por debajo con la fila todavía puesta.
+//
+// El arreglo no es acordarse de poner onerror en los siete sitios que
+// dibujan capas -ya se olvidó una vez- sino escuchar UNA vez en el
+// documento. Los "error" de una <img> no burbujean, pero sí bajan en la
+// fase de captura, y por eso el tercer argumento es true. Así entran
+// también las capas escritas con innerHTML, las perezosas con data-src
+// y las que todavía no existen.
+function _esCapaDeAvatar(img){
+  const clases = img.classList;
+  if(clases){
+    if(clases.contains("capa") || clases.contains("vest-capa")) return true;
+    for(let i = 0; i < clases.length; i++){
+      if(clases[i].indexOf("capa-") === 0) return true;
+    }
+  }
+  return !!(img.closest && img.closest(".avatar-compuesto"));
+}
+
+const _capasRotasAvisadas = new Set();
+
+if(typeof document !== "undefined"){
+  document.addEventListener("error", evento=>{
+    const img = evento.target;
+    if(!img || img.tagName !== "IMG") return;
+
+    const ruta = img.getAttribute("src") || "";
+
+    // Un avatar que es UN PNG entero no se puede esconder: no hay más
+    // capas debajo, quedaría un círculo vacío. Ese cae al avatar por
+    // defecto, que es lo que ya se enseña cuando alguien no tiene.
+    if(img.classList && img.classList.contains("avatar-png-personalizado")){
+      if(img.dataset.capaRota) return;   // falló hasta el de por defecto
+      img.dataset.capaRota = "1";
+      img.src = "imagenes/avatar.png";
+      return;
+    }
+
+    if(!_esCapaDeAvatar(img)) return;
+
+    // display:none en el propio elemento, y no el atributo hidden,
+    // porque cualquier regla de CSS con display le gana al atributo y
+    // estas capas llevan reglas propias en cinco hojas distintas.
+    img.style.display = "none";
+    img.dataset.capaRota = "1";
+
+    // Un aviso por dibujo, no por avatar: la misma prenda rota puede
+    // estar puesta en veinte tarjetas de la misma página.
+    if(ruta && !_capasRotasAvisadas.has(ruta)){
+      _capasRotasAvisadas.add(ruta);
+      console.warn("MacroReborn: falta el dibujo de una capa del avatar; se dibuja sin ella.", ruta);
+    }
+  }, true);
 }
 
 function avatarMiniaturaHTML(avatarCrudo){

@@ -803,7 +803,19 @@ function vestBytesDeCuerpo(texto) {
 
     // src pelado y no data-src: esto SIEMPRE se ve -es lo que el artista
     // está mirando- y encima son 15 imágenes contadas, no una lista.
-    if (img.getAttribute("src") !== f.url) img.src = f.url;
+    if (img.getAttribute("src") !== f.url) {
+      img.src = f.url;
+
+      // Estas 15 <img> se REUSAN: la misma capa "pelo" va cambiando de
+      // prenda toda la tarde. Si una no cargó, js/core.js la esconde con
+      // display:none para que no quede la marca de imagen rota, y esa
+      // marca sobrevive al cambio de src. Sin esto, una sola prenda que
+      // fallara dejaba esa ranura muerta hasta recargar la página.
+      if (img.dataset.capaRota) {
+        delete img.dataset.capaRota;
+        img.style.display = "";
+      }
+    }
     img.hidden = false;
   }
 
