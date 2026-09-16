@@ -213,7 +213,13 @@ describe("lo que se ve es lo que se publica", () => {
   });
 
   test("y el estilo del DOM son esos mismos números con px pegado", () => {
-    for (const i of [item(327, 504, { dx: 12, dy: -4 }), item(400, 504, null), item(654, 1010, { escala: 50 })]) {
+    const casos = [
+      item(327, 504, { dx: 12, dy: -4 }),
+      item(400, 504, null),
+      item(654, 1010, { escala: 50 }),
+      item(327, 504, { dx: 12, espejo: true })
+    ];
+    for (const i of casos) {
       const e = V.encuadre(i);
       igual(V.estilo(i), {
         left: e.x + "px",
@@ -223,6 +229,16 @@ describe("lo que se ve es lo que se publica", () => {
         transform: e.espejo ? "scaleX(-1)" : "none"
       });
     }
+  });
+
+  // Lo de arriba deriva el valor esperado de la misma expresión que usa la
+  // función, así que la rama del espejo pasaría aunque las dos estuvieran
+  // mal. Acá va el literal: es lo que de verdad tiene que salir escrito en
+  // el atributo style.
+  test("y el espejo del DOM es un scaleX(-1), literalmente", () => {
+    assert.strictEqual(V.estilo(item(327, 504, { dx: 12, espejo: true })).transform, "scaleX(-1)");
+    assert.strictEqual(V.estilo(item(327, 504, { dx: 12 })).transform, "none");
+    assert.strictEqual(V.estilo(item(327, 504, null)).transform, "none");
   });
 
   // G4. Para cinco de cada seis dibujos las dos ramas son la MISMA, así
@@ -460,6 +476,32 @@ describe("lo que se sale del lienzo", () => {
     igual(V.recorteDeCaja(caja),
       { izq: 0, arriba: 0, der: 0, abajo: 1 });
   });
+
+  // El espejo hay que aplicarlo también a la caja, y sobre la misma recta
+  // que usa el horno. Sin esto, el dibujo se refleja y la caja no, así que
+  // el aviso de recorte señala el lado contrario: avisa de lo que no se
+  // pierde y calla lo que sí.
+  //
+  // Se necesita una caja ASIMÉTRICA para verlo. Con la caja del archivo
+  // entero -la única que se podía construir hasta ahora- el fallo es
+  // invisible, porque reflejar un rectángulo centrado lo deja donde estaba.
+  test("y el espejo mueve la caja al otro lado, como mueve el dibujo", () => {
+    const tintaIzquierda = { x: 0, y: 100, ancho: 50, alto: 200 };
+
+    // Sin espejo, correr 30 px a la izquierda pierde esos 30 px.
+    const quieta = V.cajaEnLienzo(tintaIzquierda, 327, 504, { dx: -30 });
+    igual(V.recorteDeCaja(quieta), { izq: 30, arriba: 0, der: 0, abajo: 0 });
+
+    // Con espejo, esa misma tinta acaba a la derecha del lienzo y no se
+    // pierde ni un píxel.
+    const reflejada = V.cajaEnLienzo(tintaIzquierda, 327, 504, { dx: -30, espejo: true });
+    igual(V.recorteDeCaja(reflejada), { izq: 0, arriba: 0, der: 0, abajo: 0 });
+
+    // Y al revés: moviéndola a la derecha con espejo, lo que se pierde se
+    // pierde por la derecha.
+    const alOtroLado = V.cajaEnLienzo(tintaIzquierda, 327, 504, { dx: 30, espejo: true });
+    igual(V.recorteDeCaja(alOtroLado), { izq: 0, arriba: 0, der: 30, abajo: 0 });
+  });
 });
 
 describe("lo que se le enseña al artista", () => {
@@ -475,14 +517,45 @@ describe("lo que se le enseña al artista", () => {
   // volver a subirlo sin ajuste, en vez de que el apaño viva dentro de
   // nuestra web para siempre.
   test("y la frase habla en píxeles de su archivo", () => {
-    const frase = V.instruccion({ dx: 12, dy: -4, escala: 103 }, 327, 505);
+    const frase = V.instruccion({ dx: 12, dy: -4 }, 327, 505);
     assert.match(frase, /12 px a la derecha/);
     assert.match(frase, /4 px arriba/);
-    assert.match(frase, /103 %/);
 
     // Y esos 12 son 12 de verdad: el rectángulo mide 327*1,03 exacto, no
     // 327*0,998*1,03, que es lo que daba la base encaje.
     assert.strictEqual(V.pegado(327, 505, { dx: 12, dy: -4, escala: 103 }).ancho, 327 * 1.03);
+  });
+
+  // EL ORDEN IMPORTA, y por eso la frase lo dice.
+  //
+  // En vestEncuadrePegado el desplazamiento se suma DESPUÉS de escalar, y
+  // el espejo refleja sobre el centro del rectángulo ya desplazado. O sea
+  // que dx está medido en píxeles de la EXPORTACIÓN. A escala 100 da
+  // igual -es el caso de todo el catálogo menos tres dibujos- pero al
+  // 50 % no: alguien que leyera "mové 40 px, exportá al 50 %" y lo
+  // hiciera en ese orden acabaría a mitad de camino.
+  test("y dice el orden, porque hacerlo al revés da otro resultado", () => {
+    const frase = V.instruccion({ dx: 40, escala: 50, espejo: true }, 327, 504);
+
+    assert.match(frase, /por este orden/);
+
+    const espejo = frase.indexOf("espejá");
+    const exportar = frase.indexOf("exportalo");
+    const mover = frase.indexOf("movelo");
+
+    assert.ok(espejo !== -1 && exportar !== -1 && mover !== -1, frase);
+    assert.ok(espejo < exportar, "el espejo va antes de exportar: " + frase);
+    assert.ok(exportar < mover, "mover va al final, sobre lo ya exportado: " + frase);
+
+    // Y cuando la escala cambia, se dice sobre qué se mide el movimiento.
+    assert.match(frase, /sobre esa exportación/);
+  });
+
+  test("pero a escala 100 no se añade ninguna coletilla, porque no hace falta", () => {
+    const frase = V.instruccion({ dx: 12 }, 327, 504);
+    assert.match(frase, /^En tu archivo: movelo 12 px a la derecha.$/);
+    assert.doesNotMatch(frase, /exportación/);
+    assert.doesNotMatch(frase, /exportalo/);
   });
 
   test("y sabe cuándo no hay nada que decir", () => {
@@ -510,14 +583,77 @@ describe("los dos pesos, que se cuentan distinto a propósito", () => {
     assert.strictEqual(V.pesoDeDataUrl("sin coma"), 0);
   });
 
-  test("la expresión del PNG es la misma que la del servidor", () => {
-    assert.ok(V.VEST_DATA_PNG.test("data:image/png;base64,AAAA"));
-    assert.ok(!V.VEST_DATA_PNG.test("data:image/jpeg;base64,AAAA"));
-    assert.ok(!V.VEST_DATA_PNG.test("data:image/png;base64,"));
+});
+
+// ==============================
+// EL CONTRATO CON EL SERVIDOR
+// ==============================
+// Estas tres pruebas LEEN el servidor. Antes comparaban las constantes
+// del cliente contra las mismas cifras escritas a mano acá, o sea que
+// decían "1 MB es 1 MB" y se habrían quedado verdes para siempre aunque
+// api/content.js cambiara de opinión. Una prueba que no puede fallar por
+// el motivo que dice su nombre no es una prueba.
+
+const FUENTE_CONTENT = fs.readFileSync(
+  path.join(__dirname, "..", "api", "content.js"), "utf8");
+const FUENTE_SERVER = fs.readFileSync(
+  path.join(__dirname, "..", "server.js"), "utf8");
+
+function constanteDelServidor(fuente, nombre) {
+  const m = new RegExp("const " + nombre + "\\s*=\\s*([0-9*\\s]+);").exec(fuente);
+  assert.ok(m, "no se encontró " + nombre + " en el servidor");
+  // Solo dígitos, espacios y asteriscos: es una multiplicación, no código.
+  return m[1].trim().split("*").reduce((a, b) => a * Number(b.trim()), 1);
+}
+
+describe("el contrato con el servidor, leído del servidor", () => {
+  test("acepta y rechaza exactamente lo mismo que leerPngSubido", () => {
+    // Se saca la expresión del propio api/content.js, recortando la línea
+    // entre sus dos barras. La del cliente no lleva grupo de captura, así
+    // que compararlas como texto daría un falso negativo: lo que importa
+    // es que las dos decidan lo mismo sobre las mismas cadenas.
+    const i = FUENTE_CONTENT.indexOf("texto.match(");
+    assert.ok(i !== -1, "no se encontró leerPngSubido en api/content.js");
+
+    const linea = FUENTE_CONTENT.slice(i, FUENTE_CONTENT.indexOf("\n", i));
+    const a = linea.indexOf("/");
+    const b = linea.lastIndexOf("/");
+    assert.ok(a !== -1 && b > a, "no se pudo recortar la expresión de: " + linea);
+
+    const delServidor = new RegExp(linea.slice(a + 1, b));
+
+    const casos = [
+      "data:image/png;base64,AAAA",
+      "data:image/png;base64,AA==",
+      "data:image/png;base64,",
+      "data:image/jpeg;base64,AAAA",
+      "data:image/png;charset=utf-8;base64,AAAA",
+      "data:image/png;base64,AA AA",
+      "data:image/png;base64,AA\nAA",
+      " data:image/png;base64,AAAA",
+      "data:image/png;base64,AAAA ",
+      "AAAA"
+    ];
+
+    for (const c of casos) {
+      assert.strictEqual(V.VEST_DATA_PNG.test(c), delServidor.test(c),
+        "el cliente y el servidor no opinan igual sobre " + JSON.stringify(c));
+    }
   });
 
-  test("y los topes son los que espera el servidor", () => {
-    assert.strictEqual(V.VEST_TOPE_PRENDA, 1024 * 1024);
-    assert.strictEqual(V.VEST_TOPE_CUERPO, 10 * 1024 * 1024);
+  test("el tope por prenda es el de api/content.js", () => {
+    assert.strictEqual(V.VEST_TOPE_PRENDA,
+      constanteDelServidor(FUENTE_CONTENT, "TOPE_POR_PRENDA"));
+  });
+
+  // Este NO tiene que ser igual, tiene que ser MENOR: el servidor corta a
+  // los 12 MB del cuerpo entero, y en el cuerpo viaja el JSON con todas
+  // las prendas de la tanda más sus nombres. El cliente se guarda margen.
+  test("y el presupuesto de la tanda cabe con holgura en el del servidor", () => {
+    const limiteCuerpo = constanteDelServidor(FUENTE_SERVER, "LIMITE_CUERPO");
+    assert.ok(V.VEST_TOPE_CUERPO < limiteCuerpo,
+      "el cliente presupuesta " + V.VEST_TOPE_CUERPO + " y el servidor corta en " + limiteCuerpo);
+    assert.ok(V.VEST_TOPE_CUERPO >= limiteCuerpo * 0.5,
+      "tanto margen deja la tanda innecesariamente pequeña");
   });
 });

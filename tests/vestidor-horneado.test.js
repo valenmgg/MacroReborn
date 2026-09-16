@@ -102,7 +102,10 @@ describe("el horno dibuja un calco, no un remuestreo", () => {
   // aunque el archivo mida 505 de alto: las dos mitades del diseño -el
   // lienzo fijo y el anclaje entero- tienen que convivir.
   test("un 327x505 movido 12 y -4 se dibuja en 12, -4, 327, 505", async () => {
-    const h = montarHorno({ ancho: 327, alto: 505 });
+    // La salida se marca distinta del HORNEADO genérico para que no pueda
+    // confundirse con la de ninguna otra prueba.
+    const SALIDA = "data:image/png;base64,HORNEADOUNO";
+    const h = montarHorno({ ancho: 327, alto: 505, salida: SALIDA });
 
     const salida = await h.api.pngDeSubida(
       item(327, 505, { dx: 12, dy: -4, escala: 100 }));
@@ -114,6 +117,14 @@ describe("el horno dibuja un calco, no un remuestreo", () => {
 
     assert.strictEqual(h.lienzos[0].width, 327);
     assert.strictEqual(h.lienzos[0].height, 504);
+
+    // LO QUE DE VERDAD SE SUBE. Sin esta línea, un horno que dibujara
+    // perfectamente en el canvas y luego devolviera item.dataUrl -o sea,
+    // el PNG SIN ajustar- pasaría esta prueba y todas las demás. Se
+    // comprobó rompiéndolo a propósito: 16 de 16 en verde. Es justo el
+    // fallo que este archivo entero existe para impedir.
+    assert.strictEqual(salida.texto, SALIDA);
+    assert.notStrictEqual(salida.texto, PNG_FALSO);
   });
 
   // H2. Llevar al lienzo un 327x505 es tirar una fila. Ni un scale, ni un
@@ -126,6 +137,8 @@ describe("el horno dibuja un calco, no un remuestreo", () => {
 
     assert.strictEqual(salida.horneado, true);
     assert.strictEqual(salida.exacto, true);
+    assert.strictEqual(salida.texto, HORNEADO);
+    assert.notStrictEqual(salida.texto, PNG_FALSO);
     assert.deepStrictEqual(ordenesDe(h.ordenes, "drawImage"),
       [["drawImage", 0, 0, 327, 505]]);
     assert.strictEqual(ordenesDe(h.ordenes, "scale").length, 0, "no debería escalar nada");
@@ -139,8 +152,10 @@ describe("el horno dibuja un calco, no un remuestreo", () => {
   test("y llevar al lienzo un 326x503 rellena, no estira", async () => {
     const h = montarHorno({ ancho: 326, alto: 503 });
 
-    await h.api.pngDeSubida(item(326, 503, Object.assign({}, NEUTRO, { alLienzo: true })));
+    const salida = await h.api.pngDeSubida(
+      item(326, 503, Object.assign({}, NEUTRO, { alLienzo: true })));
 
+    assert.strictEqual(salida.texto, HORNEADO);
     assert.deepStrictEqual(ordenesDe(h.ordenes, "drawImage"),
       [["drawImage", 1, 1, 326, 503]]);
 
@@ -155,12 +170,46 @@ describe("el horno dibuja un calco, no un remuestreo", () => {
 
     await h.api.pngDeSubida(item(327, 504, { dx: 20, espejo: true }));
 
+    // LA SECUENCIA ENTERA, no las órdenes filtradas por nombre.
+    //
+    // Filtrando por nombre, el drawImage podía estar FUERA del
+    // save/restore -o sea, sin la reflexión aplicada- y la prueba pasaba
+    // igual, porque el translate, el scale, el save y el restore seguían
+    // ahí y en la cantidad esperada. Se comprobó moviendo el drawImage
+    // detrás del restore: 16 de 16 en verde, con el espejo sin aplicar.
+    //
+    // Lo que importa del espejo no es que las órdenes existan: es que el
+    // dibujo caiga DENTRO de ellas. Eso solo se ve en el orden.
+    //
     // cx = x + ancho/2 = 20 + 163,5
-    assert.deepStrictEqual(ordenesDe(h.ordenes, "translate"),
-      [["translate", 183.5, 0], ["translate", -183.5, 0]]);
-    assert.deepStrictEqual(ordenesDe(h.ordenes, "scale"), [["scale", -1, 1]]);
-    assert.strictEqual(ordenesDe(h.ordenes, "save").length, 1);
-    assert.strictEqual(ordenesDe(h.ordenes, "restore").length, 1);
+    assert.deepStrictEqual(h.ordenes, [
+      ["clearRect", 0, 0, 327, 504],
+      ["smoothing", true],
+      ["calidad", "high"],
+      ["setTransform", 1, 0, 0, 1, 0, 0],
+      ["save"],
+      ["translate", 183.5, 0],
+      ["scale", -1, 1],
+      ["translate", -183.5, 0],
+      ["drawImage", 20, 0, 327, 504],
+      ["restore"],
+      ["setTransform", 1, 0, 0, 1, 0, 0]
+    ]);
+  });
+
+  test("y sin espejo no se toca la matriz para nada", async () => {
+    const h = montarHorno({ ancho: 327, alto: 505 });
+
+    await h.api.pngDeSubida(item(327, 505, { dx: 12 }));
+
+    assert.deepStrictEqual(h.ordenes, [
+      ["clearRect", 0, 0, 327, 504],
+      ["smoothing", true],
+      ["calidad", "high"],
+      ["setTransform", 1, 0, 0, 1, 0, 0],
+      ["drawImage", 12, 0, 327, 505],
+      ["setTransform", 1, 0, 0, 1, 0, 0]
+    ]);
   });
 
   test("y nunca se rota nada", async () => {
@@ -288,15 +337,39 @@ describe("el horno sabe cuándo está interpolando", () => {
 
     assert.strictEqual(salida.horneado, true);
     assert.strictEqual(salida.exacto, false, "esto sí interpola, y hay que saberlo");
+    assert.strictEqual(salida.texto, HORNEADO);
     assert.deepStrictEqual(ordenesDe(h.ordenes, "drawImage"),
       [["drawImage", 0.5, -0.5, 327, 505]]);
+
+    // EL LIENZO ES FIJO, Y ESTA ES LA ÚNICA PRUEBA QUE PUEDE DEMOSTRARLO.
+    //
+    // En todas las demás el archivo mide 327 de ancho, así que
+    // "canvas.width = img.naturalWidth" daría 327 igual y la comprobación
+    // pasaría sin comprobar nada. Se vio rompiéndolo a propósito: la
+    // mutación pasaba 17 de 17. Acá el archivo mide 654, de modo que si
+    // alguien hace que el lienzo siga al archivo, salta.
+    assert.strictEqual(h.lienzos[0].width, 327, "el lienzo siguió al archivo");
+    assert.strictEqual(h.lienzos[0].height, 504, "el lienzo siguió al archivo");
+  });
+
+  // Los tres términos de "exacto" (x entera, y entera, tamaño igual) caían
+  // a la vez en el único caso que había. Acá se separan: este interpola
+  // solo por el tamaño, con las coordenadas perfectamente enteras.
+  test("y se interpola aunque las coordenadas sean enteras, si cambia el tamaño", async () => {
+    const h = montarHorno({ ancho: 400, alto: 504 });
+
+    const salida = await h.api.pngDeSubida(item(400, 504, { escala: 50 }));
+
+    assert.deepStrictEqual(ordenesDe(h.ordenes, "drawImage"),
+      [["drawImage", 64, 126, 200, 252]]);
+    assert.strictEqual(salida.exacto, false, "cambiar el tamaño ya es remuestrear");
   });
 
   test("pero a escala 100 nunca interpola, en ninguna medida real", async () => {
-    for (const [w, a] of [[504, 327], [505, 327], [503, 326], [504, 326]]) {
-      const h = montarHorno({ ancho: a, alto: w });
-      const salida = await h.api.pngDeSubida(item(a, w, { dx: 7, dy: -3, escala: 100 }));
-      assert.strictEqual(salida.exacto, true, a + "x" + w + " salió interpolado");
+    for (const [w, h] of [[327, 504], [327, 505], [326, 503], [326, 504]]) {
+      const horno = montarHorno({ ancho: w, alto: h });
+      const salida = await horno.api.pngDeSubida(item(w, h, { dx: 7, dy: -3, escala: 100 }));
+      assert.strictEqual(salida.exacto, true, w + "x" + h + " salió interpolado");
     }
   });
 });

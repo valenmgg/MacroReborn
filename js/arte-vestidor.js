@@ -353,16 +353,30 @@ function vestMedidasDeTexto(texto) {
 // Mapea una caja medida en píxeles DEL ARCHIVO -por ejemplo la caja de
 // tinta, el rectángulo donde de verdad hay dibujo- a píxeles del lienzo,
 // a través del mismo encuadre con el que se va a hornear.
+//
+// El espejo hay que aplicarlo aquí también, y sobre LA MISMA RECTA que usa
+// el horno (el centro del rectángulo, no el del lienzo). Sin esto, la caja
+// sale sin reflejar mientras el dibujo sí se refleja, y el aviso de
+// recorte señala el lado contrario: con la tinta pegada al borde izquierdo
+// y un ajuste {dx:-30, espejo:true} avisaría de 30 px perdidos por la
+// izquierda cuando no se pierde ninguno, y callaría los 30 que sí se
+// pierden por la derecha con {dx:+30, espejo:true}.
 function vestCajaEnLienzo(caja, w, h, ajuste) {
   const e = vestEncuadrePegado(w, h, ajuste);
   const k = w ? e.ancho / w : 1;
   const j = h ? e.alto / h : 1;
-  return {
-    x: e.x + (caja.x || 0) * k,
-    y: e.y + (caja.y || 0) * j,
-    ancho: (caja.ancho || 0) * k,
-    alto: (caja.alto || 0) * j
-  };
+
+  const ancho = (caja.ancho || 0) * k;
+  const alto = (caja.alto || 0) * j;
+  let x = e.x + (caja.x || 0) * k;
+  const y = e.y + (caja.y || 0) * j;
+
+  if (e.espejo) {
+    const cx = e.x + e.ancho / 2;
+    x = 2 * cx - (x + ancho);
+  }
+
+  return { x, y, ancho, alto, espejo: e.espejo };
 }
 
 // Cuántos píxeles de lienzo se pierden por cada lado. Hacia arriba,
@@ -396,11 +410,23 @@ function vestResumenDeAjuste(ajuste) {
 // viva dentro de nuestra web: es que el artista pueda arreglar SU
 // archivo y volver a subirlo sin ajuste ninguno.
 //
-// Y los números ya están en píxeles de su archivo. No hay que dividir
-// por nada, que es justo lo que la base pegada compró: con el encaje
-// como base, el ancho dibujado era w*k*s, así que un "103 %" en un PNG
-// de 327x505 era en realidad un 102,8 % de su exportador, y la frase
-// corregía el desplazamiento pero dejaba la escala mintiendo.
+// La escala es exacta y no hay que dividirla por nada, que es justo lo
+// que la base pegada compró: con el encaje como base el ancho dibujado
+// era w*k*s, así que un "103 %" sobre un PNG de 327x505 era en realidad
+// un 102,8 % de su exportador.
+//
+// Pero EL ORDEN DE LOS PASOS IMPORTA, y por eso la frase lo dice. En
+// vestEncuadrePegado el desplazamiento se suma DESPUÉS de escalar, y el
+// espejo refleja sobre el centro del rectángulo ya desplazado. O sea que
+// dx y dy están medidos en píxeles de la EXPORTACIÓN, no del archivo de
+// partida: a escala 100 son la misma cosa -que es el caso de todo el
+// catálogo menos tres dibujos-, pero al 50 % no. Un artista que leyera
+// "mové 40 px y exportá al 50 %" y lo hiciera en ese orden acabaría con
+// el dibujo a la mitad de camino.
+//
+// Se resuelve diciendo el orden en vez de convirtiendo los números,
+// porque convertirlos obligaría a redondear y el artista teclearía una
+// cifra que ya no es la que ve en pantalla.
 function vestInstruccionParaElArchivo(ajuste, w, h) {
   const a = vestNormalizarAjuste(ajuste);
 
@@ -413,13 +439,22 @@ function vestInstruccionParaElArchivo(ajuste, w, h) {
       : "No moviste nada: se sube tu archivo tal cual.";
   }
 
+  // El mismo orden en que lo hace el horno: espejar, escalar, mover.
   const pasos = [];
-  if (a.dx) pasos.push("mové el dibujo " + Math.abs(a.dx) + " px a la " + (a.dx > 0 ? "derecha" : "izquierda"));
-  if (a.dy) pasos.push((pasos.length ? "" : "mové el dibujo ") + Math.abs(a.dy) + " px " + (a.dy > 0 ? "abajo" : "arriba"));
+  if (a.espejo) pasos.push("espejá el dibujo en horizontal");
   if (a.escala !== 100) pasos.push("exportalo al " + a.escala + " %");
-  if (a.espejo) pasos.push("espejalo en horizontal");
 
-  return "En tu archivo: " + pasos.join(", ") + ".";
+  const mover = [];
+  if (a.dx) mover.push(Math.abs(a.dx) + " px a la " + (a.dx > 0 ? "derecha" : "izquierda"));
+  if (a.dy) mover.push(Math.abs(a.dy) + " px " + (a.dy > 0 ? "abajo" : "arriba"));
+  if (mover.length) {
+    pasos.push("movelo " + mover.join(" y ") +
+      (a.escala === 100 ? "" : " sobre esa exportación"));
+  }
+
+  // "Por este orden" solo cuando hay más de un paso que ordenar.
+  return "En tu archivo" + (pasos.length > 1 ? ", por este orden: " : ": ") +
+    pasos.join(", ") + ".";
 }
 
 
@@ -529,6 +564,14 @@ function vestBytesDeCuerpo(texto) {
     // que el fondo NO es blanco: es lo que hace que rellenar un 326x503
     // hasta el lienzo deje píxeles transparentes y no una franja negra.
     ctx.clearRect(0, 0, VEST_LIENZO_ANCHO, VEST_LIENZO_ALTO);
+
+    // El suavizado solo entra en juego cuando de verdad hay que
+    // remuestrear, o sea con escala distinta de 100: a escala 100 el
+    // dibujo se copia píxel a píxel y el interpolador ni se consulta.
+    // Se pide "high" porque las pocas veces que se usa -los tres dibujos
+    // del catálogo que necesitan el preset "Encajar"- son reducciones
+    // grandes, y ahí la diferencia entre el filtro rápido y el bueno se
+    // ve a simple vista en los bordes de línea.
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
 
