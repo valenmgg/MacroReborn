@@ -452,4 +452,167 @@ function vestBytesDeCuerpo(texto) {
 // ==============================
 // ZONA B — LA PANTALLA
 // ==============================
-// (todavía no existe: llega en el paso siguiente)
+// De acá para abajo sí hay navegador. Todo vive dentro de un IIFE que no
+// ejecuta nada al cargarse -a diferencia de js/arte.js, que termina
+// llamando a cargarPanel()- y que expone un único global,
+// window.MacroVestidor. Quien lo arranca es js/arte.js.
+//
+// De momento solo está el horno, que es lo que js/arte.js necesita para
+// publicar. El maniquí llega en el paso siguiente.
+
+(function (window) {
+  "use strict";
+
+  const document = window.document;
+
+  // ---------- DECODIFICAR ----------
+
+  // El onerror resuelve null en vez de lanzar, igual que hace
+  // _cargarImagenAvatarParaCanvas en js/core.js: una imagen ilegible no
+  // debe tirar abajo la tanda entera.
+  //
+  // Es un data: URL del mismo origen, así que no ensucia el canvas y no
+  // hace falta crossOrigin.
+  function cargarImagen(dataUrl) {
+    return new Promise(resolve => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  }
+
+  // ---------- EL HORNO ----------
+
+  async function hornearPrenda(item) {
+    // Sin medidas no se hornea: vestAnclaje(0,0) daría un rectángulo
+    // degenerado y saldría un PNG vacío con el identificador ya gastado.
+    if (!vestPuedeAjustarse(item)) {
+      return { error: "No se pudo leer la medida del PNG: no se puede hornear el ajuste" };
+    }
+
+    const img = await cargarImagen(item.dataUrl);
+    if (!img) {
+      return { error: "No se pudo leer este PNG: no se puede hornear el ajuste" };
+    }
+
+    // EL LIENZO ES FIJO. 327x504 siempre, nunca img.naturalWidth.
+    //
+    // Es lo que hace que la caja de recorte del horno sea la MISMA que el
+    // overflow:hidden del escenario: lo que el artista ve caer fuera del
+    // marco es exactamente lo que este canvas tira. Si el lienzo siguiera
+    // la medida del archivo, el borde real quedaría dentro del marco, en
+    // una línea invisible, y se vería el dibujo entero mientras se
+    // publica uno cortado.
+    //
+    // Que el destino sea fijo NO obliga a remuestrear: lo que evita el
+    // remuestreo es el anclaje entero de vestAnclaje() con escala 100.
+    const canvas = document.createElement("canvas");
+    canvas.width = VEST_LIENZO_ANCHO;
+    canvas.height = VEST_LIENZO_ALTO;
+
+    // SIN CANVAS NO SE PUBLICA EN SILENCIO.
+    //
+    // jsdom devuelve null sin lanzar, y también un navegador con el
+    // canvas intervenido (Tor, Firefox con resistFingerprinting, varias
+    // extensiones). Acá NO se cae de vuelta a item.dataUrl: el artista
+    // colocó la prenda, vio sus números, pulsó Publicar, y recibiría un
+    // tick verde sobre el PNG SIN AJUSTAR, con su identificador ya
+    // gastado y sin forma de corregirlo. Publicar algo distinto de lo
+    // que el artista aprobó es peor que no publicar.
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return { error: "Este navegador no deja hornear el ajuste (canvas bloqueado)" };
+    }
+
+    // El canvas nace transparente, pero decirlo cuesta cero y documenta
+    // que el fondo NO es blanco: es lo que hace que rellenar un 326x503
+    // hasta el lienzo deje píxeles transparentes y no una franja negra.
+    ctx.clearRect(0, 0, VEST_LIENZO_ANCHO, VEST_LIENZO_ALTO);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    // LA MISMA CUENTA. Sin recalcular, sin volver a redondear, sin
+    // "ajustar un poquito". Se llama a vestEncuadrePegado y no a
+    // vestEncuadreDeCapa solo porque acá ya sabemos que hay que hornear:
+    // en esta rama son la misma cosa, y hay una prueba que lo afirma.
+    const e = vestEncuadrePegado(item.ancho, item.alto, item.ajuste);
+
+    // Nunca ctx.rotate: no hay rotación, porque interpolar rota mal el
+    // dibujo de línea limpia. Mover de a píxeles enteros y espejar con
+    // scale(-1,1) son exactos.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (e.espejo) {
+      // La reflexión va sobre la vertical que pasa por el centro del
+      // rectángulo, que es la misma recta que usa el transform-origin
+      // por defecto del scaleX(-1) del DOM.
+      const cx = e.x + e.ancho / 2;
+      ctx.save();
+      ctx.translate(cx, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-cx, 0);
+    }
+    ctx.drawImage(img, e.x, e.y, e.ancho, e.alto);
+    if (e.espejo) ctx.restore();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // toDataURL y no toBlob + createObjectURL: la expresión de
+    // api/content.js:132 exige exactamente data:image/png;base64,<b64>,
+    // sin ";charset", sin espacios y sin saltos de línea.
+    const texto = canvas.toDataURL("image/png");
+    if (typeof texto !== "string" || !VEST_DATA_PNG.test(texto)) {
+      return { error: "El navegador no devolvió un PNG válido" };
+    }
+
+    // El tope de 1 MB, comprobado acá. El canvas reencoda sin las
+    // optimizaciones del exportador del artista, así que un dibujo
+    // pesado puede pasarse del tope del servidor. Comprobarlo antes
+    // ahorra un viaje de red y hace que la noticia llegue mientras el
+    // artista está mirando la prenda.
+    const bytes = vestPesoDeDataUrl(texto);
+    if (bytes > VEST_TOPE_PRENDA) {
+      return {
+        error: "El horneado pesa " + Math.round(bytes / 1024) +
+          " kB y el tope es 1 MB: bajá la escala o exportá el PNG con menos colores"
+      };
+    }
+
+    // "exacto" es si el horneado fue un calco o hubo que interpolar. Lo
+    // usa el panel para decir en voz alta las pocas veces que remuestrea.
+    const exacto = Number.isInteger(e.x) && Number.isInteger(e.y) &&
+      e.ancho === item.ancho && e.alto === item.alto;
+
+    return { texto, horneado: true, bytes, exacto };
+  }
+
+  // ---------- LA ÚNICA PUERTA HACIA js/arte.js ----------
+
+  async function pngDeSubida(item) {
+    // El artista no movió nada: van los bytes originales, intactos.
+    //
+    // Es el primer if a propósito. Los bytes que leyó el FileReader son
+    // los que el servidor hashea para reusar la fila de avatar_archivos.
+    // Cualquier ida y vuelta por toDataURL vuelve a comprimir el PNG,
+    // cambia sus bytes aunque los píxeles sean idénticos, cambia el
+    // sha256 y crea un archivo duplicado. Ahí se pierde que un mismo
+    // fondo compartido por seis personajes ocupe UNA fila y no seis.
+    //
+    // Vale también cuando el PNG no mide el lienzo: si no se tocó, se
+    // sube tal cual, exactamente como hasta ahora. La salida es el botón
+    // "Llevar al lienzo", que es un acto deliberado del artista.
+    //
+    // Acá NO se crea ni se toca un <canvas>, y hay una prueba que lo
+    // comprueba espiando document.createElement.
+    if (!vestHayQueHornear(item)) {
+      return { texto: item.dataUrl, horneado: false };
+    }
+    return hornearPrenda(item);
+  }
+
+  window.MacroVestidor = {
+    pngDeSubida,
+    hornearPrenda,
+    cargarImagen
+  };
+
+})(window);
