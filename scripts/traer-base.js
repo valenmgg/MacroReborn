@@ -130,12 +130,23 @@ async function main() {
     console.log("\nCUIDADO: --tal-cual. Esta copia lleva las contraseñas reales.");
   }
 
-  const cuantas = async s => (await r.db.query(s)).rows[0].n;
+  // Cuenta lo que haya, sin dar por hecho que el volcado trae el esquema
+  // completo. Un volcado parcial -o uno de otra rama, o uno truncado- no
+  // puede tirar el comando ENTERO despues de haber borrado ya la copia
+  // anterior: eso deja al usuario sin la vieja y sin la nueva.
+  const cuantas = async tabla => {
+    try {
+      const r2 = await r.db.query("SELECT count(*)::int n FROM public." + tabla);
+      return String(r2.rows[0].n);
+    } catch (_) {
+      return "(no esta en este volcado)";
+    }
+  };
+
   console.log("\nLo que hay dentro:");
-  console.log("  usuarios          " + await cuantas("SELECT count(*)::int n FROM users"));
-  console.log("  prendas           " + await cuantas("SELECT count(*)::int n FROM avatar_prendas"));
-  console.log("  archivos de arte  " + await cuantas("SELECT count(*)::int n FROM avatar_archivos"));
-  console.log("  avatares guardados " + await cuantas("SELECT count(*)::int n FROM saved_avatars"));
+  for (const tabla of ["users", "avatar_prendas", "avatar_archivos", "saved_avatars"]) {
+    console.log("  " + tabla.padEnd(18) + await cuantas(tabla));
+  }
 
   await r.db.close();
 

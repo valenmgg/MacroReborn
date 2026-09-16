@@ -161,10 +161,16 @@ async function despersonalizar(db, clave) {
   const bcrypt = require("bcryptjs");
   const hash = await bcrypt.hash(clave, 10);
 
-  const r = await db.query(
-    "UPDATE public.users SET password = NULL, password_hash = $1 RETURNING id", [hash]);
-
-  return { cuentas: r.rows.length, clave };
+  // Si el volcado no trae users -uno parcial, uno de prueba- no se cae:
+  // se dice y se sigue. Caerse aqui seria caerse DESPUES de haber borrado
+  // la copia anterior.
+  try {
+    const r = await db.query(
+      "UPDATE public.users SET password = NULL, password_hash = $1 RETURNING id", [hash]);
+    return { cuentas: r.rows.length, clave };
+  } catch (_) {
+    return { cuentas: 0, clave, sinTablaUsers: true };
+  }
 }
 
 
