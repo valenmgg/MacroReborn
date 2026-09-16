@@ -97,7 +97,7 @@ function obtenerAvatarHTML(nombre){
         const ruta = rutaImagenCapa(avatar[tipo]);
 
         if(ruta){
-            capas += `<img class="capa-chat" src="${ruta}" alt="" loading="lazy">`;
+            capas += `<img class="capa-chat" data-src="${ruta}" alt="" loading="lazy">`;
             rutasCapas.push(ruta);
         }
     });

@@ -328,7 +328,7 @@ if (!usuario) {
         ORDEN_CAPAS.forEach(tipo => {
           const ruta = rutaImagenCapa(av[tipo]);
           if (ruta) {
-            capas += `<img class="capa-tarjeta" src="${ruta}" alt="" loading="lazy">`;
+            capas += `<img class="capa-tarjeta" data-src="${ruta}" alt="" loading="lazy">`;
             rutasCapas.push(ruta);
           }
         });
@@ -711,7 +711,7 @@ function escaparHTML(texto) {
     ORDEN_CAPAS.forEach(tipo => {
       const ruta = rutaImagenCapa(av[tipo]);
       if (ruta) {
-        capas += `<img class="capa-comentario" src="${ruta}" alt="" loading="lazy">`;
+        capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
         rutasCapas.push(ruta);
       }
     });

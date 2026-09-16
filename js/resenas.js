@@ -61,7 +61,7 @@
     ORDEN_CAPAS_RESENA.forEach((tipo) => {
       const ruta = rutaImagenCapaResena(avatar[tipo]);
       if (ruta) {
-        capas += `<img src="${ruta}" class="capa-resena" alt="" loading="lazy">`;
+        capas += `<img data-src="${ruta}" class="capa-resena" alt="" loading="lazy">`;
         rutasCapas.push(ruta);
       }
     });

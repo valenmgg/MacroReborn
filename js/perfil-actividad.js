@@ -42,7 +42,7 @@ function avatarMiniActividad(nombre){
       ? rutaDePrenda(avatar[tipo])
       : (typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(avatar[tipo]) : null);
     if(ruta){
-      capas += `<img class="capa-comentario" src="${ruta}" alt="" loading="lazy">`;
+      capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
       rutasCapas.push(ruta);
     }
   });

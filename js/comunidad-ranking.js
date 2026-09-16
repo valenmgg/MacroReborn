@@ -108,7 +108,7 @@ function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho) {
   RK_ORDEN_CAPAS.forEach(tipo => {
     const ruta = rkRutaCapa(avatar[tipo]);
     if (ruta) {
-      html += `<img class="${capaClase}" src="${ruta}" alt="" loading="lazy">`;
+      html += `<img class="${capaClase}" data-src="${ruta}" alt="" loading="lazy">`;
       rutas.push(ruta);
     }
   });
@@ -447,7 +447,7 @@ function crAvatarCapasHTML(avatarCrudo, claseCapa) {
   let html = "";
   RK_ORDEN_CAPAS.forEach(tipo => {
     const ruta = rkRutaCapa(avatar[tipo]);
-    if (ruta) html += `<img class="${claseCapa}" src="${ruta}" alt="" loading="lazy">`;
+    if (ruta) html += `<img class="${claseCapa}" data-src="${ruta}" alt="" loading="lazy">`;
   });
   return html || `<img src="imagenes/avatar.png" alt="" loading="lazy">`;
 }
@@ -628,7 +628,7 @@ async function crCargarTienda() {
       return `
         <div class="cr-item-tienda">
           <div class="cr-item-tienda-imagen">
-            ${ruta ? `<img src="${ruta}" alt="${item.nombre}" loading="lazy">` : ""}
+            ${ruta ? `<img data-src="${ruta}" alt="${item.nombre}" loading="lazy">` : ""}
           </div>
           <p class="cr-item-tienda-nombre">${item.nombre}</p>
           <p class="cr-item-tienda-precio">🪙 ${item.precio}</p>

@@ -44,7 +44,7 @@
     ORDEN_CAPAS.forEach(tipo => {
       const ruta = rutaImagenCapa(avatar[tipo]);
       if (ruta) {
-        html += `<img class="capa-tarjeta" src="${ruta}" alt="" loading="lazy">`;
+        html += `<img class="capa-tarjeta" data-src="${ruta}" alt="" loading="lazy">`;
         rutas.push(ruta);
       }
     });

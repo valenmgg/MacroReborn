@@ -94,7 +94,7 @@ function obtenerAvatar(nombre, avatarCrudo){
             html += `
             <img 
             class="capa-ranking"
-            src="${ruta}" alt="" loading="lazy">
+            data-src="${ruta}" alt="" loading="lazy">
             `;
 
             rutasCapas.push(ruta);

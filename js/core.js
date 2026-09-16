@@ -540,7 +540,7 @@ function avatarMiniaturaHTML(avatarCrudo){
   ORDEN_CAPAS_AVATAR.forEach(tipo=>{
     const ruta = rutaCapaAvatar(avatar[tipo]);
     if(ruta){
-      capas += `<img src="${ruta}" alt="" loading="lazy" ` +
+      capas += `<img data-src="${ruta}" alt="" loading="lazy" ` +
         `style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;">`;
     }
   });
@@ -559,6 +559,72 @@ function avatarMiniaturaHTML(avatarCrudo){
 
 
 
+
+// ==============================
+// IMÁGENES QUE ESPERAN A VERSE
+// ==============================
+// loading="lazy" no sirve para lo que el sitio necesita. Un navegador
+// solo aplaza una imagen si tiene caja de dibujo y puede medir su
+// distancia a la pantalla; dentro de algo con display:none no hay caja,
+// así que la descarga igual.
+//
+// Y el sitio esconde muchas cosas con display:none:
+//
+//   - Las pestañas del perfil y de usuario.html son .contenido-tab, que
+//     en css/perfil.css es display:none salvo la activa. Ahí viven la
+//     lista de amigos, la galería de avatares guardados y la actividad.
+//   - El editor de avatares vive en un #editorAvatar oculto.
+//
+// Medido con un HAR de usuario.html: 123 imágenes de avatares de gente
+// que no se veía, 914 kB, repartidas en tres listas dentro de pestañas
+// cerradas. El dueño del sitio lo describió como "en Home estoy y lo
+// único visible es su avatar".
+//
+// La solución es un IntersectionObserver, que resuelve los tres casos
+// con la misma regla y sin que nadie tenga que acordarse de nada:
+//
+//   pestaña cerrada  -> nunca se cruza con la pantalla -> no se pide
+//   más abajo        -> se pide al llegar bajando
+//   pestaña que se abre -> se cruza en ese momento -> se pide
+//
+// Las imágenes se emiten con data-src en vez de src y esto las recoge.
+// El MutationObserver de más abajo se encarga de las que aparecen luego,
+// que son casi todas: estas listas se pintan con innerHTML.
+
+const _observadorPerezosas = (typeof IntersectionObserver !== "undefined")
+  ? new IntersectionObserver(entradas=>{
+      entradas.forEach(entrada=>{
+        if(!entrada.isIntersecting) return;
+        const img = entrada.target;
+        _observadorPerezosas.unobserve(img);
+        if(img.dataset.src){
+          img.src = img.dataset.src;
+          delete img.dataset.src;
+        }
+      });
+    }, { rootMargin: "300px" })   // un poco antes de que asome
+  : null;
+
+function activarImagenesPerezosas(raiz){
+  const contenedor = raiz || document;
+  const sueltas = [];
+
+  if(contenedor.matches && contenedor.matches("img[data-src]")) sueltas.push(contenedor);
+  if(contenedor.querySelectorAll){
+    contenedor.querySelectorAll("img[data-src]").forEach(img=>sueltas.push(img));
+  }
+
+  if(!sueltas.length) return;
+
+  // Sin IntersectionObserver (navegador viejo) se cargan todas de una:
+  // peor para la red, pero nadie se queda sin ver un avatar.
+  if(!_observadorPerezosas){
+    sueltas.forEach(img=>{ img.src = img.dataset.src; delete img.dataset.src; });
+    return;
+  }
+
+  sueltas.forEach(img=>_observadorPerezosas.observe(img));
+}
 
 // ==============================
 // AVATAR — COMPOSICIÓN EN UNA SOLA IMAGEN (Fase 4: click derecho)
@@ -733,6 +799,7 @@ async function componerAvataresEnPantalla(raiz){
 }
 
 function _iniciarObservadorAvatares(){
+  activarImagenesPerezosas(document);
   componerAvataresEnPantalla(document);
 
   if(typeof MutationObserver === "undefined") return; // navegador muy viejo: se queda con las capas apiladas
@@ -741,6 +808,12 @@ function _iniciarObservadorAvatares(){
     for(const mutacion of mutaciones){
       for(const nodo of mutacion.addedNodes){
         if(nodo.nodeType !== 1) continue;
+
+        // Lo primero: recoger las imágenes que esperan a verse. Se hace
+        // en cada nodo nuevo y no solo cuando hay avatares, porque
+        // data-src lo usan también otras listas.
+        activarImagenesPerezosas(nodo);
+
         const esCandidato =
           (nodo.matches && nodo.matches(".avatar-compuesto:not([data-compuesto])")) ||
           (nodo.querySelector && nodo.querySelector(".avatar-compuesto:not([data-compuesto])"));
