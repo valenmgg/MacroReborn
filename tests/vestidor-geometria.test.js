@@ -39,6 +39,7 @@ const EXPORTA = `;({
   factorContain: vestFactorContain,
   encaje: vestEncajeContain,
   escalaDeEncaje: vestEscalaDeEncaje,
+  encajeDeVista: vestEncajeDeVista,
   encuadre: vestEncuadreDeCapa,
   estilo: vestEstiloDeCapa,
   medidasDeTexto: vestMedidasDeTexto,
@@ -760,5 +761,51 @@ describe("barreras del vestidor", () => {
 
     // Y sí tiene que leerlo, o no estaría decodificando nada.
     assert.match(horno, /cargarImagen\(item\.dataUrl\)/);
+  });
+});
+
+// ==============================
+
+// El zoom que de verdad se aplica. El marco del lienzo lleva flex-shrink:0
+// -es la caja clavada sobre la que se hace toda esta aritmética-, así que
+// dentro de una columna que sí se encoge, sobresale. Y como la columna rueda
+// en vertical, el CSS le convierte el eje horizontal en auto y sale la barra
+// horizontal, que es justo lo que no se quiere.
+describe("el lienzo cabe en su columna", () => {
+  test("si cabe holgado, el zoom se respeta tal cual", () => {
+    assert.strictEqual(V.encajeDeVista(600, 1), 1);
+    assert.strictEqual(V.encajeDeVista(1400, 4), 4);
+    assert.strictEqual(V.encajeDeVista(327, 1), 1);
+  });
+
+  test("y si no cabe, se encoge hasta lo que entra", () => {
+    // 300 de ancho para un lienzo de 327: 300/327 = 0,917.
+    assert.strictEqual(V.encajeDeVista(300, 1), 0.917);
+    // A 2x el lienzo mediría 654; en 400 sólo entra a 1,223.
+    assert.strictEqual(V.encajeDeVista(400, 2), 1.223);
+  });
+
+  test("nunca devuelve más de lo que cabe", () => {
+    for (const ancho of [120, 260, 327, 480, 654, 900]) {
+      for (const zoom of [0.5, 1, 2, 3, 4]) {
+        const escala = V.encajeDeVista(ancho, zoom);
+        assert.ok(escala * V.VEST_LIENZO_ANCHO <= ancho + 1,
+          "con " + ancho + "px y zoom " + zoom + " salió " + escala +
+          ", que pinta " + (escala * V.VEST_LIENZO_ANCHO) + "px");
+      }
+    }
+  });
+
+  // jsdom no maqueta y el ancho llega 0. Encoger contra un ancho que no se
+  // sabe dejaría el lienzo hecho un sello en cuanto el panel está escondido.
+  test("sin ancho medido no se encoge nada", () => {
+    assert.strictEqual(V.encajeDeVista(0, 2), 2);
+    assert.strictEqual(V.encajeDeVista(undefined, 1.5), 1.5);
+    assert.strictEqual(V.encajeDeVista(NaN, 1), 1);
+  });
+
+  test("y por estrecha que venga la columna, no se escala a cero", () => {
+    assert.strictEqual(V.encajeDeVista(1, 1), 0.1);
+    assert.ok(V.encajeDeVista(4, 1) > 0);
   });
 });

@@ -1170,3 +1170,81 @@ describe("una capa que no cargó vuelve al cambiar de prenda", () => {
     assert.strictEqual(pelo.dataset.capaRota, undefined);
   });
 });
+
+// ==============================
+
+// El marco del lienzo lleva flex-shrink:0 a propósito: es la caja clavada de
+// 327x504 sobre la que se hace toda la aritmética. Pero una caja que no se
+// encoge dentro de una columna que sí, sobresale, y como la columna rueda en
+// vertical el CSS le convierte el eje horizontal en auto: barra horizontal.
+//
+// jsdom no maqueta, así que el ancho de la columna se pone a mano. Es
+// exactamente lo que el navegador le daría a anchoDeLaVista().
+describe("el lienzo se encoge hasta caber en su columna", () => {
+  function columnaDe(doc, ancho) {
+    const escena = doc.querySelector(".vest-escena");
+    Object.defineProperty(escena, "clientWidth", { value: ancho, configurable: true });
+    return escena;
+  }
+
+  const escalaPuesta = doc =>
+    Number(doc.querySelector(".vest-marco").style.getPropertyValue("--vest-zoom"));
+
+  test("en una columna estrecha, 1:1 dibuja menos de 1:1", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    columnaDe(doc, 300);
+
+    $(doc, "vestZoomUno").click();
+
+    const escala = escalaPuesta(doc);
+    assert.ok(escala * 327 <= 300,
+      "el lienzo pinta " + (escala * 327) + "px en una columna de 300");
+    assert.strictEqual($(doc, "vestZoom").textContent, "92 %");
+  });
+
+  test("y con sitio de sobra no se toca nada", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    columnaDe(doc, 900);
+
+    $(doc, "vestZoomUno").click();
+
+    assert.strictEqual(escalaPuesta(doc), 1);
+    assert.strictEqual($(doc, "vestZoom").textContent, "100 %");
+  });
+
+  // Acercar más allá de lo que entra no puede dejar el lienzo saliéndose.
+  test("por mucho que se acerque, no se sale", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    columnaDe(doc, 420);
+
+    for (let i = 0; i < 20; i++) $(doc, "vestZoomMas").click();
+
+    assert.ok(escalaPuesta(doc) * 327 <= 420,
+      "tras 20 acercamientos pinta " + (escalaPuesta(doc) * 327) + "px en 420");
+  });
+
+  // Un botón que se pulsa y no hace nada se lee como roto.
+  test("y el botón de acercar se apaga en el tope", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    columnaDe(doc, 420);
+
+    $(doc, "vestZoomMas").click();
+
+    assert.strictEqual($(doc, "vestZoomMas").disabled, true);
+  });
+
+  test("pero con sitio sigue encendido", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    columnaDe(doc, 1600);
+
+    $(doc, "vestZoomUno").click();
+
+    assert.strictEqual($(doc, "vestZoomMas").disabled, false);
+  });
+});
+

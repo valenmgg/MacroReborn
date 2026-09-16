@@ -89,6 +89,10 @@
 const VEST_LIENZO_ANCHO = 327;
 const VEST_LIENZO_ALTO = 504;
 
+// Un suelo para el encaje. Si la columna llegara absurdamente estrecha,
+// escalar a cero dejaría el lienzo invisible en vez de pequeño.
+const VEST_ZOOM_MINIMO = 0.1;
+
 // Lo que significa "no he movido nada". Congelado porque se devuelve por
 // referencia desde vestNormalizarAjuste(null) y nadie debe escribirlo.
 const VEST_AJUSTE_NEUTRO = Object.freeze({
@@ -298,6 +302,37 @@ function vestEncajeContain(w, h) {
 // escala, y para esos el botón lo dice en voz alta: eso sí remuestrea.
 function vestEscalaDeEncaje(w, h) {
   return Math.round(100 * vestFactorContain(w, h));
+}
+
+
+// ---------- QUE EL LIENZO QUEPA EN SU COLUMNA ----------
+
+// El zoom que de verdad se aplica: el que pidió la persona, salvo que no
+// quepa de ancho donde tiene que dibujarse.
+//
+// Hace falta porque el marco del lienzo lleva flex-shrink:0, y tiene que
+// llevarlo: es la caja clavada de 327x504 sobre la que se hace TODA la
+// aritmética de esta zona. Una caja que no se encoge dentro de una columna
+// que sí, sobresale. Y como .vest-escena rueda en vertical, el CSS le
+// convierte el eje horizontal en auto por su cuenta y aparece la barra.
+//
+// Se mira SOLO el ancho. Que sobre alto y haya que bajar rodando está
+// bien; lo que no se quiere es rodar de lado.
+//
+// Con ancho 0 no se encoge nada. Pasa en jsdom, que no maqueta, y pasa
+// mientras el panel está escondido: encoger contra un ancho que todavía no
+// se sabe dejaría el lienzo hecho un sello.
+function vestEncajeDeVista(disponible, zoom) {
+  const z = Number(zoom) > 0 ? Number(zoom) : 1;
+  const d = Number(disponible);
+  if (!(d > 0)) return z;
+
+  const cabe = d / VEST_LIENZO_ANCHO;
+  // A tres decimales: el ancho disponible se mueve de a un píxel cuando
+  // aparece y desaparece una barra vertical, y sin redondear el lienzo
+  // temblaría a cada cambio.
+  const escala = Math.round(Math.min(z, cabe) * 1000) / 1000;
+  return Math.max(VEST_ZOOM_MINIMO, escala);
 }
 
 
@@ -665,6 +700,7 @@ function vestBytesDeCuerpo(texto) {
   let CTX = null;
 
   let abierto = false;
+
   let modeloActual = null;      // el personaje que lleva puesto el maniquí
   let puesto = {};              // capa -> valor del catálogo
   let montadas = [];            // claves de las prendas en prueba, en orden
@@ -1523,24 +1559,69 @@ function vestBytesDeCuerpo(texto) {
 
   function activar(clave) {
     activa = clave;
+
     // Ajustar algo que no se ve no tiene sentido: se monta sola.
     if (clave && montadas.indexOf(clave) === -1) montadas.push(clave);
-    tocado();
+        tocado();
   }
 
   // ---------- LA VISTA ----------
 
+  // El ancho del que dispone el lienzo. clientWidth y no el rectángulo:
+  // clientWidth deja fuera la barra vertical, que es precisamente la que
+  // hace que lo de dentro deje de caber.
+  function anchoDeLaVista() {
+    const lienzo = $("vestLienzo");
+    const marco = lienzo && lienzo.parentNode;
+    const columna = marco && marco.parentNode;
+    return columna ? (columna.clientWidth || 0) : 0;
+  }
+
   function aplicarZoom() {
     const lienzo = $("vestLienzo");
+
+    // Se ajusta la INTENCIÓN, no solo el dibujo. Si se guardara un zoom
+    // mayor del que entra, el botón de alejar no haría nada visible hasta
+    // bajar por debajo del tope, y parecería roto.
+    zoom = vestEncajeDeVista(anchoDeLaVista(), zoom);
+
     lienzo.parentNode.style.setProperty("--vest-zoom", String(zoom));
     lienzo.style.setProperty("--vest-zoom", String(zoom));
     lienzo.classList.toggle("vest-nitido", zoom >= 2);
     $("vestZoom").textContent = Math.round(zoom * 100) + " %";
+
+    // Y el botón de acercar se apaga en el tope, que si no es un botón que
+    // se pulsa y no pasa nada.
+    const mas = $("vestZoomMas");
+    if (mas) mas.disabled = zoom >= vestEncajeDeVista(anchoDeLaVista(), 4);
   }
 
   function cambiarZoom(paso) {
     zoom = Math.min(4, Math.max(0.5, Math.round((zoom + paso) * 10) / 10));
     aplicarZoom();
+  }
+
+  // La columna cambia de ancho al mover la ventana, al apilarse en el
+  // teléfono y al aparecer la barra del rail de al lado. Cada vez hay que
+  // volver a mirar si el lienzo cabe.
+  //
+  // No se realimenta: la pista de la rejilla es minmax(0, 1fr), así que su
+  // ancho no depende de lo que mida el lienzo, y .vest-escena lleva
+  // scrollbar-gutter:stable para que la barra vertical no lo mueva al
+  // aparecer. Sin eso, encoger quitaría la barra, quitar la barra daría más
+  // ancho, y el lienzo se pondría a latir.
+  function vigilarElAncho() {
+    const lienzo = $("vestLienzo");
+    const marco = lienzo && lienzo.parentNode;
+    const columna = marco && marco.parentNode;
+    if (!columna) return;
+
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => aplicarZoom()).observe(columna);
+      return;
+    }
+    // jsdom no trae ResizeObserver, y navegadores viejos tampoco.
+    window.addEventListener("resize", aplicarZoom);
   }
 
   function ciclarFondo() {
@@ -1610,6 +1691,7 @@ function vestBytesDeCuerpo(texto) {
     $("vestZoomMas").addEventListener("click", () => cambiarZoom(0.25));
     $("vestZoomMenos").addEventListener("click", () => cambiarZoom(-0.25));
     $("vestZoomUno").addEventListener("click", () => { zoom = 1; aplicarZoom(); });
+    vigilarElAncho();
     $("vestFondo").addEventListener("click", ciclarFondo);
 
     $("vestPublicar").addEventListener("click", async () => {
