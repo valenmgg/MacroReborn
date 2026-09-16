@@ -26,6 +26,15 @@
 
   const $ = id => document.getElementById(id);
 
+  // El vestidor, si está cargado. Es un GETTER y no una constante: este
+  // archivo se evalúa antes de que termine el defer del otro en algún
+  // orden raro, y además tests/arte-pagina.test.js evalúa SOLO js/arte.js
+  // y tiene que seguir pasando sin él.
+  //
+  // Borrar js/arte-vestidor.js, su <script>, su sección del HTML y su
+  // banda de CSS deja este panel exactamente como estaba.
+  const V = () => window.MacroVestidor || null;
+
   let DATOS = null;      // lo que devuelve avatar-panel
   let ARCHIVOS = [];     // lo que hay preparado para subir
 
@@ -147,6 +156,7 @@
     $("arteAviso").hidden = true;
     $("arteSubir").hidden = false;
     $("arteCatalogo").hidden = false;
+    if (V()) $("arteVestidor").hidden = false;
 
     prepararControles();
     pintarCatalogo();
@@ -179,6 +189,21 @@
     $("arteArchivos").addEventListener("change", alElegirArchivos);
     $("arteAplicarTodas").addEventListener("click", aplicarATodas);
     $("arteSubirBtn").addEventListener("click", subir);
+
+    // Se le pasan GETTERS y no los objetos: subir() reasigna ARCHIVOS y
+    // recarga DATOS, así que una referencia guardada dejaría al vestidor
+    // enseñando el catálogo viejo y una lista fantasma justo después de
+    // publicar, que es cuando más se mira.
+    if (V()) V().conectar({
+      datos: () => DATOS,
+      archivos: () => ARCHIVOS,
+      repintarLista: pintarLista,
+      urlDelModelo,
+      modelosDisponibles,
+      conMayuscula,
+      modeloDe,
+      destinoDe
+    });
   }
 
   // ==============================
@@ -222,7 +247,10 @@
         modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) || $("arteTodosModelo").value,
         capa: capaDesdeArchivo(file.name, DATOS.capas),
         nombre: nombreDesdeArchivo(file.name),
-        precio: 0
+        precio: 0,
+        // Mientras sea null, el artista no movió nada y el PNG se sube
+        // byte a byte. Un solo campo, no dos: ver vestHayQueHornear.
+        ajuste: null
       });
     }
 
@@ -275,6 +303,10 @@
   function pintarLista() {
     const lista = $("arteLista");
     vaciar(lista);
+
+    // El rail del vestidor pinta ESTA misma lista, no una copia: si
+    // tuviera la suya, se podría ajustar algo que nunca llega a subirse.
+    if (V()) V().avisarDeCambio();
 
     $("arteComunes").hidden = ARCHIVOS.length === 0;
     $("arteAcciones").hidden = ARCHIVOS.length === 0;

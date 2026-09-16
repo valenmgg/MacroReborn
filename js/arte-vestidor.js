@@ -652,10 +652,537 @@ function vestBytesDeCuerpo(texto) {
     return hornearPrenda(item);
   }
 
+  // ==============================
+  // EL MANIQUÍ
+  // ==============================
+
+  const $ = id => document.getElementById(id);
+
+  // Lo que js/arte.js nos presta. Son GETTERS y no los objetos, porque
+  // publicar() reasigna tanto DATOS como ARCHIVOS: con una referencia
+  // guardada, el vestidor abierto después de publicar seguiría enseñando
+  // el catálogo viejo y una lista fantasma, justo cuando más se mira.
+  let CTX = null;
+
+  let abierto = false;
+  let modeloActual = null;      // el personaje que lleva puesto el maniquí
+  let puesto = {};              // capa -> valor del catálogo
+  let montadas = [];            // claves de las prendas en prueba, en orden
+  let ranuraAbierta = null;
+  let pintadas = 0;             // cuántas opciones lleva pintadas la rejilla
+  const capas = {};             // capa -> el <img> de esa capa
+  const fondos = ["", "vest-fondo-blanco", "vest-fondo-negro", "vest-fondo-magenta"];
+  let fondo = 0;
+  let zoom = 1;
+
+  const TOPE_REJILLA = 60;
+  const MAS_REJILLA = 40;
+
+  // Las 15 capas salen de js/core.js, que se carga antes que este archivo.
+  // Si no está, el vestidor no puede dibujar nada y lo dice en vez de
+  // inventarse su propia lista: once archivos del sitio llevaban una copia
+  // de esta lista y dos de ellos la tenían en otro orden, así que el mismo
+  // avatar se dibujaba distinto según la página.
+  function ordenDeCapas() {
+    return typeof ORDEN_CAPAS_AVATAR !== "undefined" ? ORDEN_CAPAS_AVATAR : null;
+  }
+
+  function vaciar(nodo) {
+    while (nodo && nodo.firstChild) nodo.removeChild(nodo.firstChild);
+  }
+
+  function elem(tag, clase, texto) {
+    const n = document.createElement(tag);
+    if (clase) n.className = clase;
+    if (texto !== undefined && texto !== null) n.textContent = String(texto);
+    return n;
+  }
+
+  // ---------- QUÉ VA EN CADA RANURA ----------
+
+  // Una prenda EN PRUEBA gana a una del catálogo, y entre dos en prueba
+  // gana la última montada: una ranura, una prenda, igual que en el avatar
+  // de verdad. La que pierde se marca en el rail.
+  function pruebaDeRanura(capa) {
+    if (!CTX) return null;
+    const lista = CTX.archivos();
+    for (let i = montadas.length - 1; i >= 0; i--) {
+      const item = lista.find(a => a.clave === montadas[i]);
+      if (item && item.capa === capa) return item;
+    }
+    return null;
+  }
+
+  // Devuelve lo que hay que dibujar en esa capa, ya en la forma que espera
+  // vestEncuadreDeCapa: { url, ancho, alto, ajuste }.
+  function fuenteDeRanura(capa) {
+    const prueba = pruebaDeRanura(capa);
+    if (prueba) {
+      return {
+        url: prueba.dataUrl,
+        ancho: prueba.ancho,
+        alto: prueba.alto,
+        ajuste: prueba.ajuste || null,
+        esPrueba: true,
+        puedeAjustarse: vestPuedeAjustarse(prueba)
+      };
+    }
+
+    const valor = capa === "modelo" ? modeloActual : puesto[capa];
+    if (!valor) return null;
+
+    const datos = CTX.datos();
+    const p = (capa === "modelo" ? datos.modelos : datos.prendas)
+      .find(x => x.valor === valor);
+    if (!p) return null;
+
+    // Las del catálogo se suben tal cual, así que se pintan como las va a
+    // pintar el sitio: encajadas. Las medidas vienen del servidor en una
+    // cadena "332x512".
+    const m = vestMedidasDeTexto(p.medidas);
+    return { url: p.url, ancho: m.ancho, alto: m.alto, ajuste: null, esPrueba: false };
+  }
+
+  // ---------- EL ESCENARIO ----------
+
+  // Las 15 capas se crean UNA vez. Después solo se les cambia el src, el
+  // hidden y las cuatro medidas en línea.
+  //
+  // No se vuelven a crear nunca, y eso importa por tres motivos: no hay
+  // que reinsertar nodos en cada movimiento del ratón; no dispara el
+  // MutationObserver de js/core.js, que ante cualquier nodo nuevo reescanea
+  // el DOCUMENTO ENTERO buscando avatares que componer (y en arte.html hay
+  // avatares compuestos rondando, los mete navbar.js); y reasignar data-src
+  // sobre un nodo ya insertado no lo recoge nadie, porque ese observador
+  // solo mira childList.
+  function montarEscenario() {
+    const lienzo = $("vestLienzo");
+    const overlay = lienzo.querySelector(".vest-overlay");
+    const orden = ordenDeCapas();
+
+    for (const capa of orden) {
+      const img = document.createElement("img");
+      img.className = "vest-capa";
+      img.alt = "";
+      img.hidden = true;
+      img.dataset.ranura = capa;
+      // El orden del DOM es el orden de pintado, así que no hace falta ni
+      // un z-index. Y va antes del overlay, que tiene que quedar encima.
+      lienzo.insertBefore(img, overlay);
+      capas[capa] = img;
+    }
+  }
+
+  function refrescarCapa(capa) {
+    const img = capas[capa];
+    if (!img) return;
+
+    const f = fuenteDeRanura(capa);
+    if (!f || !f.url) {
+      img.hidden = true;
+      img.removeAttribute("src");
+      return;
+    }
+
+    const e = vestEstiloDeCapa(f);
+    img.style.left = e.left;
+    img.style.top = e.top;
+    img.style.width = e.width;
+    img.style.height = e.height;
+    img.style.transform = e.transform;
+
+    // src pelado y no data-src: esto SIEMPRE se ve -es lo que el artista
+    // está mirando- y encima son 15 imágenes contadas, no una lista.
+    if (img.getAttribute("src") !== f.url) img.src = f.url;
+    img.hidden = false;
+  }
+
+  function refrescarEscenario() {
+    for (const capa of ordenDeCapas()) refrescarCapa(capa);
+    pintarRanuras();
+    pintarContador();
+  }
+
+  // ---------- EL PERSONAJE ----------
+
+  function pintarPersonajes() {
+    const select = $("vestPersonaje");
+    vaciar(select);
+    for (const m of CTX.datos().modelos) {
+      const o = document.createElement("option");
+      o.value = m.valor;
+      o.textContent = CTX.conMayuscula(m.valor);
+      select.appendChild(o);
+    }
+    if (!modeloActual && select.options.length) modeloActual = select.options[0].value;
+    select.value = modeloActual;
+  }
+
+  // Cambiar de personaje DESNUDA el maniquí: el guardarropa de uno no le
+  // sirve a otro, que es la misma regla del editor de perfil. Pero no toca
+  // las prendas en prueba, que llevan su propio personaje; si alguna es de
+  // otro, el rail lo dice.
+  function alCambiarPersonaje() {
+    modeloActual = $("vestPersonaje").value;
+    puesto = {};
+    ranuraAbierta = null;
+    refrescarEscenario();
+    pintarRejilla();
+    pintarPruebas();
+  }
+
+  // ---------- LAS RANURAS ----------
+
+  function prendasDe(capa) {
+    const datos = CTX.datos();
+    const incluirRetiradas = $("vestRetiradas").checked;
+    return datos.prendas.filter(p =>
+      p.capa === capa && p.modelo === modeloActual && (p.publicada || incluirRetiradas));
+  }
+
+  function pintarRanuras() {
+    const caja = $("vestRanuras");
+    vaciar(caja);
+
+    for (const capa of ordenDeCapas()) {
+      const b = elem("button", "vest-ranura", CTX.conMayuscula(capa));
+      b.type = "button";
+
+      const ocupada = capa === "modelo" || !!puesto[capa] || !!pruebaDeRanura(capa);
+      if (ocupada) b.classList.add("ocupada");
+
+      // La ranura "modelo" se pinta pero no se abre: avatar-panel no la
+      // ofrece (capas viene ya sin ella) y avatar-subir-prendas contesta
+      // "Esa ranura no existe" si se le manda. Ofrecerla dejaría meter una
+      // prenda local en una ranura que la API rechaza justo al publicar.
+      if (capa === "modelo") {
+        b.disabled = true;
+        b.title = "El personaje se cambia con el desplegable de arriba";
+      } else {
+        b.setAttribute("aria-pressed", String(ranuraAbierta === capa));
+        b.addEventListener("click", () => abrirRanura(capa));
+      }
+
+      caja.appendChild(b);
+    }
+  }
+
+  function abrirRanura(capa) {
+    ranuraAbierta = ranuraAbierta === capa ? null : capa;
+    pintarRanuras();
+    pintarRejilla();
+  }
+
+  // ---------- EL GUARDARROPA ----------
+
+  function pintarRejilla(añadir) {
+    const rejilla = $("vestRejilla");
+    const buscar = $("vestBuscar");
+    const retiradas = $("vestRetiradasCaja");
+    const mas = $("vestMas");
+
+    if (!ranuraAbierta) {
+      vaciar(rejilla);
+      buscar.hidden = true;
+      retiradas.hidden = true;
+      mas.hidden = true;
+      return;
+    }
+
+    buscar.hidden = false;
+    retiradas.hidden = false;
+
+    const todas = prendasDe(ranuraAbierta);
+    pintadas = añadir ? pintadas + MAS_REJILLA : TOPE_REJILLA;
+
+    vaciar(rejilla);
+
+    // "Ninguna", para quitar lo que haya puesto sin tener que desnudar todo.
+    rejilla.appendChild(opcionVacia());
+
+    for (const p of todas.slice(0, pintadas)) rejilla.appendChild(opcion(p));
+
+    mas.hidden = todas.length <= pintadas;
+    mas.textContent = "Ver " + Math.min(MAS_REJILLA, todas.length - pintadas) + " más";
+
+    // A MANO, y no esperando al MutationObserver de js/core.js: el return
+    // de ese callback sale de TODO el lote de mutaciones, no del bucle, así
+    // que si en el mismo lote entra antes un .avatar-compuesto -y navbar.js
+    // los mete en esta página- los nodos posteriores nunca pasan por acá y
+    // sus data-src se quedan en blanco para siempre. Es barato y se puede
+    // llamar las veces que haga falta.
+    if (typeof activarImagenesPerezosas === "function") activarImagenesPerezosas(rejilla);
+
+    aplicarBusqueda();
+  }
+
+  function opcionVacia() {
+    const b = elem("button", "vest-opcion");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(!puesto[ranuraAbierta]));
+    const hueco = elem("div");
+    hueco.style.aspectRatio = "327 / 504";
+    b.appendChild(hueco);
+    b.appendChild(elem("span", null, "Ninguna"));
+    b.addEventListener("click", () => elegirPrenda(null));
+    return b;
+  }
+
+  function opcion(p) {
+    const b = elem("button", "vest-opcion");
+    b.type = "button";
+    b.dataset.valor = p.valor;
+    b.dataset.busca = (p.nombre + " " + p.valor).toLowerCase();
+    b.setAttribute("aria-pressed", String(puesto[ranuraAbierta] === p.valor));
+
+    // UN solo <img>, y con data-src. Un solo dibujo por casilla y no dos
+    // (prenda sobre personaje): el personaje base es el mismo en las
+    // sesenta casillas, no aporta nada y duplicaría la red. El maniquí,
+    // que es el personaje de verdad, está a un palmo a la izquierda.
+    const img = document.createElement("img");
+    img.dataset.src = p.url;
+    img.alt = "";
+    img.loading = "lazy";
+    b.appendChild(img);
+
+    const nombre = p.nombre + (p.publicada ? "" : " (retirada)");
+    b.appendChild(elem("span", null, nombre));
+    b.title = nombre + " · " + p.medidas;
+
+    b.addEventListener("click", () => elegirPrenda(p.valor));
+    return b;
+  }
+
+  function elegirPrenda(valor) {
+    if (!ranuraAbierta) return;
+    if (valor === null) delete puesto[ranuraAbierta];
+    else puesto[ranuraAbierta] = valor;
+    refrescarEscenario();
+    pintarRejilla();
+  }
+
+  // Filtra moviendo display sobre lo ya pintado, sin repintar nada.
+  function aplicarBusqueda() {
+    const texto = $("vestBuscar").value.trim().toLowerCase();
+    for (const b of $("vestRejilla").querySelectorAll(".vest-opcion[data-busca]")) {
+      b.style.display = (!texto || b.dataset.busca.includes(texto)) ? "" : "none";
+    }
+  }
+
+  // ---------- VESTIR DE UNA ----------
+
+  function desnudar() {
+    puesto = {};
+    refrescarEscenario();
+    pintarRejilla();
+  }
+
+  // Nadie juzga una remera sobre un muñeco desnudo.
+  function loBasico() {
+    puesto = {};
+    for (const capa of ["piel", "ojos", "boca", "pelo"]) {
+      const primera = prendasDe(capa)[0];
+      if (primera) puesto[capa] = primera.valor;
+    }
+    refrescarEscenario();
+    pintarRejilla();
+  }
+
+  // Ver la prenda nueva contra diez conjuntos en veinte segundos es la
+  // forma más rápida de descubrir que choca con el pelo.
+  function alAzar() {
+    puesto = {};
+    for (const capa of ordenDeCapas()) {
+      if (capa === "modelo") continue;
+      const hay = prendasDe(capa);
+      if (!hay.length) continue;
+      // Las capas opcionales no siempre se ponen; las de cuerpo, sí.
+      const obligatoria = ["piel", "ojos", "boca", "pelo"].indexOf(capa) !== -1;
+      if (!obligatoria && Math.random() < 0.45) continue;
+      puesto[capa] = hay[Math.floor(Math.random() * hay.length)].valor;
+    }
+    refrescarEscenario();
+    pintarRejilla();
+  }
+
+  // ---------- EL RAIL DE PRENDAS EN PRUEBA ----------
+
+  function pintarPruebas() {
+    const caja = $("vestPruebas");
+    vaciar(caja);
+
+    const lista = CTX ? CTX.archivos() : [];
+    $("vestSinPruebas").hidden = lista.length > 0;
+
+    for (const item of lista) caja.appendChild(filaDePrueba(item));
+    pintarContador();
+  }
+
+  function filaDePrueba(item) {
+    const fila = elem("div", "vest-prueba");
+    const estaMontada = montadas.indexOf(item.clave) !== -1;
+    if (estaMontada) fila.classList.add("vest-activa");
+    if (!vestPuedeAjustarse(item)) fila.classList.add("vest-rota");
+
+    const ver = document.createElement("input");
+    ver.type = "checkbox";
+    ver.className = "vest-check";
+    ver.checked = estaMontada;
+    ver.title = "Ponérsela al maniquí";
+    ver.addEventListener("change", () => montar(item.clave, ver.checked));
+    fila.appendChild(ver);
+
+    const mini = document.createElement("img");
+    mini.src = item.dataUrl;      // ya está en memoria: cero red
+    mini.alt = "";
+    fila.appendChild(mini);
+
+    const datos = elem("div");
+    datos.appendChild(elem("div", "nom", item.archivo));
+    datos.appendChild(elem("div", "vest-dato",
+      CTX.conMayuscula(item.modelo) + " · " + CTX.conMayuscula(item.capa)));
+
+    // Si es de otro personaje, se dice: el editor solo enseña la ropa del
+    // personaje que uno lleva puesto, así que probarla acá sobre otro
+    // engaña.
+    if (item.modelo !== modeloActual) {
+      const aviso = elem("span", "vest-chip ojo",
+        "es de " + CTX.conMayuscula(item.modelo));
+      datos.appendChild(aviso);
+    }
+
+    if (!vestPuedeAjustarse(item)) {
+      datos.appendChild(elem("span", "vest-chip mala", "no se pudo leer"));
+    } else if (item.ancho !== VEST_LIENZO_ANCHO || item.alto !== VEST_LIENZO_ALTO) {
+      datos.appendChild(elem("span", "vest-chip ojo", item.ancho + "×" + item.alto));
+    }
+
+    // Y si otra prueba le ganó la ranura, también.
+    const gana = pruebaDeRanura(item.capa);
+    if (estaMontada && gana && gana.clave !== item.clave) {
+      datos.appendChild(elem("span", "vest-chip", "tapada por " + gana.archivo));
+    }
+
+    fila.appendChild(datos);
+    return fila;
+  }
+
+  function montar(clave, si) {
+    const i = montadas.indexOf(clave);
+    if (si && i === -1) montadas.push(clave);
+    if (!si && i !== -1) montadas.splice(i, 1);
+    refrescarEscenario();
+    pintarPruebas();
+  }
+
+  function pintarContador() {
+    const lista = CTX ? CTX.archivos() : [];
+    const conAjuste = lista.filter(a => a.ajuste && !vestEsNeutro(a.ajuste)).length;
+    $("vestContador").textContent = lista.length
+      ? lista.length + " en prueba · " + conAjuste + " con ajuste"
+      : "";
+  }
+
+  // ---------- LA VISTA ----------
+
+  function aplicarZoom() {
+    const lienzo = $("vestLienzo");
+    lienzo.parentNode.style.setProperty("--vest-zoom", String(zoom));
+    lienzo.style.setProperty("--vest-zoom", String(zoom));
+    lienzo.classList.toggle("vest-nitido", zoom >= 2);
+    $("vestZoom").textContent = Math.round(zoom * 100) + " %";
+  }
+
+  function cambiarZoom(paso) {
+    zoom = Math.min(4, Math.max(0.5, Math.round((zoom + paso) * 10) / 10));
+    aplicarZoom();
+  }
+
+  function ciclarFondo() {
+    const lienzo = $("vestLienzo");
+    lienzo.classList.remove(...fondos.filter(Boolean));
+    fondo = (fondo + 1) % fondos.length;
+    if (fondos[fondo]) lienzo.classList.add(fondos[fondo]);
+  }
+
+  // ---------- ABRIR Y CERRAR ----------
+
+  function abrir() {
+    if (!CTX) return;
+
+    if (!ordenDeCapas()) {
+      window.alert("No se pudo cargar el orden de las capas (js/core.js). Recargá la página.");
+      return;
+    }
+
+    if (!capas.modelo) montarEscenario();
+
+    abierto = true;
+    $("arteSubir").hidden = true;
+    $("arteCatalogo").hidden = true;
+    $("vestPanel").hidden = false;
+    $("vestAbrir").hidden = true;
+
+    pintarPersonajes();
+    aplicarZoom();
+    refrescarEscenario();
+    pintarRejilla();
+    pintarPruebas();
+
+    $("arteVestidor").scrollIntoView({ block: "start" });
+  }
+
+  function cerrar() {
+    abierto = false;
+    $("vestPanel").hidden = true;
+    $("vestAbrir").hidden = false;
+    $("arteSubir").hidden = false;
+    $("arteCatalogo").hidden = false;
+    // Una sola vez: pintarLista() reconstruye la lista de subida entera.
+    if (CTX && CTX.repintarLista) CTX.repintarLista();
+  }
+
+  // ---------- LA CONEXIÓN CON js/arte.js ----------
+
+  function conectar(ctx) {
+    CTX = ctx;
+
+    $("vestAbrir").addEventListener("click", abrir);
+    $("vestCerrar").addEventListener("click", cerrar);
+    $("vestPersonaje").addEventListener("change", alCambiarPersonaje);
+    $("vestRetiradas").addEventListener("change", () => pintarRejilla());
+    $("vestBuscar").addEventListener("input", aplicarBusqueda);
+    $("vestMas").addEventListener("click", () => pintarRejilla(true));
+    $("vestDesnudar").addEventListener("click", desnudar);
+    $("vestBasico").addEventListener("click", loBasico);
+    $("vestAzar").addEventListener("click", alAzar);
+    $("vestZoomMas").addEventListener("click", () => cambiarZoom(0.25));
+    $("vestZoomMenos").addEventListener("click", () => cambiarZoom(-0.25));
+    $("vestZoomUno").addEventListener("click", () => { zoom = 1; aplicarZoom(); });
+    $("vestFondo").addEventListener("click", ciclarFondo);
+
+    document.addEventListener("keydown", e => {
+      if (!abierto) return;
+      if (e.key === "Escape") cerrar();
+    });
+  }
+
+  // Para que js/arte.js pueda refrescar el rail cuando cambia su lista.
+  function avisarDeCambio() {
+    if (!abierto) return;
+    pintarPruebas();
+    refrescarEscenario();
+  }
+
   window.MacroVestidor = {
     pngDeSubida,
     hornearPrenda,
-    cargarImagen
+    cargarImagen,
+    conectar,
+    abrir,
+    cerrar,
+    avisarDeCambio,
+    resumenDeAjuste: vestResumenDeAjuste
   };
 
 })(window);

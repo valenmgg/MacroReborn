@@ -110,6 +110,148 @@
   </section>
 
   <!-- ==============================
+       VESTIDOR
+       ==============================
+       El maniquí donde se prueban las prendas antes de publicarlas. Todo
+       el armazón va acá, en HTML estático, y js/arte-vestidor.js solo
+       rellena las tres zonas que cambian: el rail de prendas en prueba,
+       las capas del maniquí y la rejilla del guardarropa.
+
+       Va DESPUÉS de "Subir prendas" a propósito: tests/arte-pagina.test.js
+       busca el primer ".arte-medidas" del documento, y este bloque no
+       emite ninguno (usa .vest-chip). -->
+  <section id="arteVestidor" class="arte-seccion" hidden>
+    <h2>Vestidor <span id="vestContador" class="arte-contador"></span></h2>
+    <p class="arte-ayuda">
+      Probate las prendas nuevas sobre el personaje, combinalas con las que ya
+      están publicadas, y si alguna quedó descuadrada corrigela acá mismo.
+      Nada de esto sale de tu navegador hasta que pulses Publicar. Si movés o
+      escalás una prenda, el ajuste se dibuja dentro del PNG al publicar: el
+      resto del sitio no se entera.
+    </p>
+
+    <button type="button" id="vestAbrir" class="boton boton-primario">Abrir el vestidor</button>
+
+    <!-- De acá para abajo, solo cuando el vestidor está abierto. -->
+    <div id="vestPanel" hidden>
+
+      <div class="vest-barra">
+        <div class="arte-campo">
+          <label for="vestPersonaje">Personaje</label>
+          <select id="vestPersonaje"></select>
+        </div>
+
+        <div class="vest-grupo" role="group" aria-label="Zoom">
+          <button type="button" id="vestZoomMenos" class="vest-tecla" aria-label="Alejar">−</button>
+          <span id="vestZoom" class="vest-dato">100 %</span>
+          <button type="button" id="vestZoomMas" class="vest-tecla" aria-label="Acercar">+</button>
+          <button type="button" id="vestZoomUno" class="vest-tecla">1:1</button>
+        </div>
+
+        <div class="vest-grupo">
+          <button type="button" id="vestFondo" class="vest-tecla">Fondo</button>
+        </div>
+
+        <button type="button" id="vestCerrar" class="vest-tecla vest-derecha">Cerrar</button>
+      </div>
+
+      <div class="vest-panel">
+
+        <!-- ---------- rail izquierdo: lo que se está probando ---------- -->
+        <div class="vest-rail">
+          <h3 class="vest-titulo">En prueba</h3>
+          <div id="vestPruebas"></div>
+          <p id="vestSinPruebas" class="vest-vacio">
+            Todavía no elegiste ningún PNG. Podés arrastrarlos acá encima, pegarlos
+            con Ctrl+V, o elegirlos arriba en “Subir prendas”. También podés usar el
+            vestidor solo para mirar cómo combinan las prendas ya publicadas.
+          </p>
+        </div>
+
+        <!-- ---------- el escenario ---------- -->
+        <div class="vest-escena">
+          <div class="vest-marco">
+            <!-- 327x504 px de CSS CLAVADOS: dentro de acá, un píxel de CSS es
+                 un píxel del PNG que se va a subir. Ver la ZONA A de
+                 js/arte-vestidor.js.
+
+                 NO lleva class="avatar-compuesto" ni data-capas, y eso es a
+                 propósito: el MutationObserver de js/core.js lo detectaría,
+                 le vaciaría el innerHTML y sustituiría las 15 capas -con sus
+                 asas y sus oyentes- por una foto plana y cacheada. -->
+            <div id="vestLienzo">
+              <div class="vest-overlay">
+                <div id="vestRecuadro" class="vest-recuadro" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- El ajuste llega en el paso siguiente; hasta entonces no se
+               enseña, para no ofrecer controles que no hacen nada. -->
+          <div id="vestAjusteCaja" hidden>
+            <div class="vest-numeros">
+              <div class="arte-campo">
+                <label for="vestDx">X</label>
+                <input type="number" id="vestDx" step="1" value="0">
+              </div>
+              <div class="arte-campo">
+                <label for="vestDy">Y</label>
+                <input type="number" id="vestDy" step="1" value="0">
+              </div>
+              <div class="arte-campo">
+                <label for="vestEscala">Escala %</label>
+                <input type="number" id="vestEscala" step="1" min="10" max="400" value="100">
+              </div>
+              <label class="vest-casilla" for="vestEspejo">
+                <input type="checkbox" id="vestEspejo" class="vest-check"> Espejo
+              </label>
+            </div>
+
+            <p id="vestResumenAjuste" class="vest-dato"></p>
+            <p id="vestInstruccion" class="vest-instruccion"></p>
+
+            <div class="vest-grupo">
+              <button type="button" id="vestAlLienzo" class="vest-tecla" hidden></button>
+              <button type="button" id="vestEncajar" class="vest-tecla" hidden></button>
+              <button type="button" id="vestOriginal" class="vest-tecla" hidden>Volver al original</button>
+            </div>
+          </div>
+
+          <p id="vestDestino" class="vest-dato"></p>
+        </div>
+
+        <!-- ---------- rail derecho: el guardarropa ---------- -->
+        <div class="vest-rail">
+          <h3 class="vest-titulo">Vestir el maniquí</h3>
+
+          <div class="vest-grupo">
+            <button type="button" id="vestDesnudar" class="vest-tecla">Desnudar</button>
+            <button type="button" id="vestBasico" class="vest-tecla">Lo básico</button>
+            <button type="button" id="vestAzar" class="vest-tecla">Al azar</button>
+          </div>
+
+          <div id="vestRanuras" class="vest-ranuras"></div>
+
+          <input type="search" id="vestBuscar" class="vest-buscar" placeholder="Buscar en esta ranura…" hidden>
+          <label class="vest-casilla" for="vestRetiradas" hidden id="vestRetiradasCaja">
+            <input type="checkbox" id="vestRetiradas" class="vest-check"> Incluir retiradas
+          </label>
+
+          <div id="vestRejilla" class="vest-rejilla"></div>
+          <button type="button" id="vestMas" class="vest-tecla" hidden>Ver 40 más</button>
+        </div>
+      </div>
+
+      <!-- Publicar desde el vestidor llega en el paso 5. -->
+      <div class="vest-pie" id="vestPie" hidden>
+        <div id="vestAvisoLienzo" class="arte-aviso" hidden></div>
+        <button type="button" id="vestPublicar" class="boton boton-primario">Publicar lo elegido</button>
+        <span id="vestResumen" class="arte-contador"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==============================
        CATÁLOGO
        ============================== -->
   <section id="arteCatalogo" class="arte-seccion" hidden>
@@ -197,6 +339,7 @@
 <script defer src="js/app-shell.js?v=20260914"></script>
 <script defer src="js/navbar.js?v=20260914"></script>
 <script defer src="js/nav-toggle.js?v=20260914"></script>
+<script defer src="js/arte-vestidor.js?v=20260914"></script>
 <script defer src="js/arte.js?v=20260914"></script>
 
 </body>

@@ -1,0 +1,401 @@
+// ==============================
+// LA PANTALLA DEL VESTIDOR — tests/vestidor-pantalla.test.js
+// ==============================
+// Se carga arte.html de verdad en jsdom y se ejecutan los dos archivos
+// tal cual están en el disco, en el mismo orden que los pide la página:
+// primero js/arte-vestidor.js, después js/arte.js.
+//
+// Se prueba acá lo que no se puede probar en la aritmética: que el
+// maniquí se arma una sola vez, que el guardarropa no se descarga entero,
+// que una prenda publicada se pinta como la pinta el sitio, y que la
+// sección se destapa y se cierra sin dejar el panel roto.
+//
+// js/core.js NO se evalúa: hace peticiones y monta dos observadores
+// globales. De él solo se necesitan dos cosas, y se inyectan a mano.
+//
+// Correr:  npm test
+
+const { test, describe } = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const path = require("node:path");
+const { JSDOM, VirtualConsole } = require("jsdom");
+
+const RAIZ = path.join(__dirname, "..");
+const HTML = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
+const VESTIDOR = fs.readFileSync(path.join(RAIZ, "js", "arte-vestidor.js"), "utf8");
+const ARTE = fs.readFileSync(path.join(RAIZ, "js", "arte.js"), "utf8");
+
+// Las 15 capas y el activador de imágenes perezosas viven en js/core.js.
+// Se inyectan en vez de evaluar core.js entero, que pide el catálogo por
+// red y monta un MutationObserver sobre todo el documento.
+const DE_CORE = `
+var ORDEN_CAPAS_AVATAR = ["fondo","espalda","modelo","piel","ojos","boca",
+  "botas","pantalon","remera","guantes","accesorio","cara","pelo","mascota","borde"];
+var _perezosasLlamadas = [];
+function activarImagenesPerezosas(raiz) {
+  _perezosasLlamadas.push(raiz);
+  // El de verdad solo mueve data-src a src cuando la imagen se acerca a
+  // la pantalla. Acá NO se mueve nada: así, si el vestidor emitiera src
+  // directo, se vería en el espía.
+}
+`;
+
+function panelDePrueba() {
+  return {
+    success: true,
+    capas: ["fondo", "espalda", "piel", "ojos", "boca", "botas", "pantalon",
+            "remera", "guantes", "accesorio", "cara", "pelo", "mascota", "borde"],
+    modelos: [
+      { id: 1, valor: "tora", modelo: "tora", capa: "modelo", nombre: "Tora", url: "/prendas/aaa.png", medidas: "327x504", peso: 1200, publicada: true, autor: null, precio: null },
+      { id: 2, valor: "cereza", modelo: "cereza", capa: "modelo", nombre: "Cereza", url: "/prendas/bbb.png", medidas: "326x503", peso: 1200, publicada: true, autor: null, precio: null }
+    ],
+    prendas: [
+      { id: 10, valor: "tora_botas1", modelo: "tora", capa: "botas", nombre: "Botas de combate", url: "/prendas/ccc.png", medidas: "327x504", peso: 8000, publicada: true, autor: "dibujante", precio: 140 },
+      { id: 11, valor: "tora_pelo1", modelo: "tora", capa: "pelo", nombre: "Pelo largo", url: "/prendas/ddd.png", medidas: "327x504", peso: 9000, publicada: true, autor: "otra", precio: null },
+      { id: 13, valor: "tora_pelo2", modelo: "tora", capa: "pelo", nombre: "<b>Pelo corto</b>", url: "/prendas/fff.png", medidas: "327x504", peso: 9000, publicada: true, autor: "otra", precio: null },
+      // La descuadrada: se sube tal cual y el sitio la ENCAJA.
+      { id: 12, valor: "cereza_boca9", modelo: "cereza", capa: "boca", nombre: "Boca recuperada", url: "/prendas/eee.png", medidas: "332x512", peso: 4000, publicada: false, autor: null, precio: null }
+    ],
+    esAdmin: true,
+    yo: "dibujante"
+  };
+}
+
+async function montar() {
+  const consola = new VirtualConsole();
+  consola.on("jsdomError", () => {});
+
+  const dom = new JSDOM(HTML, {
+    url: "https://macroreborn.com/arte.html",
+    runScripts: "outside-only",
+    virtualConsole: consola
+  });
+
+  const win = dom.window;
+
+  // jsdom no maqueta, así que no tiene scrollIntoView.
+  win.Element.prototype.scrollIntoView = function () {};
+  win.alert = () => {};
+  win.confirm = () => true;
+
+  // El espía del setter de src. Es la red de verdad contra el fallo que
+  // costó una sesión entera: una lista larga que emite src y se descarga
+  // aunque no se vea. El invariante de texto de
+  // tests/imagenes-perezosas.test.js no alcanza acá, porque el vestidor se
+  // arma con createElement y no con plantillas.
+  const puestos = [];
+  const desc = Object.getOwnPropertyDescriptor(win.HTMLImageElement.prototype, "src");
+  Object.defineProperty(win.HTMLImageElement.prototype, "src", {
+    configurable: true,
+    get() { return desc.get.call(this); },
+    set(v) { puestos.push(v); desc.set.call(this, v); }
+  });
+
+  const llamadas = [];
+  win.fetch = (url, opciones) => {
+    llamadas.push({ url: String(url), opciones: opciones || {} });
+    return Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve(panelDePrueba())
+    });
+  };
+
+  win.eval(DE_CORE);
+  win.eval(VESTIDOR);
+  win.eval(ARTE);
+
+  for (let i = 0; i < 6; i++) await new Promise(r => setTimeout(r, 0));
+
+  return { dom, win, doc: win.document, puestos, llamadas };
+}
+
+const $ = (doc, id) => doc.getElementById(id);
+
+// ==============================
+
+describe("la sección aparece con el rol, y nace cerrada", () => {
+  test("se destapa junto a sus hermanas", async () => {
+    const { doc } = await montar();
+    assert.strictEqual($(doc, "arteVestidor").hidden, false);
+  });
+
+  test("pero el panel empieza cerrado: solo se ve el botón", async () => {
+    const { doc } = await montar();
+    assert.strictEqual($(doc, "vestPanel").hidden, true);
+    assert.strictEqual($(doc, "vestAbrir").hidden, false);
+  });
+
+  test("y no se ha dibujado ni una capa todavía", async () => {
+    const { doc } = await montar();
+    assert.strictEqual(doc.querySelectorAll(".vest-capa").length, 0);
+  });
+});
+
+describe("abrir y cerrar", () => {
+  test("abrir esconde las hermanas y enseña el panel", async () => {
+    const { doc } = await montar();
+
+    $(doc, "vestAbrir").click();
+
+    assert.strictEqual($(doc, "vestPanel").hidden, false);
+    assert.strictEqual($(doc, "arteSubir").hidden, true);
+    assert.strictEqual($(doc, "arteCatalogo").hidden, true);
+  });
+
+  // Esconder las hermanas no es cosmético: pintarLista() vacía y
+  // reconstruye la lista de subida entera en cada cambio, y no queremos
+  // que eso ocurra debajo del artista mientras coloca una prenda.
+  test("cerrar las devuelve, y el panel vuelve a su sitio", async () => {
+    const { doc } = await montar();
+
+    $(doc, "vestAbrir").click();
+    $(doc, "vestCerrar").click();
+
+    assert.strictEqual($(doc, "vestPanel").hidden, true);
+    assert.strictEqual($(doc, "arteSubir").hidden, false);
+    assert.strictEqual($(doc, "arteCatalogo").hidden, false);
+    assert.strictEqual($(doc, "vestAbrir").hidden, false);
+  });
+
+  test("y abrir dos veces no duplica las capas", async () => {
+    const { doc } = await montar();
+
+    $(doc, "vestAbrir").click();
+    $(doc, "vestCerrar").click();
+    $(doc, "vestAbrir").click();
+
+    assert.strictEqual(doc.querySelectorAll(".vest-capa").length, 15);
+  });
+});
+
+describe("el maniquí", () => {
+  test("son las 15 capas de core.js, en su orden de dibujo", async () => {
+    const { doc, win } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const ranuras = [...doc.querySelectorAll("#vestLienzo .vest-capa")]
+      .map(i => i.dataset.ranura);
+
+    assert.deepStrictEqual(ranuras, [...win.ORDEN_CAPAS_AVATAR]);
+  });
+
+  // Si el lienzo llevara class="avatar-compuesto" o data-capas, el
+  // MutationObserver de js/core.js lo detectaría, le vaciaría el innerHTML
+  // y sustituiría las 15 capas por una foto plana -y cacheada- en el
+  // primer frame. El artista vería su trabajo desaparecer.
+  test("y NO se disfraza de avatar compuesto", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const lienzo = $(doc, "vestLienzo");
+    assert.ok(!lienzo.classList.contains("avatar-compuesto"));
+    assert.strictEqual(lienzo.getAttribute("data-capas"), null);
+    assert.strictEqual(doc.querySelectorAll("#vestLienzo [data-capas]").length, 0);
+  });
+
+  test("el personaje se pinta solo, el resto empieza vacío", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const modelo = doc.querySelector('.vest-capa[data-ranura="modelo"]');
+    assert.strictEqual(modelo.hidden, false);
+    assert.match(modelo.getAttribute("src"), /aaa\.png$/);
+
+    const botas = doc.querySelector('.vest-capa[data-ranura="botas"]');
+    assert.strictEqual(botas.hidden, true);
+  });
+
+  test("y las capas se colocan con píxeles, no con porcentajes", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const modelo = doc.querySelector('.vest-capa[data-ranura="modelo"]');
+    assert.strictEqual(modelo.style.left, "0px");
+    assert.strictEqual(modelo.style.top, "0px");
+    assert.strictEqual(modelo.style.width, "327px");
+    assert.strictEqual(modelo.style.height, "504px");
+  });
+});
+
+describe("el guardarropa", () => {
+  test("no se pinta nada hasta que se abre una ranura", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    assert.strictEqual(doc.querySelectorAll(".vest-opcion").length, 0);
+    assert.strictEqual($(doc, "vestBuscar").hidden, true);
+  });
+
+  // EL FALLO QUE COSTÓ UNA SESIÓN ENTERA. El catálogo tiene 621 prendas;
+  // pintarlas con src las descarga todas aunque no se vean.
+  test("al abrir una ranura, ninguna miniatura pide su dibujo", async () => {
+    const { doc, puestos } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const antes = puestos.length;
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+
+    const opciones = [...doc.querySelectorAll(".vest-opcion img")];
+    assert.ok(opciones.length >= 2, "debería haber pintado las dos de pelo");
+
+    assert.strictEqual(puestos.length, antes,
+      "alguna miniatura pidió su dibujo: " + puestos.slice(antes).join(", "));
+    assert.strictEqual(opciones.filter(i => i.getAttribute("src")).length, 0);
+    assert.strictEqual(opciones.filter(i => i.dataset.src).length, opciones.length);
+  });
+
+  test("y se le pide a mano a core.js que las vigile", async () => {
+    const { doc, win } = await montar();
+    $(doc, "vestAbrir").click();
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+
+    // A mano y no esperando al MutationObserver: su return sale de TODO el
+    // lote de mutaciones, así que un .avatar-compuesto que entrara antes
+    // en el mismo lote dejaría estas miniaturas en blanco para siempre.
+    assert.strictEqual(win._perezosasLlamadas.length, 1);
+    assert.strictEqual(win._perezosasLlamadas[0], $(doc, "vestRejilla"));
+  });
+
+  test("los nombres se pintan como texto, nunca como HTML", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+
+    const rejilla = $(doc, "vestRejilla");
+    assert.ok(/&lt;b&gt;Pelo corto&lt;\/b&gt;/.test(rejilla.innerHTML),
+      "el nombre tendría que estar escapado");
+    assert.strictEqual(rejilla.querySelectorAll("b").length, 0);
+  });
+
+  test("elegir una prenda la pone en su capa", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+
+    doc.querySelector('.vest-opcion[data-valor="tora_pelo1"]').click();
+
+    const pelo = doc.querySelector('.vest-capa[data-ranura="pelo"]');
+    assert.strictEqual(pelo.hidden, false);
+    assert.match(pelo.getAttribute("src"), /ddd\.png$/);
+  });
+
+  test("y la ranura del personaje se ve pero no se abre", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    const modelo = [...doc.querySelectorAll(".vest-ranura")]
+      .find(b => b.textContent === "Modelo");
+
+    assert.ok(modelo, "la ranura del personaje tiene que verse");
+    assert.strictEqual(modelo.disabled, true);
+  });
+});
+
+describe("lo publicado se pinta como lo pinta el sitio", () => {
+  // Requisito del encargo: el vestidor sirve para ver cómo convive lo
+  // nuevo con lo que ya hay, así que el fondo de comparación tiene que
+  // estar bien pintado. El editor de verdad usa object-fit: contain, y una
+  // prenda publicada de 332x512 se ve ENCAJADA, no a tamaño real.
+  test("una prenda publicada descuadrada se encaja, no se pega", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    // Cereza, que es quien tiene la boca de 332x512, y retiradas incluidas.
+    $(doc, "vestPersonaje").value = "cereza";
+    $(doc, "vestPersonaje").dispatchEvent(new doc.defaultView.Event("change"));
+    $(doc, "vestRetiradas").checked = true;
+    $(doc, "vestRetiradas").dispatchEvent(new doc.defaultView.Event("change"));
+
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Boca").click();
+    doc.querySelector('.vest-opcion[data-valor="cereza_boca9"]').click();
+
+    const boca = doc.querySelector('.vest-capa[data-ranura="boca"]');
+
+    // contain de 332x512 en 327x504: k = 504/512 = 0,984375
+    // ancho = 326,8125  alto = 504  x = 0,09375  y = 0
+    assert.strictEqual(boca.style.height, "504px");
+    assert.strictEqual(boca.style.width, "326.8125px");
+    assert.strictEqual(boca.style.top, "0px");
+    assert.strictEqual(boca.style.left, "0.09375px");
+  });
+});
+
+describe("cambiar de personaje", () => {
+  test("desnuda el maniquí, porque el guardarropa no se hereda", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    [...doc.querySelectorAll(".vest-ranura")].find(b => b.textContent === "Pelo").click();
+    doc.querySelector('.vest-opcion[data-valor="tora_pelo1"]').click();
+
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="pelo"]').hidden, false);
+
+    $(doc, "vestPersonaje").value = "cereza";
+    $(doc, "vestPersonaje").dispatchEvent(new doc.defaultView.Event("change"));
+
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="pelo"]').hidden, true);
+    const modelo = doc.querySelector('.vest-capa[data-ranura="modelo"]');
+    assert.match(modelo.getAttribute("src"), /bbb\.png$/);
+  });
+
+  test("y el personaje base de cereza también se encaja, que mide 326x503", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    $(doc, "vestPersonaje").value = "cereza";
+    $(doc, "vestPersonaje").dispatchEvent(new doc.defaultView.Event("change"));
+
+    // contain de 326x503 en 327x504: manda el ALTO, no el ancho, porque
+    // 504/503 = 1,001988 es menor que 327/326 = 1,003067. Así que el
+    // dibujo llega justo arriba y abajo y le sobra un pelo a los lados.
+    // Es el 0,2 % del que habla docs/DESARROLLO.md.
+    //
+    // Se compara con tolerancia y no con igualdad: 503 * (504/503) da
+    // 503,99999999999994 en coma flotante. Da igual para un navegador,
+    // pero pedir "504px" exacto convertiría esta prueba en un aviso sobre
+    // aritmética de dobles en vez de sobre el encuadre.
+    const modelo = doc.querySelector('.vest-capa[data-ranura="modelo"]');
+    const px = v => parseFloat(v);
+
+    assert.ok(Math.abs(px(modelo.style.height) - 504) < 1e-9, modelo.style.height);
+    assert.ok(Math.abs(px(modelo.style.top)) < 1e-9, modelo.style.top);
+    assert.ok(Math.abs(px(modelo.style.width) - 326 * 504 / 503) < 1e-9, modelo.style.width);
+    assert.ok(Math.abs(px(modelo.style.left) - (327 - 326 * 504 / 503) / 2) < 1e-9,
+      modelo.style.left);
+  });
+});
+
+describe("vestir de una", () => {
+  test("Lo básico pone piel, ojos, boca y pelo si las hay", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+
+    $(doc, "vestBasico").click();
+
+    // En el catálogo de prueba tora solo tiene pelo, así que solo esa.
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="pelo"]').hidden, false);
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="botas"]').hidden, true);
+  });
+
+  test("Desnudar lo quita todo menos el personaje", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    $(doc, "vestBasico").click();
+
+    $(doc, "vestDesnudar").click();
+
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="pelo"]').hidden, true);
+    assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="modelo"]').hidden, false);
+  });
+});
+
+describe("el panel de siempre sigue funcionando", () => {
+  test("subir y catálogo siguen destapados al cargar", async () => {
+    const { doc } = await montar();
+    assert.strictEqual($(doc, "arteSubir").hidden, false);
+    assert.strictEqual($(doc, "arteCatalogo").hidden, false);
+  });
+
+  test("y el catálogo se pintó con sus tarjetas", async () => {
+    const { doc } = await montar();
+    assert.ok(doc.querySelectorAll("#arteGrid .arte-tarjeta").length >= 3);
+  });
+});
