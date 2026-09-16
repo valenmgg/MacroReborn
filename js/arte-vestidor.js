@@ -1190,13 +1190,50 @@ function vestBytesDeCuerpo(texto) {
     if (!item || !vestPuedeAjustarse(item)) return;
 
     const antes = item.ajuste;
-    const base = vestNormalizarAjuste(item.ajuste);
+
+    // MOVER NO PUEDE CAMBIAR EL TAMAÑO.
+    //
+    // Una prenda sin ajuste se pinta ENCAJADA, porque es como la mostrará
+    // el sitio si se sube tal cual. En cuanto recibe un ajuste se pinta
+    // PEGADA 1:1, porque es como va a salir del horno. Las dos cosas son
+    // ciertas, y esa es la puerta única de vestEncuadreDeCapa.
+    //
+    // Pero el salto entre las dos, en el primer píxel de movimiento, es
+    // brutal para un PNG que no mida el lienzo. Medido con una captura de
+    // pantalla de móvil, 1170x2532:
+    //
+    //   sin tocar   left=47px    ancho=232,9   alto=504     se ve entera
+    //   +1 px       left=-420px  ancho=1170    alto=2532    se ve el medio
+    //
+    // O sea que el dibujo desaparece: el marco solo enseña un recorte
+    // central a tamaño real, y si ese trozo es transparente -un borde, un
+    // fondo, cualquier cosa con el centro vacío- no queda nada. Pasó de
+    // verdad, y quien lo sufrió no tenía forma de entender por qué.
+    //
+    // Se arranca en la escala del encaje, así que el rectángulo NO se
+    // mueve: para un 1170x2532 el encaje es el 20 %, y pegado al 20 % cae
+    // en (47, -1,2) con 234x506, que es donde ya estaba. Para los 327x504
+    // -cuatro de cada cinco dibujos del catálogo- el encaje es el 100 % y
+    // no cambia absolutamente nada.
+    const base = item.ajuste
+      ? vestNormalizarAjuste(item.ajuste)
+      : vestNormalizarAjuste({ escala: vestEscalaDeEncaje(item.ancho, item.alto) });
+
     const nuevo = vestNormalizarAjuste(Object.assign({}, base, parcial));
 
-    // Volver al neutro deja el ajuste en null, no en un neutro explícito:
-    // así "no moví nada" y "moví y volví" son exactamente lo mismo, y el
-    // archivo se sube byte a byte en los dos casos.
-    item.ajuste = (vestEsNeutro(nuevo) && !nuevo.alLienzo) ? null : nuevo;
+    // Volver al punto de partida deja el ajuste en null, no en un neutro
+    // explícito: así "no moví nada" y "moví y volví" son exactamente lo
+    // mismo, y el archivo se sube byte a byte en los dos casos.
+    //
+    // El punto de partida es el que se sembró arriba, o sea la escala del
+    // encaje. Para un 327x504 eso es el 100 % y esto es literalmente la
+    // regla de siempre; para un descuadrado, es la escala a la que se
+    // empezó a mover, que es la única que deja el rectángulo quieto.
+    const partida = vestEscalaDeEncaje(item.ancho, item.alto);
+    const comoAlPrincipio = nuevo.dx === 0 && nuevo.dy === 0 &&
+      nuevo.espejo === false && nuevo.alLienzo === false && nuevo.escala === partida;
+
+    item.ajuste = comoAlPrincipio ? null : nuevo;
 
     // Un arrastre entero es UN paso de deshacer, no doscientos.
     const ultimo = hechos[hechos.length - 1];
@@ -1549,7 +1586,15 @@ function vestBytesDeCuerpo(texto) {
     }));
     $("vestOriginal").addEventListener("click", () => {
       const item = itemActivo();
-      if (item) cambiarAjuste({ dx: 0, dy: 0, escala: 100, espejo: false, alLienzo: false });
+      if (!item) return;
+      // Al PUNTO DE PARTIDA, que no siempre es el 100 %: para una prenda
+      // descuadrada es la escala del encaje. Poner 100 a pelo la dejaría
+      // pegada a tamaño real, o sea resucitando el salto que este botón
+      // existe para deshacer.
+      cambiarAjuste({
+        dx: 0, dy: 0, espejo: false, alLienzo: false,
+        escala: vestEscalaDeEncaje(item.ancho, item.alto)
+      });
     });
 
     // El arrastre. pointer y no mouse: así vale igual con el dedo.

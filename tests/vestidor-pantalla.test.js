@@ -961,3 +961,118 @@ describe("el aviso antes de publicar", () => {
     assert.strictEqual($(doc, "vestAvisoLienzo").hidden, true);
   });
 });
+
+// ==============================
+// MOVER NO PUEDE CAMBIAR EL TAMAÑO
+// ==============================
+// El fallo que lo motivó, contado entero porque no se deduce del código:
+//
+// Una prenda sin ajuste se pinta ENCAJADA, porque es como la mostrará el
+// sitio si se sube tal cual. En cuanto recibe un ajuste se pinta PEGADA
+// 1:1, porque es como va a salir del horno. Las dos cosas son ciertas.
+//
+// Pero el salto entre ellas, en el PRIMER píxel de movimiento, era brutal
+// para cualquier PNG que no midiera el lienzo. Con una captura de
+// pantalla de móvil de 1170x2532:
+//
+//   sin tocar   left=47px    ancho=232,9   alto=504     se veía entera
+//   +1 px       left=-420px  ancho=1170    alto=2532    se veía el medio
+//
+// O sea que el dibujo desaparecía. El marco solo enseñaba un recorte
+// central a tamaño real, y si ese trozo era transparente -un borde, un
+// fondo- no quedaba nada. Quien lo sufrió no tenía forma de entenderlo:
+// los números subían de uno en uno y el dibujo se esfumaba.
+//
+// Y el salto ocurría UNA sola vez, así que cualquier cosa que se hiciera
+// después -marcar espejo, por ejemplo- parecía haberlo arreglado.
+
+describe("mover no puede cambiar el tamaño", () => {
+  // Las medidas raras son las del catálogo de verdad más una captura de
+  // pantalla, que es lo que de verdad sube la gente: en producción hay una
+  // prenda llamada "Captura de pantalla 2026 09 15 113043".
+  for (const [ancho, alto] of [[327, 504], [327, 505], [326, 503], [1170, 2532], [100, 100]]) {
+    test("un " + ancho + "x" + alto + " no pega un salto al primer píxel", async () => {
+      const { win, doc } = await conPrenda(ancho, alto);
+      const capa = doc.querySelector(CAPA);
+
+      const px = v => parseFloat(v);
+      const antes = { w: px(capa.style.width), h: px(capa.style.height) };
+
+      tecla(win, doc, "ArrowRight");
+
+      const despues = { w: px(capa.style.width), h: px(capa.style.height) };
+
+      // Un 1 % de tolerancia: la escala del encaje se guarda como entero,
+      // así que un 99,8 % se redondea a 100 y el rectángulo puede moverse
+      // una fracción de píxel. Lo que no puede es multiplicarse por cinco.
+      const razon = despues.w / antes.w;
+      assert.ok(razon > 0.99 && razon < 1.01,
+        ancho + "x" + alto + ": al mover 1 px el ancho pasó de " +
+        antes.w.toFixed(1) + " a " + despues.w.toFixed(1) + " (x" + razon.toFixed(2) + ")");
+
+      const razonAlto = despues.h / antes.h;
+      assert.ok(razonAlto > 0.99 && razonAlto < 1.01,
+        ancho + "x" + alto + ": el alto pasó de " + antes.h.toFixed(1) + " a " + despues.h.toFixed(1));
+    });
+  }
+
+  test("y se mueve de verdad: el centro se corre exactamente lo que dice el número", async () => {
+    const { win, doc } = await conPrenda(1170, 2532);
+    const capa = doc.querySelector(CAPA);
+    const centro = () => parseFloat(capa.style.left) + parseFloat(capa.style.width) / 2;
+
+    tecla(win, doc, "ArrowRight");
+    const a = centro();
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+    const b = centro();
+
+    assert.ok(Math.abs((b - a) - 10) < 1e-9,
+      "diez píxeles tenían que mover diez píxeles, movieron " + (b - a));
+  });
+
+  // La escala sembrada es el punto de partida, no un ajuste: volver a cero
+  // tiene que seguir subiendo el archivo original byte a byte, que es lo
+  // que mantiene viva la deduplicación por sha256.
+  test("volver a cero sigue subiendo el original, también en un descuadrado", async () => {
+    const { win, doc } = await conPrenda(1170, 2532);
+
+    tecla(win, doc, "ArrowRight");
+    assert.doesNotMatch($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
+
+    tecla(win, doc, "ArrowLeft");
+
+    assert.match($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
+    assert.match($(doc, "vestInstruccion").textContent, /tal cual/);
+    assert.match($(doc, "vestDestino").textContent, /se sube tal cual/);
+  });
+
+  // Y el caso normal no se entera de nada de esto.
+  test("un 327x504 sigue empezando en el 100 %", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight");
+
+    assert.strictEqual($(doc, "vestEscala").value, "100");
+    assert.strictEqual(doc.querySelector(CAPA).style.width, "327px");
+  });
+});
+
+describe("y Volver al original no resucita el salto", () => {
+  // El boton fijaba escala 100 a pelo. Para una prenda descuadrada el 100 %
+  // NO es el punto de partida: es el tamaño real, o sea justo el salto que
+  // el boton tendria que estar deshaciendo.
+  test("devuelve la prenda a donde estaba, no a tamaño real", async () => {
+    const { win, doc } = await conPrenda(1170, 2532);
+    const capa = doc.querySelector(CAPA);
+    const ancho = () => parseFloat(capa.style.width);
+
+    const alPrincipio = ancho();
+
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+    $(doc, "vestOriginal").click();
+
+    assert.ok(Math.abs(ancho() - alPrincipio) < 1,
+      "volvio a " + ancho().toFixed(1) + " en vez de a " + alPrincipio.toFixed(1));
+    assert.match($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
+  });
+});
