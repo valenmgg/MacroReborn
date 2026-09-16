@@ -1021,8 +1021,13 @@ function vestBytesDeCuerpo(texto) {
   function filaDePrueba(item) {
     const fila = elem("div", "vest-prueba");
     const estaMontada = montadas.indexOf(item.clave) !== -1;
-    if (estaMontada) fila.classList.add("vest-activa");
+    if (item.clave === activa) fila.classList.add("vest-activa");
     if (!vestPuedeAjustarse(item)) fila.classList.add("vest-rota");
+
+    // Tocar la fila elige esa prenda para ajustarla. La casilla de la
+    // izquierda es otra cosa -ponérsela o quitársela al maniquí- y por eso
+    // se para el evento ahí.
+    fila.addEventListener("click", () => activar(item.clave));
 
     const ver = document.createElement("input");
     ver.type = "checkbox";
@@ -1030,6 +1035,7 @@ function vestBytesDeCuerpo(texto) {
     ver.checked = estaMontada;
     ver.title = "Ponérsela al maniquí";
     ver.addEventListener("change", () => montar(item.clave, ver.checked));
+    ver.addEventListener("click", e => e.stopPropagation());
     fila.appendChild(ver);
 
     const mini = document.createElement("img");
@@ -1083,6 +1089,284 @@ function vestBytesDeCuerpo(texto) {
       : "";
   }
 
+  // ==============================
+  // EL AJUSTE
+  // ==============================
+
+  let activa = null;        // clave de la prenda que se está ajustando
+  const hechos = [];        // pila de deshacer: { clave, antes, despues }
+  let deshechos = 0;        // cuántos de la pila están deshechos
+
+  function itemActivo() {
+    if (!CTX || !activa) return null;
+    return CTX.archivos().find(a => a.clave === activa) || null;
+  }
+
+  // El ÚNICO sitio que escribe un ajuste. Todo lo demás -el teclado, los
+  // campos, el arrastre, los presets- pasa por acá, así que deshacer no
+  // tiene que enterarse de cada camino por separado.
+  function cambiarAjuste(parcial, agrupar) {
+    const item = itemActivo();
+    if (!item || !vestPuedeAjustarse(item)) return;
+
+    const antes = item.ajuste;
+    const base = vestNormalizarAjuste(item.ajuste);
+    const nuevo = vestNormalizarAjuste(Object.assign({}, base, parcial));
+
+    // Volver al neutro deja el ajuste en null, no en un neutro explícito:
+    // así "no moví nada" y "moví y volví" son exactamente lo mismo, y el
+    // archivo se sube byte a byte en los dos casos.
+    item.ajuste = (vestEsNeutro(nuevo) && !nuevo.alLienzo) ? null : nuevo;
+
+    // Un arrastre entero es UN paso de deshacer, no doscientos.
+    const ultimo = hechos[hechos.length - 1];
+    if (agrupar && ultimo && ultimo.clave === activa && ultimo.agrupa === agrupar) {
+      ultimo.despues = item.ajuste;
+    } else {
+      hechos.length = hechos.length - deshechos;   // se pierde lo rehacible
+      deshechos = 0;
+      hechos.push({ clave: activa, antes, despues: item.ajuste, agrupa: agrupar || null });
+      if (hechos.length > 60) hechos.shift();
+    }
+
+    tocado();
+  }
+
+  function aplicarPaso(paso, haciaAtras) {
+    const item = CTX.archivos().find(a => a.clave === paso.clave);
+    if (!item) return;
+    item.ajuste = haciaAtras ? paso.antes : paso.despues;
+    activa = paso.clave;
+    tocado();
+  }
+
+  function deshacer() {
+    const i = hechos.length - deshechos - 1;
+    if (i < 0) return;
+    deshechos++;
+    aplicarPaso(hechos[i], true);
+  }
+
+  function rehacer() {
+    if (!deshechos) return;
+    const paso = hechos[hechos.length - deshechos];
+    deshechos--;
+    aplicarPaso(paso, false);
+  }
+
+  // Lo que hay que repintar cuando un ajuste cambia.
+  function tocado() {
+    refrescarEscenario();
+    pintarPruebas();
+    pintarAjuste();
+  }
+
+  // ---------- LO QUE SE ENSEÑA DEL AJUSTE ----------
+
+  function pintarAjuste() {
+    const item = itemActivo();
+    const caja = $("vestAjusteCaja");
+    const recuadro = $("vestRecuadro");
+
+    if (!item) {
+      caja.hidden = true;
+      recuadro.hidden = true;
+      $("vestDestino").textContent = CTX && CTX.archivos().length
+        ? "Elegí una prenda de la izquierda para ajustarla."
+        : "";
+      return;
+    }
+
+    caja.hidden = false;
+
+    const a = vestNormalizarAjuste(item.ajuste);
+    $("vestDx").value = String(a.dx);
+    $("vestDy").value = String(a.dy);
+    $("vestEscala").value = String(a.escala);
+    $("vestEspejo").checked = a.espejo;
+
+    const puede = vestPuedeAjustarse(item);
+    for (const id of ["vestDx", "vestDy", "vestEscala", "vestEspejo"]) $(id).disabled = !puede;
+
+    $("vestResumenAjuste").textContent = vestResumenDeAjuste(item.ajuste);
+    $("vestInstruccion").textContent =
+      vestInstruccionParaElArchivo(item.ajuste, item.ancho, item.alto);
+
+    // El recuadro de la prenda activa, en las coordenadas del lienzo.
+    if (montadas.indexOf(item.clave) !== -1 && puede) {
+      const e = vestEncuadreDeCapa(item);
+      recuadro.hidden = false;
+      recuadro.style.left = e.x + "px";
+      recuadro.style.top = e.y + "px";
+      recuadro.style.width = e.ancho + "px";
+      recuadro.style.height = e.alto + "px";
+    } else {
+      recuadro.hidden = true;
+    }
+
+    pintarDestino(item);
+    pintarPresets(item);
+  }
+
+  // La línea que dice a dónde va a parar el dibujo. Aparece con el PRIMER
+  // ajuste y no al publicar: enterarse de que tu PNG mide 327x505 cuando
+  // ya le diste a Publicar no sirve de nada.
+  function pintarDestino(item) {
+    if (!vestPuedeAjustarse(item)) {
+      $("vestDestino").textContent = "No se pudo leer el tamaño de este PNG.";
+      return;
+    }
+
+    const medidas = item.ancho + "×" + item.alto;
+
+    if (!vestHayQueHornear(item)) {
+      $("vestDestino").textContent = (item.ancho === VEST_LIENZO_ANCHO && item.alto === VEST_LIENZO_ALTO)
+        ? medidas + " · se sube tal cual"
+        : medidas + " · se sube tal cual, y el sitio lo encajará";
+      return;
+    }
+
+    const r = vestRecorteDeAnclaje(item.ancho, item.alto);
+    const partes = [medidas + " → " + VEST_LIENZO_ANCHO + "×" + VEST_LIENZO_ALTO];
+
+    const recorta = ["izq", "der", "arriba", "abajo"]
+      .filter(l => r.recorta[l]).map(l => r.recorta[l] + " px por " + nombreDeLado(l));
+    const rellena = ["izq", "der", "arriba", "abajo"]
+      .filter(l => r.rellena[l]).map(l => r.rellena[l] + " px por " + nombreDeLado(l));
+
+    if (recorta.length) partes.push("recorta " + recorta.join(" y "));
+    if (rellena.length) partes.push("rellena " + rellena.join(" y "));
+
+    $("vestDestino").textContent = partes.join(" · ");
+  }
+
+  function nombreDeLado(l) {
+    return l === "izq" ? "la izquierda" : l === "der" ? "la derecha" : l;
+  }
+
+  function pintarPresets(item) {
+    const alLienzo = $("vestAlLienzo");
+    const encajar = $("vestEncajar");
+    const original = $("vestOriginal");
+
+    const puede = vestPuedeAjustarse(item);
+    const enMedida = item.ancho === VEST_LIENZO_ANCHO && item.alto === VEST_LIENZO_ALTO;
+
+    alLienzo.hidden = !puede || enMedida;
+    alLienzo.textContent = "Llevar a " + VEST_LIENZO_ANCHO + "×" + VEST_LIENZO_ALTO;
+
+    // "Encajar" solo se ofrece cuando de verdad hace algo distinto de
+    // llevar al lienzo, o sea cuando el encaje no da 100 %. Son tres
+    // dibujos en todo el catálogo; para los demás, recortar o rellenar una
+    // fila es exacto y encajar solo emborronaría.
+    const pct = puede ? vestEscalaDeEncaje(item.ancho, item.alto) : 100;
+    encajar.hidden = !puede || pct === 100;
+    encajar.textContent = "Encajar (" + pct + " %) · remuestrea";
+    encajar.dataset.pct = String(pct);
+
+    original.hidden = !item.ajuste;
+  }
+
+  // ---------- EL ARRASTRE ----------
+
+  // De píxeles de pantalla a píxeles del lienzo. Con el zoom, el lienzo
+  // mide 327*zoom en pantalla, así que el factor es 1/zoom.
+  //
+  // jsdom no maqueta y el rect mide 0: dividir daría Infinity y cada
+  // prueba de arrastre saldría NaN. Sin maquetación el factor es 1, que
+  // además es lo correcto a zoom 1.
+  function factorDePantalla() {
+    const r = $("vestLienzo").getBoundingClientRect();
+    return r.width ? (VEST_LIENZO_ANCHO / r.width) : 1;
+  }
+
+  let arrastre = null;
+
+  function empezarArrastre(e) {
+    const item = itemActivo();
+    if (!item || !vestPuedeAjustarse(item)) return;
+    if (montadas.indexOf(item.clave) === -1) return;
+
+    const a = vestNormalizarAjuste(item.ajuste);
+    arrastre = {
+      id: e.pointerId,
+      x0: e.clientX, y0: e.clientY,
+      dx0: a.dx, dy0: a.dy,
+      // El factor se CONGELA acá: si a media arrastre algo reflotara la
+      // página -una chip que aparece, la barra que cambia de alto- el
+      // mapa de pantalla a lienzo cambiaría a mitad del gesto.
+      factor: factorDePantalla(),
+      sello: "arrastre:" + e.pointerId + ":" + hechos.length
+    };
+
+    $("vestLienzo").classList.add("vest-arrastrando");
+    try { $("vestLienzo").setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  }
+
+  function moverArrastre(e) {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+
+    // Se redondea el delta TOTAL desde el pointerdown, NUNCA el de cada
+    // evento. Acumulando deltas redondeados, un arrastre de N eventos
+    // acumula hasta N/2 px de error: la prenda deriva y el número del
+    // panel deja de corresponderse con lo que se ve.
+    cambiarAjuste({
+      dx: arrastre.dx0 + Math.round((e.clientX - arrastre.x0) * arrastre.factor),
+      dy: arrastre.dy0 + Math.round((e.clientY - arrastre.y0) * arrastre.factor)
+    }, arrastre.sello);
+
+    e.preventDefault();
+  }
+
+  function soltarArrastre(e) {
+    if (!arrastre || (e && e.pointerId !== arrastre.id)) return;
+    try { $("vestLienzo").releasePointerCapture(arrastre.id); } catch (_) {}
+    $("vestLienzo").classList.remove("vest-arrastrando");
+    arrastre = null;
+  }
+
+  // ---------- EL TECLADO ----------
+
+  function alTeclado(e) {
+    if (!abierto) return;
+
+    if (e.key === "Escape") { cerrar(); return; }
+
+    // Si se está escribiendo en un campo, el teclado es del campo.
+    const donde = e.target && e.target.tagName;
+    if (donde === "INPUT" || donde === "SELECT" || donde === "TEXTAREA") return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      if (e.shiftKey) rehacer(); else deshacer();
+      e.preventDefault();
+      return;
+    }
+
+    const item = itemActivo();
+    if (!item) return;
+
+    const paso = e.shiftKey ? 10 : 1;
+    const a = vestNormalizarAjuste(item.ajuste);
+
+    if (e.key === "ArrowLeft") { cambiarAjuste({ dx: a.dx - paso }); e.preventDefault(); }
+    else if (e.key === "ArrowRight") { cambiarAjuste({ dx: a.dx + paso }); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { cambiarAjuste({ dy: a.dy - paso }); e.preventDefault(); }
+    else if (e.key === "ArrowDown") { cambiarAjuste({ dy: a.dy + paso }); e.preventDefault(); }
+    else if (e.key.toLowerCase() === "e") { cambiarAjuste({ espejo: !a.espejo }); }
+    else if (e.key.toLowerCase() === "b") { ciclarFondo(); }
+    else if (e.key.toLowerCase() === "r") { alAzar(); }
+  }
+
+  // ---------- ELEGIR QUÉ SE AJUSTA ----------
+
+  function activar(clave) {
+    activa = clave;
+    // Ajustar algo que no se ve no tiene sentido: se monta sola.
+    if (clave && montadas.indexOf(clave) === -1) montadas.push(clave);
+    tocado();
+  }
+
   // ---------- LA VISTA ----------
 
   function aplicarZoom() {
@@ -1128,6 +1412,7 @@ function vestBytesDeCuerpo(texto) {
     refrescarEscenario();
     pintarRejilla();
     pintarPruebas();
+    pintarAjuste();
 
     $("arteVestidor").scrollIntoView({ block: "start" });
   }
@@ -1161,17 +1446,40 @@ function vestBytesDeCuerpo(texto) {
     $("vestZoomUno").addEventListener("click", () => { zoom = 1; aplicarZoom(); });
     $("vestFondo").addEventListener("click", ciclarFondo);
 
-    document.addEventListener("keydown", e => {
-      if (!abierto) return;
-      if (e.key === "Escape") cerrar();
+    // Los campos: cada uno escribe su parte del ajuste y nada más.
+    $("vestDx").addEventListener("input", () => cambiarAjuste({ dx: $("vestDx").value }));
+    $("vestDy").addEventListener("input", () => cambiarAjuste({ dy: $("vestDy").value }));
+    $("vestEscala").addEventListener("input", () => cambiarAjuste({ escala: $("vestEscala").value }));
+    $("vestEspejo").addEventListener("change", () => cambiarAjuste({ espejo: $("vestEspejo").checked }));
+
+    $("vestAlLienzo").addEventListener("click", () => cambiarAjuste({ alLienzo: true }));
+    $("vestEncajar").addEventListener("click", () => cambiarAjuste({
+      alLienzo: true, escala: Number($("vestEncajar").dataset.pct) || 100, dx: 0, dy: 0
+    }));
+    $("vestOriginal").addEventListener("click", () => {
+      const item = itemActivo();
+      if (item) cambiarAjuste({ dx: 0, dy: 0, escala: 100, espejo: false, alLienzo: false });
     });
+
+    // El arrastre. pointer y no mouse: así vale igual con el dedo.
+    const lienzo = $("vestLienzo");
+    lienzo.addEventListener("pointerdown", empezarArrastre);
+    lienzo.addEventListener("pointermove", moverArrastre);
+    lienzo.addEventListener("pointerup", soltarArrastre);
+    lienzo.addEventListener("pointercancel", soltarArrastre);
+
+    document.addEventListener("keydown", alTeclado);
   }
 
   // Para que js/arte.js pueda refrescar el rail cuando cambia su lista.
   function avisarDeCambio() {
     if (!abierto) return;
+    // Si la prenda que se estaba ajustando ya no está en la lista -la
+    // quitaron, o se publicó- deja de haber nada activo.
+    if (activa && !itemActivo()) activa = null;
     pintarPruebas();
     refrescarEscenario();
+    pintarAjuste();
   }
 
   window.MacroVestidor = {
@@ -1182,6 +1490,9 @@ function vestBytesDeCuerpo(texto) {
     abrir,
     cerrar,
     avisarDeCambio,
+    activar,
+    deshacer,
+    rehacer,
     resumenDeAjuste: vestResumenDeAjuste
   };
 

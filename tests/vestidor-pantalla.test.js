@@ -399,3 +399,314 @@ describe("el panel de siempre sigue funcionando", () => {
     assert.ok(doc.querySelectorAll("#arteGrid .arte-tarjeta").length >= 3);
   });
 });
+
+// ==============================
+// EL AJUSTE
+// ==============================
+// Para probarlo hace falta una prenda LOCAL en la lista de subida, así que
+// se entra por el mismo camino que usa el artista: el <input type=file> de
+// "Subir prendas". jsdom trae FileReader y File, pero no decodifica
+// imágenes, así que new Image() nunca dispararía onload; se sustituye por
+// uno que contesta enseguida, igual que tests/arte-pagina.test.js.
+
+function prepararEleccion(win, ancho, alto) {
+  win.Image = class {
+    set src(_) {
+      this.naturalWidth = ancho;
+      this.naturalHeight = alto;
+      setTimeout(() => { if (this.onload) this.onload(); }, 0);
+    }
+  };
+}
+
+async function elegir(win, doc, nombres) {
+  const input = $(doc, "arteArchivos");
+  const archivos = nombres.map(n =>
+    new win.File([Buffer.from("png-de-mentira")], n, { type: "image/png" }));
+
+  Object.defineProperty(input, "files", { value: archivos, configurable: true });
+  input.dispatchEvent(new win.Event("change"));
+
+  for (let i = 0; i < 14; i++) await new Promise(r => setTimeout(r, 0));
+}
+
+// Monta la página, mete un PNG de la medida pedida, abre el vestidor y deja
+// esa prenda elegida y puesta en el maniquí.
+async function conPrenda(ancho, alto, nombre) {
+  const m = await montar();
+  prepararEleccion(m.win, ancho, alto);
+  await elegir(m.win, m.doc, [nombre || "tora_accesorio.png"]);
+
+  $(m.doc, "vestAbrir").click();
+  m.doc.querySelector(".vest-prueba").click();
+
+  return m;
+}
+
+function tecla(win, doc, key, extra) {
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",
+    Object.assign({ key: key, bubbles: true }, extra || {})));
+}
+
+function puntero(win, lienzo, tipo, x, y) {
+  const e = new win.PointerEvent(tipo, { bubbles: true, clientX: x, clientY: y });
+  Object.defineProperty(e, "pointerId", { value: 7 });
+  lienzo.dispatchEvent(e);
+}
+
+const CAPA = ".vest-capa[data-ranura=accesorio]";
+
+// ==============================
+
+describe("elegir una prenda para ajustarla", () => {
+  test("el PNG elegido arriba aparece en el rail del vestidor", async () => {
+    const { doc } = await conPrenda(327, 504);
+    assert.strictEqual(doc.querySelectorAll(".vest-prueba").length, 1);
+  });
+
+  test("y al tocarla se enseñan sus números", async () => {
+    const { doc } = await conPrenda(327, 504);
+
+    assert.strictEqual($(doc, "vestAjusteCaja").hidden, false);
+    assert.strictEqual($(doc, "vestDx").value, "0");
+    assert.strictEqual($(doc, "vestEscala").value, "100");
+    assert.match($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
+  });
+
+  test("se pone sola en el maniquí: ajustar algo que no se ve no sirve", async () => {
+    const { doc } = await conPrenda(327, 504);
+
+    const capa = doc.querySelector(CAPA);
+    assert.ok(capa, "el nombre del archivo la manda a accesorio");
+    assert.strictEqual(capa.hidden, false);
+  });
+});
+
+describe("mover con el teclado", () => {
+  test("las flechas mueven de a un píxel", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight");
+    tecla(win, doc, "ArrowRight");
+    tecla(win, doc, "ArrowUp");
+
+    assert.strictEqual($(doc, "vestDx").value, "2");
+    assert.strictEqual($(doc, "vestDy").value, "-1");
+  });
+
+  test("y con mayúsculas, de a diez", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+
+    assert.strictEqual($(doc, "vestDx").value, "10");
+  });
+
+  test("el movimiento llega al maniquí, en píxeles del lienzo", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+
+    const capa = doc.querySelector(CAPA);
+    assert.strictEqual(capa.style.left, "10px");
+    assert.strictEqual(capa.style.width, "327px", "mover no cambia el tamaño");
+  });
+
+  test("la tecla E espeja", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "e");
+
+    assert.strictEqual($(doc, "vestEspejo").checked, true);
+    assert.strictEqual(doc.querySelector(CAPA).style.transform, "scaleX(-1)");
+  });
+
+  test("pero si se está escribiendo en un campo, el teclado es del campo", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    const campo = $(doc, "vestDx");
+    campo.dispatchEvent(new win.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+  });
+});
+
+describe("arrastrar", () => {
+  test("mueve la prenda, y el número lo dice", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+    const lienzo = $(doc, "vestLienzo");
+
+    puntero(win, lienzo, "pointerdown", 100, 100);
+    puntero(win, lienzo, "pointermove", 130, 88);
+    puntero(win, lienzo, "pointerup", 130, 88);
+
+    assert.strictEqual($(doc, "vestDx").value, "30");
+    assert.strictEqual($(doc, "vestDy").value, "-12");
+  });
+
+  // Acumulando deltas redondeados en cada evento, un arrastre largo
+  // deriva: veinte pasos de medio píxel se convierten en veinte píxeles en
+  // vez de diez. Redondeando el delta TOTAL desde el pointerdown, no.
+  test("y no deriva: se redondea el total, no cada paso", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+    const lienzo = $(doc, "vestLienzo");
+
+    puntero(win, lienzo, "pointerdown", 0, 0);
+    for (let i = 1; i <= 20; i++) puntero(win, lienzo, "pointermove", i * 0.5, 0);
+    puntero(win, lienzo, "pointerup", 10, 0);
+
+    assert.strictEqual($(doc, "vestDx").value, "10");
+  });
+
+  test("un arrastre entero es UN solo paso de deshacer", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+    const lienzo = $(doc, "vestLienzo");
+
+    puntero(win, lienzo, "pointerdown", 0, 0);
+    for (let i = 1; i <= 20; i++) puntero(win, lienzo, "pointermove", i, 0);
+    puntero(win, lienzo, "pointerup", 20, 0);
+
+    win.MacroVestidor.deshacer();
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+  });
+});
+
+describe("escalar", () => {
+  test("no mueve el centro de la prenda", async () => {
+    const { doc, win } = await conPrenda(327, 504);
+    const capa = doc.querySelector(CAPA);
+
+    const antes = parseFloat(capa.style.left) + parseFloat(capa.style.width) / 2;
+
+    $(doc, "vestEscala").value = "150";
+    $(doc, "vestEscala").dispatchEvent(new win.Event("input"));
+
+    const despues = parseFloat(capa.style.left) + parseFloat(capa.style.width) / 2;
+
+    assert.ok(Math.abs(antes - despues) < 1e-9,
+      "el centro se movió de " + antes + " a " + despues);
+    assert.strictEqual(capa.style.width, (327 * 1.5) + "px");
+  });
+});
+
+describe("volver atrás", () => {
+  test("volver a cero deja la prenda sin ajuste: se sube tal cual", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight");
+    assert.match($(doc, "vestResumenAjuste").textContent, /1 px/);
+
+    tecla(win, doc, "ArrowLeft");
+
+    assert.match($(doc, "vestResumenAjuste").textContent, /sin ajuste/);
+    assert.match($(doc, "vestInstruccion").textContent, /tal cual/);
+  });
+
+  test("deshacer y rehacer", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    tecla(win, doc, "ArrowRight", { shiftKey: true });
+    tecla(win, doc, "ArrowDown", { shiftKey: true });
+    assert.strictEqual($(doc, "vestDy").value, "10");
+
+    win.MacroVestidor.deshacer();
+    assert.strictEqual($(doc, "vestDy").value, "0");
+    assert.strictEqual($(doc, "vestDx").value, "10");
+
+    win.MacroVestidor.rehacer();
+    assert.strictEqual($(doc, "vestDy").value, "10");
+  });
+
+  test("y Volver al original solo se ofrece cuando hay algo que volver", async () => {
+    const { win, doc } = await conPrenda(327, 504);
+
+    assert.strictEqual($(doc, "vestOriginal").hidden, true);
+    tecla(win, doc, "ArrowRight");
+    assert.strictEqual($(doc, "vestOriginal").hidden, false);
+  });
+});
+
+describe("lo que se está ajustando se pinta PEGADO, no encajado", () => {
+  // Las del catálogo se encajan, porque así las muestra el sitio. La que
+  // se está ajustando se pega 1:1, porque así es como va a salir del
+  // horno. Es la puerta única de vestEncuadreDeCapa, vista desde el DOM.
+  test("un 327x505 sin tocar se encaja, y en cuanto se toca se pega", async () => {
+    const { win, doc } = await conPrenda(327, 505);
+    const capa = doc.querySelector(CAPA);
+
+    // Sin ajuste: encajado. k = 504/505, así que no llena el ancho.
+    assert.ok(Math.abs(parseFloat(capa.style.height) - 504) < 1e-9, capa.style.height);
+    assert.ok(parseFloat(capa.style.width) < 327, capa.style.width);
+
+    // Con ajuste: pegado. Su alto de verdad, 505, y el ancho entero.
+    tecla(win, doc, "ArrowRight");
+
+    assert.strictEqual(capa.style.width, "327px");
+    assert.strictEqual(capa.style.height, "505px");
+    assert.strictEqual(capa.style.left, "1px");
+    assert.strictEqual(capa.style.top, "0px");
+  });
+});
+
+describe("la línea que dice a dónde va a parar el dibujo", () => {
+  test("aparece con el PRIMER ajuste, no al publicar", async () => {
+    const { win, doc } = await conPrenda(327, 505);
+
+    assert.match($(doc, "vestDestino").textContent, /se sube tal cual/);
+
+    tecla(win, doc, "ArrowRight");
+
+    const dice = $(doc, "vestDestino").textContent;
+    assert.match(dice, /327×505/);
+    assert.match(dice, /327×504/);
+    assert.match(dice, /recorta 1 px por abajo/);
+  });
+
+  test("y para un 326x503 dice que rellena, no que recorta", async () => {
+    const { win, doc } = await conPrenda(326, 503);
+
+    tecla(win, doc, "ArrowRight");
+
+    const dice = $(doc, "vestDestino").textContent;
+    assert.match(dice, /rellena/);
+    assert.doesNotMatch(dice, /recorta/);
+  });
+});
+
+describe("los dos presets", () => {
+  test("Llevar al lienzo no se ofrece si el PNG ya mide el lienzo", async () => {
+    const { doc } = await conPrenda(327, 504);
+    assert.strictEqual($(doc, "vestAlLienzo").hidden, true);
+  });
+
+  test("pero sí si no lo mide, y deja el ajuste en alLienzo sin mover nada", async () => {
+    const { doc } = await conPrenda(327, 505);
+
+    const boton = $(doc, "vestAlLienzo");
+    assert.strictEqual(boton.hidden, false);
+
+    boton.click();
+
+    assert.strictEqual($(doc, "vestDx").value, "0");
+    assert.strictEqual($(doc, "vestEscala").value, "100");
+    assert.match($(doc, "vestResumenAjuste").textContent, /al lienzo/);
+  });
+
+  // 61 de los 64 dibujos descuadrados del catálogo se arreglan recortando o
+  // rellenando una fila, que es exacto. Ofrecer "Encajar" ahí sería
+  // ofrecer emborronar el dibujo para nada.
+  test("Encajar NO se ofrece cuando encajar sería el 100 %", async () => {
+    const { doc } = await conPrenda(327, 505);
+    assert.strictEqual($(doc, "vestEncajar").hidden, true);
+  });
+
+  test("y sí para los bichos raros, diciendo que remuestrea", async () => {
+    const { doc } = await conPrenda(654, 1010);
+
+    const boton = $(doc, "vestEncajar");
+    assert.strictEqual(boton.hidden, false);
+    assert.match(boton.textContent, /50 %/);
+    assert.match(boton.textContent, /remuestrea/);
+  });
+});
