@@ -24,6 +24,31 @@ function buscarPuertoLibre() {
   });
 }
 
+// Abre una conexion de avisos en vivo y recoge lo que llegue por ella.
+// No es pedir() porque esa respuesta NO TERMINA: pedir() espera al "end"
+// y aqui no llega nunca.
+function abrirAvisos(puerto, canales) {
+  return new Promise((resolve, reject) => {
+    const req = http.get({
+      host: "127.0.0.1",
+      port: puerto,
+      path: "/api/avisos?canales=" + encodeURIComponent(canales),
+      headers: { Accept: "text/event-stream" }
+    }, res => {
+      const trozos = [];
+      res.setEncoding("utf8");
+      res.on("data", t => trozos.push(t));
+      resolve({
+        codigo: res.statusCode,
+        headers: res.headers,
+        texto: () => trozos.join(""),
+        cerrar: () => res.destroy()
+      });
+    });
+    req.once("error", reject);
+  });
+}
+
 function pedir(puerto, ruta, opciones = {}) {
   const metodo = opciones.metodo || "GET";
   const cuerpo = opciones.cuerpo === undefined
@@ -189,8 +214,45 @@ async function main() {
     assert.equal(segundo.json?.monedas?.razon, "aun-no-pasaron-10-minutos");
     assert.equal(segundo.json?.monedas?.saldoNuevo, primero.json?.monedas?.saldoNuevo);
 
+    // ----- Avisos en vivo -----
+    // La unica comprobacion que ejercita la cadena entera: el endpoint que
+    // sostiene la conexion, el reparto de api/_avisos.js y el sitio que
+    // emite. Las suites de tests prueban cada pieza por separado y ninguna
+    // las prueba juntas.
+    const avisos = await abrirAvisos(puerto, "notificaciones-demo");
+    assert.equal(avisos.codigo, 200, "la conexion de avisos debe abrir");
+    assert.match(avisos.headers["content-type"] || "", /text\/event-stream/);
+    // Sin esta cabecera nginx se queda la respuesta en su buffer y no
+    // suelta un byte hasta que termine, que en esta no pasa nunca.
+    assert.equal(avisos.headers["x-accel-buffering"], "no");
+
+    // Un momento para que quede apuntada antes de disparar el aviso.
+    await dormir(300);
+
+    const latido = await pedir(puerto, "/api/users?action=heartbeat", {
+      metodo: "POST",
+      cuerpo: { username: "demo" },
+      headers: { authorization: `Bearer ${login.json.token}` }
+    });
+    assert.equal(latido.codigo, 200);
+    assert.equal(latido.json?.success, true, "el latido debe funcionar");
+
+    await dormir(700);
+
+    const recibido = avisos.texto();
+    avisos.cerrar();
+
+    assert.ok(recibido.includes("event: latido"),
+      "el aviso no llego por la conexion abierta; llego: " + JSON.stringify(recibido));
+
+    const lineaDatos = recibido.split("\n").find(l => l.startsWith("data: "));
+    const sobre = JSON.parse(lineaDatos.slice("data: ".length));
+    assert.equal(sobre.canal, "notificaciones-demo", "el aviso debe decir por que canal vino");
+    assert.ok(sobre.datos?.last_login, "el latido debe traer la ultima conexion");
+
     console.log(`Smoke local OK en puerto efimero ${puerto}`);
     console.log(`Login, XP y monedas verificados (primer monto: ${primero.json.monedas.monto})`);
+    console.log("Avisos en vivo verificados: la linea abre y el latido llega por ella");
   } catch (error) {
     const detalle = [salida.trim(), errores.trim()].filter(Boolean).join("\n");
     if (detalle) error.message += `\n\nSalida del servidor:\n${detalle}`;
