@@ -1560,9 +1560,31 @@ function vestBytesDeCuerpo(texto) {
   function activar(clave) {
     activa = clave;
 
-    // Ajustar algo que no se ve no tiene sentido: se monta sola.
-    if (clave && montadas.indexOf(clave) === -1) montadas.push(clave);
-        tocado();
+    // Ajustar algo que no se ve no tiene sentido: se monta sola Y se pone
+    // DELANTE de las que compartan ranura.
+    //
+    // Lo de delante es la mitad que faltaba. pruebaDeRanura() recorre
+    // montadas del final al principio y devuelve la primera que coincide,
+    // así que quien está al final gana la ranura. Antes, montarla sólo
+    // entraba si NO estaba montada ya, de modo que elegir una prenda que ya
+    // llevaba puesta no la movía de sitio: seguía tapada.
+    //
+    // Y como el maniquí tiene quince capas y una <img> por capa, dos
+    // prendas de la misma ranura no pueden verse a la vez. El resultado era
+    // que se podía arrastrar una prenda -está montada, el arrastre la
+    // acepta- sin ver moverse nada, y que aparecía «por arte de magia» al
+    // tocar cualquier otra cosa que reordenara la lista.
+    //
+    // Pasa en cuanto se suben varios PNG cuyo nombre no empieza por una
+    // ranura: capaDesdeArchivo() los archiva a todos en la primera de la
+    // lista, que es «fondo».
+    if (clave) {
+      const i = montadas.indexOf(clave);
+      if (i !== -1) montadas.splice(i, 1);
+      montadas.push(clave);
+    }
+
+    tocado();
   }
 
   // ---------- LA VISTA ----------

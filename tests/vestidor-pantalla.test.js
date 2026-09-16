@@ -1248,3 +1248,127 @@ describe("el lienzo se encoge hasta caber en su columna", () => {
   });
 });
 
+// ==============================
+
+// El maniquí tiene quince capas y una <img> por capa, así que dos prendas
+// de la misma ranura NO pueden verse a la vez: pruebaDeRanura() recorre las
+// montadas del final al principio y devuelve la primera que coincide.
+//
+// Eso es física del maniquí. Lo que era un fallo es que elegir una prenda
+// para ajustarla no la traía al frente si ya estaba montada: se quedaba
+// tapada, se la podía arrastrar -el arrastre sólo pide que esté montada- y
+// no se veía moverse nada. Y aparecía «por arte de magia» al tocar
+// cualquier otra cosa que reordenara la lista.
+describe("varias prendas para la misma ranura", () => {
+  // Cada archivo con un contenido distinto, que si no comparten dataUrl y
+  // no hay forma de saber cuál de las tres es la que se está dibujando.
+  let cuerpo = 0;
+  async function traer(win, doc, nombre) {
+    win.Image = class {
+      set src(_) {
+        this.naturalWidth = 327;
+        this.naturalHeight = 504;
+        setTimeout(() => { if (this.onload) this.onload(); }, 0);
+      }
+    };
+    const input = $(doc, "tallerArchivos");
+    Object.defineProperty(input, "files", {
+      value: [new win.File([Buffer.from("png-" + (++cuerpo))], nombre, { type: "image/png" })],
+      configurable: true
+    });
+    input.dispatchEvent(new win.Event("change"));
+    for (let i = 0; i < 16; i++) await new Promise(r => setTimeout(r, 0));
+  }
+
+  const filas = doc => [...doc.querySelectorAll(".vest-prueba")];
+  const nombreDe = fila => fila.querySelector(".nom").textContent;
+
+  // Cuál de las tres está pintada en la capa "fondo", por su dataUrl.
+  function laQueSeDibuja(doc) {
+    const capa = doc.querySelector('.vest-capa[data-ranura="fondo"]');
+    const src = capa.getAttribute("src");
+    const fila = filas(doc).find(f => f.querySelector("img").getAttribute("src") === src);
+    return fila ? nombreDe(fila) : null;
+  }
+
+  async function conTresEnFondo() {
+    const { win, doc } = await montar();
+    $(doc, "vestAbrir").click();
+    for (const n of ["fondo_uno.png", "fondo_dos.png", "fondo_tres.png"]) {
+      await traer(win, doc, n);
+    }
+    for (const f of filas(doc)) {
+      const boton = f.querySelector("button");
+      if (boton.textContent === "Ponérsela") boton.click();
+    }
+    return { win, doc };
+  }
+
+  test("las tres entran en la cola y comparten ranura", async () => {
+    const { doc } = await conTresEnFondo();
+    assert.strictEqual(filas(doc).length, 3);
+    assert.strictEqual(laQueSeDibuja(doc), "fondo_tres.png");
+  });
+
+  // El fallo, en una línea: lo que se ajusta tiene que ser lo que se ve.
+  test("elegir una tapada la trae al frente", async () => {
+    const { doc } = await conTresEnFondo();
+
+    filas(doc)[0].click();
+
+    assert.strictEqual(laQueSeDibuja(doc), "fondo_uno.png");
+  });
+
+  test("y elegir otra la releva", async () => {
+    const { doc } = await conTresEnFondo();
+
+    filas(doc)[0].click();
+    filas(doc)[1].click();
+
+    assert.strictEqual(laQueSeDibuja(doc), "fondo_dos.png");
+  });
+
+  // Traer al frente es MOVER dentro de la lista, no añadir otra vez. Con
+  // copias repetidas, montar(clave, false) quita sólo la primera y la prenda
+  // se sigue viendo: «Quitar del maniquí» dejaría de quitar.
+  test("elegirla varias veces no deja copias que impidan quitarla", async () => {
+    const { doc } = await conTresEnFondo();
+
+    filas(doc)[0].click();
+    filas(doc)[1].click();
+    filas(doc)[0].click();
+
+    const boton = filas(doc)[0].querySelector("button");
+    assert.strictEqual(boton.textContent, "Quitar del maniquí");
+    boton.click();
+
+    assert.strictEqual(laQueSeDibuja(doc), "fondo_dos.png",
+      "se quitó del maniquí y se sigue dibujando");
+  });
+
+  // Que no se vea es correcto -una ranura, una prenda- pero callarlo no.
+  test("las que quedan debajo lo dicen en la cola", async () => {
+    const { doc } = await conTresEnFondo();
+    filas(doc)[0].click();
+
+    const tapadas = filas(doc)
+      .filter(f => [...f.querySelectorAll(".vest-chip")].some(c => /tapada por/.test(c.textContent)))
+      .map(nombreDe);
+
+    assert.deepStrictEqual(tapadas.sort(), ["fondo_dos.png", "fondo_tres.png"]);
+  });
+
+  // Y de dónde sale que esto pase tan seguido: capaDesdeArchivo() archiva en
+  // la PRIMERA ranura de la lista todo archivo cuyo nombre no empiece por
+  // una. Tres capturas de pantalla seguidas caen las tres en «fondo».
+  test("un nombre sin pista cae en la primera ranura, sea la que sea", async () => {
+    const { win, doc } = await montar();
+    $(doc, "vestAbrir").click();
+    await traer(win, doc, "Captura de pantalla 2026 09 16.png");
+    await traer(win, doc, "IMG_4821.png");
+
+    const ranuras = filas(doc).map(f => f.querySelector(".vest-dato").textContent);
+    assert.deepStrictEqual(ranuras, ["Tora · Fondo", "Tora · Fondo"]);
+  });
+});
+
