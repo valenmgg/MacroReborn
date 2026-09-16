@@ -239,12 +239,33 @@ if (!usuario) {
     : 0;
   document.getElementById("logros").textContent = puntosLogros + " puntos";
 
-  // RANKING: se reutiliza obtenerPosicionRanking() (js/ranking.js) para
-  // mostrar la misma posición real que aparece en ranking.html.
-  document.getElementById("ranking").textContent = "Calculando…";
-  if(typeof obtenerPosicionRanking === "function"){
+  // RANKING: la posición ya viaja con el usuario que se acaba de pedir.
+  // /api/users?username=X devuelve rank_actual, calculado por el
+  // servidor cada lunes.
+  //
+  // Antes esto llamaba siempre a obtenerPosicionRanking(), que para leer
+  // UN número se baja la lista entera de usuarios y, de paso, los logros
+  // y las insignias de las ~150 personas del ranking. Medido en un HAR
+  // de usuario.html:
+  //
+  //   100 kB   /api/users?limit=500
+  //    47 kB   /api/social?action=achievements&usernames=...150 nombres
+  //
+  // 147 kB, el 12% de la página, para pintar "#5".
+  //
+  // Es el mismo atajo que js/perfil.js toma desde ef58bbc para el perfil
+  // propio, y el que se aplicó a revisarLogrosRanking(). Faltaba acá.
+  const rankDelVisitado = Number(usuario.rank_actual);
+  const nodoRanking = document.getElementById("ranking");
+
+  if(Number.isFinite(rankDelVisitado) && rankDelVisitado > 0){
+    nodoRanking.textContent = "#" + rankDelVisitado;
+  } else if(typeof obtenerPosicionRanking === "function"){
+    // Sin ese dato sí toca preguntar: cuentas nuevas, antes del primer
+    // recálculo del lunes.
+    nodoRanking.textContent = "Calculando…";
     obtenerPosicionRanking(usuario.nombre).then(posicionRanking=>{
-      document.getElementById("ranking").textContent = posicionRanking ? "#" + posicionRanking : "Sin clasificar";
+      nodoRanking.textContent = posicionRanking ? "#" + posicionRanking : "Sin clasificar";
     });
   } else {
     document.getElementById("ranking").textContent = "Sin clasificar";
