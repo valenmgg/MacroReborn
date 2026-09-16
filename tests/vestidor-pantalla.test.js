@@ -22,8 +22,10 @@ const path = require("node:path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
-const HTML = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
+const HTML = fs.readFileSync(path.join(RAIZ, "taller.html"), "utf8");
+const HTML_PANEL = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
 const VESTIDOR = fs.readFileSync(path.join(RAIZ, "js", "arte-vestidor.js"), "utf8");
+const TALLER = fs.readFileSync(path.join(RAIZ, "js", "arte-taller.js"), "utf8");
 const ARTE = fs.readFileSync(path.join(RAIZ, "js", "arte.js"), "utf8");
 
 // Lo que devuelve el canvas de mentira cuando el horno le pide el PNG.
@@ -65,12 +67,13 @@ function panelDePrueba() {
   };
 }
 
-async function montar(respuestas) {
+async function montar(respuestas, pagina) {
   const consola = new VirtualConsole();
-  consola.on("jsdomError", () => {});
+  const rotos = [];
+  consola.on("jsdomError", e => rotos.push(String(e.message).slice(0, 160)));
 
-  const dom = new JSDOM(HTML, {
-    url: "https://macroreborn.com/arte.html",
+  const dom = new JSDOM(pagina === "panel" ? HTML_PANEL : HTML, {
+    url: "https://macroreborn.com/taller.html",
     runScripts: "outside-only",
     virtualConsole: consola
   });
@@ -123,70 +126,63 @@ async function montar(respuestas) {
   };
 
   win.eval(DE_CORE);
-  win.eval(VESTIDOR);
+  // taller.html carga los tres; arte.html, solo js/arte.js. La prueba
+  // carga lo mismo que cada pagina, que es de lo que sirve enterarse.
+  if (pagina !== "panel") { win.eval(VESTIDOR); win.eval(TALLER); }
   win.eval(ARTE);
 
   for (let i = 0; i < 6; i++) await new Promise(r => setTimeout(r, 0));
 
-  return { dom, win, doc: win.document, puestos, llamadas };
+  return { dom, win, doc: win.document, puestos, llamadas, rotos };
 }
 
 const $ = (doc, id) => doc.getElementById(id);
 
 // ==============================
 
-describe("la sección aparece con el rol, y nace cerrada", () => {
-  test("se destapa junto a sus hermanas", async () => {
+describe("la página es el taller", () => {
+  // El maniquí vivía dentro de arte.html, detrás de un botón de "abrir".
+  // Ahora tiene página propia: el alto entero es suyo, que es lo que
+  // necesitan el lienzo a tamaño real y las tres columnas.
+  test("se destapa con el rol, y ya está abierta", async () => {
     const { doc } = await montar();
     assert.strictEqual($(doc, "arteVestidor").hidden, false);
+    assert.strictEqual($(doc, "vestPanel").hidden, false);
   });
 
-  test("pero el panel empieza cerrado: solo se ve el botón", async () => {
+  test("y el maniquí se monta solo al cargar", async () => {
     const { doc } = await montar();
-    assert.strictEqual($(doc, "vestPanel").hidden, true);
-    assert.strictEqual($(doc, "vestAbrir").hidden, false);
+    assert.strictEqual(doc.querySelectorAll(".vest-capa").length, 15);
   });
 
-  test("y no se ha dibujado ni una capa todavía", async () => {
-    const { doc } = await montar();
-    assert.strictEqual(doc.querySelectorAll(".vest-capa").length, 0);
+  test("sin sesión y sin rol no se enseña nada", async () => {
+    const { doc } = await montar(() => ({ ok: false, status: 403, json: () => Promise.resolve({ success: false }) }));
+    assert.strictEqual($(doc, "arteVestidor").hidden, true);
   });
 });
 
-describe("abrir y cerrar", () => {
-  test("abrir esconde las hermanas y enseña el panel", async () => {
+describe("el escenario se monta una sola vez", () => {
+  // Las quince capas se crean al abrir y no se vuelven a crear NUNCA:
+  // despues solo se les cambia el src, el hidden y las cuatro medidas.
+  // Recrearlas dispararia el MutationObserver de js/core.js, que ante
+  // cualquier nodo nuevo reescanea el documento entero.
+  test("abrir de nuevo no duplica las capas", async () => {
     const { doc } = await montar();
 
     $(doc, "vestAbrir").click();
-
-    assert.strictEqual($(doc, "vestPanel").hidden, false);
-    assert.strictEqual($(doc, "arteSubir").hidden, true);
-    assert.strictEqual($(doc, "arteCatalogo").hidden, true);
-  });
-
-  // Esconder las hermanas no es cosmético: pintarLista() vacía y
-  // reconstruye la lista de subida entera en cada cambio, y no queremos
-  // que eso ocurra debajo del artista mientras coloca una prenda.
-  test("cerrar las devuelve, y el panel vuelve a su sitio", async () => {
-    const { doc } = await montar();
-
-    $(doc, "vestAbrir").click();
-    $(doc, "vestCerrar").click();
-
-    assert.strictEqual($(doc, "vestPanel").hidden, true);
-    assert.strictEqual($(doc, "arteSubir").hidden, false);
-    assert.strictEqual($(doc, "arteCatalogo").hidden, false);
-    assert.strictEqual($(doc, "vestAbrir").hidden, false);
-  });
-
-  test("y abrir dos veces no duplica las capas", async () => {
-    const { doc } = await montar();
-
-    $(doc, "vestAbrir").click();
-    $(doc, "vestCerrar").click();
     $(doc, "vestAbrir").click();
 
     assert.strictEqual(doc.querySelectorAll(".vest-capa").length, 15);
+  });
+
+  // En arte.html el maniqui escondia las secciones hermanas al abrirse.
+  // En su propia pagina no hay hermanas, y llamar a abrir() no puede
+  // reventar por buscarlas: se comprueba que no tira nada.
+  test("y abrir no busca secciones que en esta página no existen", async () => {
+    const { doc, rotos } = await montar();
+    $(doc, "vestAbrir").click();
+    $(doc, "vestCerrar").click();
+    assert.deepStrictEqual(rotos, []);
   });
 });
 
@@ -409,15 +405,18 @@ describe("vestir de una", () => {
   });
 });
 
-describe("el panel de siempre sigue funcionando", () => {
-  test("subir y catálogo siguen destapados al cargar", async () => {
-    const { doc } = await montar();
+describe("el panel clásico sigue funcionando en su página", () => {
+  // js/arte.js sirve a las dos paginas: trae los datos en las dos y ademas
+  // pinta el panel clasico donde lo encuentra. Partirlo no puede romper
+  // ninguna de las dos.
+  test("subir y catálogo siguen destapados al cargar arte.html", async () => {
+    const { doc } = await montar(null, "panel");
     assert.strictEqual($(doc, "arteSubir").hidden, false);
     assert.strictEqual($(doc, "arteCatalogo").hidden, false);
   });
 
   test("y el catálogo se pintó con sus tarjetas", async () => {
-    const { doc } = await montar();
+    const { doc } = await montar(null, "panel");
     assert.ok(doc.querySelectorAll("#arteGrid .arte-tarjeta").length >= 3);
   });
 });
@@ -442,7 +441,7 @@ function prepararEleccion(win, ancho, alto) {
 }
 
 async function elegir(win, doc, nombres) {
-  const input = $(doc, "arteArchivos");
+  const input = $(doc, "tallerArchivos");
   const archivos = nombres.map(n =>
     new win.File([Buffer.from("png-de-mentira")], n, { type: "image/png" }));
 

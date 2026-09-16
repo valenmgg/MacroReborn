@@ -691,6 +691,16 @@ function vestBytesDeCuerpo(texto) {
     while (nodo && nodo.firstChild) nodo.removeChild(nodo.firstChild);
   }
 
+  // Esconde o destapa lo que EXISTA. El maniqui vive en dos paginas y
+  // cada una tiene su marco: arte.html trae las secciones hermanas del
+  // panel clasico, taller.html no.
+  function esconder(ids, si) {
+    for (const id of ids) {
+      const caja = $(id);
+      if (caja) caja.hidden = si;
+    }
+  }
+
   function elem(tag, clase, texto) {
     const n = document.createElement(tag);
     if (clase) n.className = clase;
@@ -1527,10 +1537,11 @@ function vestBytesDeCuerpo(texto) {
     if (!capas.modelo) montarEscenario();
 
     abierto = true;
-    $("arteSubir").hidden = true;
-    $("arteCatalogo").hidden = true;
-    $("vestPanel").hidden = false;
-    $("vestAbrir").hidden = true;
+    // Las secciones hermanas solo existen en arte.html. En taller.html la
+    // pagina entera es el taller y no hay nada que esconder.
+    esconder(["arteSubir", "arteCatalogo"], true);
+    esconder(["vestPanel"], false);
+    esconder(["vestAbrir"], true);
 
     pintarPersonajes();
     aplicarZoom();
@@ -1544,10 +1555,9 @@ function vestBytesDeCuerpo(texto) {
 
   function cerrar() {
     abierto = false;
-    $("vestPanel").hidden = true;
-    $("vestAbrir").hidden = false;
-    $("arteSubir").hidden = false;
-    $("arteCatalogo").hidden = false;
+    esconder(["vestPanel", "vestAbrir"], true);
+    esconder(["vestAbrir"], false);
+    esconder(["arteSubir", "arteCatalogo"], false);
     // Una sola vez: pintarLista() reconstruye la lista de subida entera.
     if (CTX && CTX.repintarLista) CTX.repintarLista();
   }
@@ -1555,6 +1565,11 @@ function vestBytesDeCuerpo(texto) {
   // ---------- LA CONEXIÓN CON js/arte.js ----------
 
   function conectar(ctx) {
+    // El maniqui vive en taller.html. Si este archivo acabara cargandose
+    // en una pagina sin el, montarlo reventaria en el primer
+    // addEventListener sobre null y se llevaria por delante el arranque.
+    if (!$("vestLienzo")) return;
+
     CTX = ctx;
 
     $("vestAbrir").addEventListener("click", abrir);

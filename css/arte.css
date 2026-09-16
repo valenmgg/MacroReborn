@@ -963,3 +963,77 @@
   .taller-nav .vest-dato { flex-basis: 100%; margin-right: 0; }
   .taller-campos { grid-template-columns: 1fr; }
 }
+
+/* ==============================
+   EL TALLER COMO PAGINA
+   ==============================
+   Dentro de arte.html el taller nunca iba a verse como se diseno: le
+   sobraban encima una navbar, un titulo, un parrafo de ayuda y el
+   formulario viejo. En su propia pagina el alto entero es suyo, que es lo
+   que necesitan el maniqui a tamano real y las tres columnas. */
+
+body.taller-pagina {
+  margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+  color: var(--texto, #e8edf2);
+  font-family: var(--font-body);
+}
+
+.taller-barra-sitio {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--navbar-bg);
+}
+.taller-barra-sitio .nav-logo { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.taller-barra-sitio .nav-logo img { height: 24px; width: auto; }
+.taller-titulo { font-family: var(--font-display); font-size: 18px; font-weight: 700; margin: 0; }
+.taller-volver { margin-left: auto; }
+
+body.taller-pagina > .arte-aviso { margin: 24px; }
+
+.taller-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 18px;
+}
+
+.taller-pagina #vestPanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Las tres columnas se comen el alto que queda, y cada rail rueda por su
+   cuenta: el maniqui no se va de la pantalla al bajar por la cola. */
+.taller-pagina .vest-panel {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+.taller-pagina .vest-rail { max-height: none; overflow-y: auto; }
+.taller-pagina .vest-escena { overflow-y: auto; }
+.taller-pagina .vest-barra { position: static; padding-top: 4px; }
+.taller-pagina .taller-nav { flex-shrink: 0; }
+
+@media (max-width: 720px) {
+  body.taller-pagina { height: auto; min-height: 100dvh; overflow: visible; }
+  .taller-main { padding: 0 16px 16px; }
+  .taller-pagina .vest-rail,
+  .taller-pagina .vest-escena { overflow: visible; }
+}
+
+/* La invitacion que queda en arte.html en lugar del taller. */
+.taller-invitacion { border-left: 3px solid var(--accent); }
+.taller-invitacion .boton { margin-top: 6px; display: inline-block; }

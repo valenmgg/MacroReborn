@@ -26,6 +26,28 @@
 
   const $ = id => document.getElementById(id);
 
+  // ESTE ARCHIVO SIRVE A DOS PAGINAS.
+  //
+  // Trae los datos del panel de arte -el catalogo, la lista de prendas
+  // preparadas, subir y publicar- y ademas pinta el panel clasico de
+  // arte.html: la subida rapida y la rejilla del catalogo.
+  //
+  // taller.html usa lo primero y no tiene lo segundo, asi que toda la
+  // pintura del panel viejo se salta sola cuando su marcado no esta. Se
+  // reconoce por #arteLista, que es donde vive la lista de subida.
+  //
+  // Es a proposito que la parte de datos NO sepa nada de esa diferencia:
+  // publicar(), agregarArchivos() y el resto funcionan igual en las dos
+  // paginas, y eso es lo que hace que lo que se prueba en el taller sea
+  // exactamente lo que se publica desde el panel.
+  const HAY_PANEL = () => !!$("arteLista");
+
+  // Para los sitios sueltos que solo escriben un texto de estado.
+  function decir(texto) {
+    const n = $("arteEstado");
+    if (n) n.textContent = texto;
+  }
+
   // El vestidor, si está cargado. Es un GETTER y no una constante: este
   // archivo se evalúa antes de que termine el defer del otro en algún
   // orden raro, y además tests/arte-pagina.test.js evalúa SOLO js/arte.js
@@ -155,9 +177,13 @@
 
     DATOS = datos;
     $("arteAviso").hidden = true;
-    $("arteSubir").hidden = false;
-    $("arteCatalogo").hidden = false;
-    if (V()) $("arteVestidor").hidden = false;
+
+    // Cada pagina destapa lo que tiene. arte.html trae el panel clasico;
+    // taller.html, el taller. Ninguna de las dos tiene lo de la otra.
+    for (const id of ["arteSubir", "arteCatalogo", "arteVestidor"]) {
+      const caja = $(id);
+      if (caja) caja.hidden = false;
+    }
 
     prepararControles();
     pintarCatalogo();
@@ -176,6 +202,13 @@
     const modelos = modelosDisponibles();
     const capas = DATOS.capas;
 
+    // Los controles del panel clasico, solo si el panel clasico esta. Lo
+    // que viene despues -conectar el vestidor y el taller- va SIEMPRE.
+    if (HAY_PANEL()) prepararPanelClasico(modelos, capas);
+    conectarHerramientas();
+  }
+
+  function prepararPanelClasico(modelos, capas) {
     llenarSelect($("arteTodosModelo"), modelos, conMayuscula);
     llenarSelect($("arteTodosCapa"), capas, conMayuscula);
 
@@ -191,8 +224,11 @@
     $("arteAplicarTodas").addEventListener("click", aplicarATodas);
     $("arteSubirBtn").addEventListener("click", () => publicar(ARCHIVOS));
 
-    // Se le pasan GETTERS y no los objetos: subir() reasigna ARCHIVOS y
-    // recarga DATOS, así que una referencia guardada dejaría al vestidor
+  }
+
+  function conectarHerramientas() {
+    // Se le pasan GETTERS y no los objetos: publicar() reasigna ARCHIVOS
+    // y recarga DATOS, así que una referencia guardada dejaría al vestidor
     // enseñando el catálogo viejo y una lista fantasma justo después de
     // publicar, que es cuando más se mira.
     if (V()) V().conectar({
@@ -256,7 +292,7 @@
     const elegidos = Array.from(lista || []);
     if (!elegidos.length) return;
 
-    $("arteEstado").textContent = "Leyendo " + elegidos.length + " archivo(s)…";
+    decir("Leyendo " + elegidos.length + " archivo(s)…");
 
     for (const file of elegidos) {
       if (ARCHIVOS.length >= 200) break;   // freno de cordura
@@ -282,7 +318,7 @@
         // que ya había pasado con el desplegable alfabético.
         modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) ||
           (V() && V().estado ? V().estado().modelo : null) ||
-          $("arteTodosModelo").value,
+          ($("arteTodosModelo") ? $("arteTodosModelo").value : modelosDisponibles()[0]),
         capa: capaDesdeArchivo(file.name, DATOS.capas),
         nombre: nombreDesdeArchivo(file.name),
         precio: 0,
@@ -292,7 +328,7 @@
       });
     }
 
-    $("arteEstado").textContent = "";
+    decir("");
     pintarLista();
   }
 
@@ -305,6 +341,7 @@
   }
 
   function aplicarATodas() {
+    if (!HAY_PANEL()) return;
     const modelo = $("arteTodosModelo").value;
     const capa = $("arteTodosCapa").value;
     const precio = Math.max(0, Math.trunc(Number($("arteTodosPrecio").value) || 0));
@@ -351,14 +388,22 @@
   }
 
   function pintarLista() {
-    const lista = $("arteLista");
-    vaciar(lista);
-
     // El rail del vestidor y las fichas del taller pintan ESTA misma
     // lista, no una copia: si tuvieran la suya, se podria ajustar algo
     // que nunca llega a subirse.
+    //
+    // Y el aviso va ANTES del guardian del panel clasico, no despues.
+    // Estuvo al reves un rato y en taller.html -que no tiene panel- esta
+    // funcion salia en la primera linea sin avisar a nadie: la cola se
+    // quedaba vacia y los nombres no se proponian, con la prenda ya
+    // dentro. Un return temprano que se come un efecto que si hacia falta.
     if (V()) V().avisarDeCambio();
     if (T()) T().avisarDeCambio();
+
+    if (!HAY_PANEL()) return;
+
+    const lista = $("arteLista");
+    vaciar(lista);
 
     $("arteComunes").hidden = ARCHIVOS.length === 0;
     $("arteAcciones").hidden = ARCHIVOS.length === 0;
@@ -430,8 +475,8 @@
       lista.appendChild(fila);
     });
 
-    $("arteEstado").textContent = ARCHIVOS.length + " prenda(s) preparada(s)" +
-      (ARCHIVOS.length > TOPE_POR_TANDA ? " · se enviarán en tandas de " + TOPE_POR_TANDA : "");
+    decir(ARCHIVOS.length + " prenda(s) preparada(s)" +
+      (ARCHIVOS.length > TOPE_POR_TANDA ? " · se enviarán en tandas de " + TOPE_POR_TANDA : ""));
   }
 
   function envoltorio(etiqueta, control) {
@@ -500,7 +545,7 @@
     if (!Array.isArray(items) || !items.length) return;
 
     const boton = $("arteSubirBtn");
-    boton.disabled = true;
+    if (boton) boton.disabled = true;
 
     const resultados = [];
     const cola = items.slice();
@@ -523,7 +568,7 @@
         if (!listo) {
           const siguiente = cola.shift();
           if (!siguiente) break;
-          $("arteEstado").textContent = "Preparando " + siguiente.archivo + "…";
+          decir("Preparando " + siguiente.archivo + "…");
           listo = await prepararParaSubir(siguiente);
         }
 
@@ -549,7 +594,7 @@
       if (!tanda.length) break;
 
       tandaNumero++;
-      $("arteEstado").textContent = "Subiendo tanda " + tandaNumero + "…";
+      decir("Subiendo tanda " + tandaNumero + "…");
 
       const cuerpo = {
         prendas: tanda.map(t => ({
@@ -618,7 +663,7 @@
     const fallaron = new Set(resultados.filter(e => !e.r.ok).map(e => e.clave));
     ARCHIVOS = ARCHIVOS.filter(a => !enviadas.has(a.clave) || fallaron.has(a.clave));
 
-    boton.disabled = false;
+    if (boton) boton.disabled = false;
     pintarLista();
 
     // El catálogo cambió: se recarga para verlo con lo nuevo dentro.
@@ -633,13 +678,17 @@
   }
 
   function pintarResultados(resultados) {
+    // Basta con que exista la caja: taller.html tambien la trae, porque
+    // publicar sin decir que entro y que fallo no es publicar.
+    if (!$("arteResultados")) return;
+
     const caja = $("arteResultados");
     vaciar(caja);
 
     const bien = resultados.filter(r => r.ok).length;
     const mal = resultados.length - bien;
 
-    $("arteEstado").textContent = "Entraron " + bien + ", fallaron " + mal + ".";
+    decir("Entraron " + bien + ", fallaron " + mal + ".");
 
     resultados.forEach(r => {
       const fila = elem("div", "arte-resultado" + (r.ok ? "" : " malo"));
@@ -680,6 +729,8 @@
   // ==============================
 
   function pintarCatalogo() {
+    if (!HAY_PANEL()) return;
+
     const grid = $("arteGrid");
     vaciar(grid);
 

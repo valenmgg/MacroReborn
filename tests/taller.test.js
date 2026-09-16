@@ -22,7 +22,8 @@ const path = require("node:path");
 const { JSDOM, VirtualConsole } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
-const HTML = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
+const HTML = fs.readFileSync(path.join(RAIZ, "taller.html"), "utf8");
+const HTML_PANEL = fs.readFileSync(path.join(RAIZ, "arte.html"), "utf8");
 const VESTIDOR = fs.readFileSync(path.join(RAIZ, "js", "arte-vestidor.js"), "utf8");
 const TALLER = fs.readFileSync(path.join(RAIZ, "js", "arte-taller.js"), "utf8");
 const ARTE = fs.readFileSync(path.join(RAIZ, "js", "arte.js"), "utf8");
@@ -53,13 +54,13 @@ function panelDePrueba() {
   };
 }
 
-async function montar(respuestas) {
+async function montar(respuestas, pagina) {
   const consola = new VirtualConsole();
   const rotos = [];
   consola.on("jsdomError", e => rotos.push(String(e.message).slice(0, 160)));
 
-  const dom = new JSDOM(HTML, {
-    url: "https://macroreborn.com/arte.html",
+  const dom = new JSDOM(pagina === "panel" ? HTML_PANEL : HTML, {
+    url: "https://macroreborn.com/taller.html",
     runScripts: "outside-only",
     virtualConsole: consola
   });
@@ -105,7 +106,7 @@ async function traer(win, doc, nombre, ancho, alto) {
       setTimeout(() => { if (this.onload) this.onload(); }, 0);
     }
   };
-  const input = $(doc, "arteArchivos");
+  const input = $(doc, "tallerArchivos");
   Object.defineProperty(input, "files", {
     value: [new win.File([Buffer.from("x")], nombre, { type: "image/png" })],
     configurable: true
@@ -393,11 +394,21 @@ describe("el modo libre y el panel de siempre", () => {
       "en modo libre el guardarropa tiene que estar a la vista");
   });
 
-  test("y el formulario de siempre sigue en pie", async () => {
-    const { doc } = await montar();
+  // El panel clasico se quedo en arte.html, que es otra pagina. Se
+  // comprueba alli, montandola a proposito: el mismo js/arte.js sirve a
+  // las dos y no puede romper ninguna.
+  test("y el panel clásico sigue en pie en su página", async () => {
+    const { doc } = await montar(null, "panel");
     assert.strictEqual($(doc, "arteSubir").hidden, false);
     assert.strictEqual($(doc, "arteCatalogo").hidden, false);
     assert.ok(doc.querySelectorAll("#arteGrid .arte-tarjeta").length >= 2);
+  });
+
+  test("y desde ahí se invita al taller", async () => {
+    const { doc } = await montar(null, "panel");
+    const enlace = doc.querySelector('.taller-invitacion a[href="taller.html"]');
+    assert.ok(enlace, "arte.html tiene que llevar al taller");
+    assert.match(enlace.textContent, /taller/i);
   });
 
   test("nada de esto tira un error en la página", async () => {

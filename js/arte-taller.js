@@ -685,11 +685,27 @@
   // ==============================
 
   function conectar(ctx) {
+    // arte.html ya no trae el taller -vive en taller.html- y ademas no
+    // carga este archivo. Pero si algun dia volviera a cargarse en una
+    // pagina sin el marcado, montarlo reventaria en el primer
+    // addEventListener sobre null y se llevaria por delante el resto del
+    // arranque. Mejor no hacer nada.
+    if (!$("tallerCarril")) return;
+
     CTX = ctx;
 
     // El motor avisa cuando cambia un ajuste; si no, la puerta se queda
     // con el texto de antes y Seguir no se enciende nunca.
     if (V() && V().alTocar) V().alTocar(() => { if (!libre) pintarTodo(); });
+
+    // En taller.html la pagina YA es el taller: no hay nada que abrir.
+    // En arte.html, en cambio, el taller no existe y esto no corre.
+    if (document.body.classList.contains("taller-pagina")) {
+      libre = false;
+      paso = 1;
+      V().abrir();
+      setTimeout(pintarTodo, 0);
+    }
 
     $("vestAbrir").addEventListener("click", () => { libre = false; paso = 1; setTimeout(pintarTodo, 0); });
     $("tallerLibre").addEventListener("click", () => {

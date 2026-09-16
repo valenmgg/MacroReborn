@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<script src="js/tema.js?v=20260914"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taller de prendas - MacroReborn</title>
+
+<!-- Herramienta interna del equipo de dibujo. No tiene por que aparecer
+     en los buscadores. -->
+<meta name="description" content="Taller del equipo de arte de MacroReborn: subir prendas de avatar paso a paso.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="imagenes/logo.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/inicio.css?v=20260914">
+<link rel="stylesheet" href="css/arte.css?v=20260914">
+<link rel="stylesheet" href="css/theme-canonical.css?v=20260914">
+</head>
+
+<!-- LA PAGINA ES EL TALLER.
+     De ahi que el <body> lleve su propia clase: el alto entero es para el
+     maniqui y las tres columnas, sin una navbar grande ni un formulario
+     debajo robando sitio. Dentro de arte.html nunca iba a verse asi.
+
+     Sin navbar.js a proposito: esa barra inyecta avatares compuestos, y el
+     MutationObserver de js/core.js que los procesa no tiene nada que hacer
+     en una pagina cuyo centro es un maniqui de quince capas. Arriba hay un
+     enlace de vuelta y nada mas. -->
+<body class="mr-root taller-pagina">
+
+<div class="taller-barra-sitio">
+  <a href="index.html" class="nav-logo">
+    <img src="imagenes/logo.png" alt="MacroReborn">
+    MacroReborn
+  </a>
+  <h1 class="taller-titulo">Taller <span id="vestContador" class="arte-contador"></span></h1>
+  <a href="arte.html" class="vest-tecla taller-volver">Panel de arte</a>
+</div>
+
+<!-- Mientras se comprueba quien sos. js/arte.js lo reemplaza. -->
+<div id="arteAviso" class="arte-aviso">
+  <h2>Comprobando tu acceso&hellip;</h2>
+  <p>Un momento.</p>
+</div>
+
+<main id="arteVestidor" class="taller-main" hidden>
+  <!-- El boton de abrir no hace falta acá -la pagina YA es el taller- pero
+       el marcado se conserva: js/arte-vestidor.js lo usa para montar el
+       escenario, y lo dispara solo al cargar. -->
+  <button type="button" id="vestAbrir" hidden>Abrir</button>
+  <button type="button" id="tallerLibre" hidden>Solo vestir</button>
+
+    <div id="vestPanel">
+
+      <!-- ---------- el carril de pasos ---------- -->
+      <div id="tallerCarril" class="taller-carril"></div>
+
+      <!-- ---------- la barra del maniquí ---------- -->
+      <div class="vest-barra">
+        <div class="arte-campo">
+          <label for="vestPersonaje">Personaje</label>
+          <select id="vestPersonaje"></select>
+        </div>
+
+        <div class="vest-grupo" role="group" aria-label="Zoom">
+          <button type="button" id="vestZoomMenos" class="vest-tecla" aria-label="Alejar">−</button>
+          <span id="vestZoom" class="vest-dato">100 %</span>
+          <button type="button" id="vestZoomMas" class="vest-tecla" aria-label="Acercar">+</button>
+          <button type="button" id="vestZoomUno" class="vest-tecla">1:1</button>
+        </div>
+
+        <div class="vest-grupo">
+          <button type="button" id="vestFondo" class="vest-tecla">Fondo</button>
+        </div>
+
+        <button type="button" id="vestCerrar" class="vest-tecla vest-derecha">Cerrar</button>
+      </div>
+
+      <div class="vest-panel">
+
+        <!-- ---------- izquierda: la cola ---------- -->
+        <div class="vest-rail">
+          <h3 class="vest-titulo">La cola</h3>
+          <div id="vestPruebas"></div>
+          <p id="vestSinPruebas" class="vest-vacio">
+            Todavía no trajiste ningún dibujo. En el paso de traer los soltás acá
+            y el maniquí se los va probando.
+          </p>
+        </div>
+
+        <!-- ---------- centro: el maniquí ---------- -->
+        <div class="vest-escena">
+          <div class="vest-marco">
+            <!-- 327x504 px de CSS CLAVADOS: dentro de acá, un píxel de CSS es
+                 un píxel del PNG que se va a subir. Ver la ZONA A de
+                 js/arte-vestidor.js.
+
+                 NO lleva class="avatar-compuesto" ni data-capas, y eso es a
+                 propósito: el MutationObserver de js/core.js lo detectaría,
+                 le vaciaría el innerHTML y sustituiría las 15 capas -con sus
+                 asas y sus oyentes- por una foto plana y cacheada. -->
+            <div id="vestLienzo">
+              <div class="vest-overlay">
+                <div id="vestRecuadro" class="vest-recuadro" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="vest-grupo" style="justify-content:center;margin-top:10px">
+            <button type="button" id="vestDesnudar" class="vest-tecla">Desnudo</button>
+            <button type="button" id="vestBasico" class="vest-tecla">Lo básico</button>
+            <button type="button" id="vestAzar" class="vest-tecla">Al azar</button>
+            <button type="button" id="tallerMiAvatar" class="vest-tecla">Como mi avatar</button>
+            <button type="button" id="tallerOtroAvatar" class="vest-tecla">Como el de…</button>
+          </div>
+          <p id="tallerAvisoVestir" class="vest-dato" style="text-align:center"></p>
+        </div>
+
+        <!-- ---------- derecha: el paso, o el guardarropa ---------- -->
+        <div class="vest-rail">
+
+          <!-- (1) PERSONAJE -->
+          <div class="taller-paso" data-paso="1" hidden>
+            <h3 class="vest-titulo">¿Para quién es?</h3>
+            <p class="vest-vacio" style="margin-bottom:12px">
+              El editor sólo enseña la ropa del personaje que uno lleva puesto.
+              Elegirlo primero es lo que evita archivar una prenda donde nadie
+              la va a buscar.
+            </p>
+            <div id="tallerPersonajes" class="taller-personajes"></div>
+
+            <div class="taller-plantilla">
+              <h3 class="vest-titulo" style="margin-bottom:4px">Empezar un dibujo</h3>
+              <p class="vest-vacio" style="margin-bottom:10px">
+                Llevate la medida ya hecha y dibujá encima. Así no hay nada que
+                ajustar después.
+              </p>
+              <button type="button" id="tallerPlantillaLienzo" class="vest-tecla taller-descarga"></button>
+              <button type="button" id="tallerPlantillaGuia" class="vest-tecla taller-descarga"></button>
+            </div>
+          </div>
+
+          <!-- (2) TRAER -->
+          <div class="taller-paso" data-paso="2" hidden>
+            <h3 class="vest-titulo">Traer los dibujos</h3>
+            <div id="tallerSoltar" class="taller-soltar">
+              <div class="taller-soltar-texto">Soltá los PNG acá</div>
+              <p class="vest-vacio">o pegá con Ctrl+V, o elegilos del disco</p>
+              <input type="file" id="tallerArchivos" accept="image/png" multiple>
+            </div>
+            <p id="tallerMedidas" class="vest-dato"></p>
+            <div id="tallerComparar"></div>
+          </div>
+
+          <!-- (3) FICHAR -->
+          <div class="taller-paso" data-paso="3" hidden>
+            <h3 class="vest-titulo">Fichar</h3>
+            <p class="vest-vacio" style="margin-bottom:10px">
+              Tocá una prenda de la cola y se la ponés al maniquí. Cambiá la
+              ranura y la vas a ver saltar de sitio.
+            </p>
+            <div id="tallerComunes" class="taller-comunes" hidden>
+              <span class="vest-dato">Para todas:</span>
+              <select id="tallerTodasCapa"></select>
+              <button type="button" id="tallerAplicarTodas" class="vest-tecla">Aplicar</button>
+            </div>
+            <div id="tallerFichas"></div>
+          </div>
+
+          <!-- (4) COLOCAR -->
+          <div class="taller-paso" data-paso="4" hidden>
+            <h3 class="vest-titulo">Colocar</h3>
+            <div id="tallerPorColocar"></div>
+
+            <div id="vestAjusteCaja" hidden>
+              <div class="taller-mandos">
+                <div class="taller-cruceta">
+                  <span></span>
+                  <button type="button" class="taller-flecha" data-mueve="0,-1" aria-label="Subir">↑</button>
+                  <span></span>
+                  <button type="button" class="taller-flecha" data-mueve="-1,0" aria-label="Izquierda">←</button>
+                  <span id="tallerSalto" class="vest-dato">1px</span>
+                  <button type="button" class="taller-flecha" data-mueve="1,0" aria-label="Derecha">→</button>
+                  <span></span>
+                  <button type="button" class="taller-flecha" data-mueve="0,1" aria-label="Bajar">↓</button>
+                  <span></span>
+                </div>
+
+                <div class="taller-finos">
+                  <div class="vest-grupo">
+                    <button type="button" id="tallerSalto1" class="vest-tecla" aria-pressed="true">1 px</button>
+                    <button type="button" id="tallerSalto10" class="vest-tecla" aria-pressed="false">10 px</button>
+                  </div>
+                  <label class="vest-dato" for="vestEscalaBarra">Escala</label>
+                  <input type="range" id="vestEscalaBarra" min="10" max="400" step="1" value="100">
+                  <div class="vest-numeros">
+                    <div class="arte-campo">
+                      <label for="vestDx">X</label>
+                      <input type="number" id="vestDx" step="1" value="0">
+                    </div>
+                    <div class="arte-campo">
+                      <label for="vestDy">Y</label>
+                      <input type="number" id="vestDy" step="1" value="0">
+                    </div>
+                    <div class="arte-campo">
+                      <label for="vestEscala">%</label>
+                      <input type="number" id="vestEscala" step="1" min="10" max="400" value="100">
+                    </div>
+                    <label class="vest-casilla" for="vestEspejo">
+                      <input type="checkbox" id="vestEspejo" class="vest-check"> Espejo
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <p id="vestResumenAjuste" class="vest-dato"></p>
+              <p id="vestInstruccion" class="vest-instruccion"></p>
+
+              <div class="vest-grupo">
+                <button type="button" id="vestAlLienzo" class="vest-tecla taller-primario" hidden></button>
+                <button type="button" id="vestOriginal" class="vest-tecla" hidden>Volver al original</button>
+              </div>
+              <div>
+                <button type="button" id="vestEncajar" class="vest-tecla taller-secundario" hidden></button>
+                <button type="button" id="tallerTalCual" class="vest-tecla taller-secundario" hidden>publicarla tal cual</button>
+              </div>
+            </div>
+
+            <p id="vestDestino" class="vest-dato"></p>
+          </div>
+
+          <!-- (5) PROBAR -->
+          <div class="taller-paso" data-paso="5" hidden>
+            <h3 class="vest-titulo">¿Se ve bien con lo que ya hay?</h3>
+            <p class="vest-vacio" style="margin-bottom:10px">
+              Tus prendas puestas sobre seis conjuntos del catálogo. Es la forma
+              más rápida de descubrir que una choca con otra.
+            </p>
+            <div class="vest-grupo" style="margin-bottom:12px">
+              <button type="button" id="tallerOtrosSeis" class="vest-tecla">Otros seis</button>
+            </div>
+            <div id="tallerConjuntos" class="taller-conjuntos"></div>
+          </div>
+
+          <!-- (6) PUBLICAR -->
+          <div class="taller-paso" data-paso="6" hidden>
+            <h3 class="vest-titulo">Esto es lo que se va a publicar</h3>
+            <div id="tallerResumen"></div>
+            <!-- Donde js/arte.js escribe que entro y que fallo. Sin esto,
+                 publicar desde el taller no decia absolutamente nada. -->
+            <div id="arteResultados" class="arte-resultados"></div>
+
+            <div class="vest-pie" id="vestPie" hidden>
+              <div id="vestAvisoLienzo" class="arte-aviso" hidden></div>
+              <button type="button" id="vestPublicar" class="boton boton-primario">Publicar</button>
+              <span id="vestResumen" class="arte-contador"></span>
+            </div>
+          </div>
+
+          <!-- EL GUARDARROPA (modo libre, y también a mano desde el taller) -->
+          <div id="vestGuardarropa" hidden>
+            <h3 class="vest-titulo">Vestir el maniquí</h3>
+            <div id="vestRanuras" class="vest-ranuras"></div>
+            <input type="search" id="vestBuscar" class="vest-buscar" placeholder="Buscar en esta ranura…" hidden>
+            <label class="vest-casilla" for="vestRetiradas" hidden id="vestRetiradasCaja">
+              <input type="checkbox" id="vestRetiradas" class="vest-check"> Incluir retiradas
+            </label>
+            <div id="vestRejilla" class="vest-rejilla"></div>
+            <button type="button" id="vestMas" class="vest-tecla" hidden>Ver 40 más</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ---------- la barra de abajo ---------- -->
+      <div id="tallerNav" class="taller-nav">
+        <span id="tallerFalta" class="vest-dato"></span>
+        <button type="button" id="tallerGuardarropa" class="vest-tecla">Guardarropa</button>
+        <button type="button" id="tallerAtras" class="vest-tecla">Atrás</button>
+        <button type="button" id="tallerSeguir" class="vest-tecla taller-primario">Seguir</button>
+      </div>
+    </div>
+
+</main>
+
+<script defer src="js/core.js?v=20260914"></script>
+<script defer src="js/api-client.js?v=20260914"></script>
+<script defer src="js/session.js?v=20260914"></script>
+<script defer src="js/arte-vestidor.js?v=20260914"></script>
+<script defer src="js/arte-taller.js?v=20260914"></script>
+<script defer src="js/arte.js?v=20260914"></script>
+
+</body>
+</html>
