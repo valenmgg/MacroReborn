@@ -1,2 +1,6 @@
 node_modules/
 .env
+
+# La copia local de la base de produccion. Trae cuentas, comentarios y
+# mensajes de 141 personas: no entra en git ni por accidente.
+datos-locales/

@@ -29,6 +29,18 @@ process.env.SESSION_SECRET = process.env.SESSION_SECRET || "local-development-se
 
 const { crearBaseLocal, crearSqlPGlite } = require("./pglite");
 const { sembrarArte } = require("./sembrar-arte");
+const { abrirBaseReal } = require("./base-real");
+
+// Dos modos:
+//   npm run db:local   base de mentira, armada desde las migraciones
+//   npm run db:real    la copia de produccion que dejo scripts/traer-base.js
+//
+// La de mentira arranca en segundos y no tiene datos de nadie, asi que es
+// la de todos los dias. La real es para lo que de verdad rompe: el
+// usuario con doscientas prendas guardadas, la prenda descuadrada que
+// alguien lleva puesta desde hace un ano, el avatar PNG de 984 kB.
+const MODO_REAL = process.argv.includes("--real") || process.env.MR_BASE === "real";
+const PGDATA = path.join(__dirname, "..", "datos-locales", "pgdata");
 const { usarSqlLocal } = require("../api/_db");
 
 const PUERTO = Number(process.env.PORT) || 3001;
@@ -60,23 +72,41 @@ function responder(res, codigo, obj) {
 }
 
 async function main() {
-  console.log("Armando la base local (PGlite) y aplicando las migraciones...");
-  const db = await crearBaseLocal();
-  usarSqlLocal(crearSqlPGlite(db));
+  let db;
+  let arte = null;
 
-  // Usuario de prueba "legacy" (contraseña en texto plano) para que se
-  // pueda ver la migración perezosa en vivo.
-  await db.query(
-    `INSERT INTO users (username, password, level, xp, status, created_at, last_login)
-     VALUES ($1, $2, 3, 120, 'active', now(), now())
-     ON CONFLICT (username) DO NOTHING`,
-    ["demo", "demo1234"]
-  );
+  if (MODO_REAL) {
+    db = await abrirBaseReal(PGDATA);
+    if (!db) {
+      console.error("\nNo hay copia de produccion en datos-locales/pgdata.");
+      console.error("Traela con:  npm run db:traer\n");
+      process.exit(1);
+    }
+    console.log("Abriendo la copia de produccion...");
+    usarSqlLocal(crearSqlPGlite(db));
+  } else {
+    console.log("Armando la base local (PGlite) y aplicando las migraciones...");
+    db = await crearBaseLocal();
+    usarSqlLocal(crearSqlPGlite(db));
+  }
+
+  // Lo de abajo es siembra de mentira: en la copia real no se toca NADA,
+  // que para eso es una copia.
+  if (!MODO_REAL) {
+    // Usuario de prueba "legacy" (contraseña en texto plano) para que se
+    // pueda ver la migración perezosa en vivo.
+    await db.query(
+      `INSERT INTO users (username, password, level, xp, status, created_at, last_login)
+       VALUES ($1, $2, 3, 120, 'active', now(), now())
+       ON CONFLICT (username) DO NOTHING`,
+      ["demo", "demo1234"]
+    );
+  }
 
   // Un catalogo de arte de mentira, para poder probar el panel de arte y
   // el vestidor sin tocar produccion. Trae las medidas raras del catalogo
   // real a proposito: si algo las pinta mal, se ve aca.
-  const arte = await sembrarArte(db, "demo");
+  if (!MODO_REAL) arte = await sembrarArte(db, "demo");
 
   // Los handlers se piden DESPUES de usarSqlLocal: api/content.js llama a
   // obtenerSql() al cargarse, y sin eso pediria DATABASE_URL.
@@ -194,10 +224,15 @@ async function main() {
   servidor.listen(PUERTO, () => {
     console.log("\n==========================================");
     console.log(`  Sitio local: http://localhost:${PUERTO}`);
-    console.log("  Usuario de prueba: demo / demo1234");
+    if (MODO_REAL) {
+      console.log("  Base:              COPIA DE PRODUCCION (datos-locales/pgdata)");
+      console.log("  Usuarios reales, con la clave que puso npm run db:traer");
+    } else {
+      console.log("  Usuario de prueba: demo / demo1234");
+      console.log("  Catálogo local:    " + (arte.sembradas || arte.yaEstaba) + " prendas, demo es artista y admin");
+    }
     console.log("  Panel de arte:     http://localhost:" + PUERTO + "/arte.html");
-    console.log("  Catálogo local:    " + (arte.sembradas || arte.yaEstaba) + " prendas, demo es artista y admin");
-    console.log("  (entrá con él y mirá la consola: se migra a hash)");
+    if (!MODO_REAL) console.log("  (entrá con él y mirá la consola: se migra a hash)");
     console.log("==========================================\n");
   });
 }

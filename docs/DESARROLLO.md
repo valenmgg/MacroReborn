@@ -92,16 +92,24 @@ npm run db:local
 Abre `http://localhost:3001`:
 
 - Sirve los archivos estáticos del sitio.
-- Rutea `/api/auth` y `/api/users` con los handlers reales contra la
-  base de práctica (son las únicas rutas que toca esta rama).
+- Rutea `/api/auth`, `/api/users` y `/api/content` con los handlers
+  reales contra la base de práctica.
 - Crea un usuario de prueba `demo` / `demo1234` con contraseña en
   texto plano, para ver la migración perezosa en vivo: la consola
   avisa `"demo" entró: su contraseña en texto plano fue migrada a
   hash` solo cuando hubo una migración real (los usuarios nuevos no
   imprimen nada).
-- Limitación a propósito: `/api/content`, `/api/social` y
-  `/api/system` no están activados en el modo local; las secciones que
-  los usan se ven vacías (esperado).
+- Siembra un catálogo de arte de mentira (`scripts/sembrar-arte.js`):
+  dos personajes y quince prendas de colores planos, dibujadas con
+  `zlib`, para poder probar el panel de arte y el vestidor. Las medidas
+  NO son todas 327x504 a propósito: trae los mismos casos raros que el
+  catálogo real (ver la sección 6).
+- `demo` recibe los roles de `artista` y `administrador`, o el panel de
+  arte lo echaría a la portada.
+- Limitación a propósito: `/api/social` y `/api/system` no están
+  activados en el modo local; las secciones que los usan se ven vacías
+  (esperado).
+- Y para probar contra los datos DE VERDAD, ver la sección 8.
 
 ### 3.3 `scripts/migrar-passwords.js` — backfill
 
@@ -174,11 +182,11 @@ Para hacerla sin tocar la base real:
    reales (el smoke test y los tests unitarios simulan el tiempo; no hace
    falta esperar para validar la regla automáticamente).
 
-El servidor local solo enruta `/api/auth` y `/api/users`. Por eso la compra de
-un avatar se valida automáticamente contra el handler real en
-`tests/monedas.test.js`; probar la pantalla de tienda requiere un entorno de
-staging que tenga `/api/content` habilitado y no debe hacerse contra
-producción durante esta fase.
+La compra de un avatar se valida automáticamente contra el handler real en
+`tests/monedas.test.js`. Desde que el servidor local enruta `/api/content`, la
+pantalla de tienda y el panel de arte también se pueden mirar en el navegador
+sin tocar producción: con datos de mentira (`npm run db:local`) o con una copia
+de los de verdad (`npm run db:real`, sección 8).
 
 ## 4. Despliegue de estos cambios
 
@@ -247,15 +255,59 @@ repiten entre personajes. `tora/fondo24`, `cereza/fondo24` y los
 `fondo1` de fengchao, fenglei, fiora y max son el mismo sha256: seis
 archivos, una fila de `avatar_archivos`.
 
-La comprobación autoritativa es sobre la base, no sobre la carpeta:
+### Y lo que dice la base, que es lo que manda
+
+`imagenes/` es la carpeta heredada de la que se importó el catálogo. La
+comprobación autoritativa es sobre `avatar_archivos`, y ya está hecha
+(sobre la copia local de producción del 16/09/2026):
 
 ```sql
 SELECT ancho, alto, count(*) FROM avatar_archivos GROUP BY 1, 2;
 ```
 
-`imagenes/` es la carpeta heredada de la que se importó el catálogo y
-`scripts/importar-catalogo.js` lee el mismo IHDR, así que la desviación
-esperada es pequeña, pero conviene confirmarlo antes de tocar nada.
+| Medida | Archivos | |
+|---|---|---|
+| 327x504 | 353 | |
+| 326x503 | 36 | |
+| 327x505 | 25 | |
+| 654x1010 | 1 | `cereza/espalda2` |
+| 415x640 | 1 | `cereza/remera2` |
+| 332x512 | 1 | `cereza/espalda3` |
+| 326x504 | 1 | `tora/pelo10` |
+| **718x509** | 1 | subida por el panel |
+| **569x570** | 1 | subida por el panel |
+| **1338x2066** | 1 | subida por el panel |
+| **500x500** | 1 | subida por el panel |
+
+Los siete primeros coinciden **exactamente** con lo medido en `imagenes/`.
+Los cuatro últimos no están en la carpeta: son arte subido desde
+`arte.html` después de la importación.
+
+### Lo que eso destapa sobre el panel
+
+Todas las prendas que se han subido por el panel hasta hoy —cinco— están
+**retiradas**, y ninguna medía el lienzo:
+
+| Prenda | Nombre | Medida |
+|---|---|---|
+| `cereza_piel4` | teto | 500x500 |
+| `cereza_fondo40` | pearto | 569x570 |
+| `tora_fondo40` | Pearto | 569x570 |
+| `tora_cara9` | Mascara MR. | 1338x2066 |
+| `tora_fondo41` | Captura de pantalla 2026 09 15 113043 | 718x509 |
+
+Cinco de cinco subidas fueron descuadradas y hubo que retirarlas. La
+última es, literalmente, una captura de pantalla. Y retirar no recupera
+el identificador: `siguienteValor()` se lo salta para siempre.
+
+Esto no es una anécdota: es el motivo por el que el equipo de arte pidió
+un sitio donde probar las prendas ANTES de publicarlas. Cada una de esas
+cinco se habría visto mal en el vestidor antes de gastar un
+identificador.
+
+(Las dos "pearto" comparten un solo `avatar_archivos`: son el mismo
+dibujo subido para dos personajes, y la deduplicación por sha256 hizo su
+trabajo.)
 
 ### Cuánto importa
 
@@ -324,3 +376,89 @@ Ninguno es urgente y ninguno se arregla desde el vestidor.
    fondos del lote verá un aviso sobre un dibujo que ya está publicado
    veinticuatro veces tal cual. No es un fallo: conviene tenerlo escrito
    antes de que alguien "arregle" el aviso quitándolo.
+
+---
+
+## 8. Probar contra los datos de verdad
+
+El modo local de siempre (`npm run db:local`) arma una base vacía desde
+las migraciones y la rellena con un puñado de cosas de mentira. Sirve
+para el camino feliz, y es lo que hay que usar todos los días porque
+arranca en segundos y no tiene datos de nadie.
+
+Pero no sirve para lo que de verdad rompe: el usuario con doscientas
+prendas guardadas, la prenda descuadrada que alguien lleva puesta desde
+hace un año, el avatar PNG de casi un mega, las 271.000 puntuaciones del
+ranking. Para eso está la copia de producción.
+
+```bash
+npm run db:traer     # baja el ultimo respaldo del VPS y arma la copia
+npm run db:real      # arranca el servidor local contra ella
+```
+
+La primera vez tarda lo que tarde el `scp`; armar la base son unos 4
+segundos para 557.535 filas. Después queda guardada en
+`datos-locales/pgdata` y `npm run db:real` arranca enseguida.
+
+### Lo que hay que saber antes de usarlo
+
+**Baja datos de personas.** El respaldo trae las cuentas, las biografías,
+los comentarios de perfil y los mensajes de chat de 141 personas. No hay
+correos —`users` no tiene esa columna— pero sí contraseñas:
+`password_hash` con bcrypt y, en quien no haya entrado desde la migración
+perezosa, `password` **en texto plano**.
+
+Por eso, por defecto, **la copia local se queda sin credenciales**: todas
+las cuentas pasan a tener la misma clave conocida, `local1234`. No se
+pierde nada para probar y se gana algo —se puede entrar como cualquier
+usuario del sitio para reproducir lo que le pasa— y deja de haber
+contraseñas reales de terceros en un portátil.
+
+`datos-locales/` está en `.gitignore`. Que siga estando.
+
+### Las opciones
+
+```bash
+npm run db:traer -- --ultimo          # no pide un respaldo nuevo: usa el ultimo
+npm run db:traer -- --archivo=X.sql.gz  # uno que ya este bajado
+npm run db:traer -- --sin-registros   # sin activity_log ni originales_scores
+npm run db:traer -- --clave=otra      # otra clave para las cuentas locales
+npm run db:traer -- --tal-cual        # NO toca las credenciales
+```
+
+`--sin-registros` deja fuera las dos tablas de histórico, que son 90 de
+los 108 MB de la base y no hacen falta para probar nada del sitio. Las
+tablas se crean igual, solo se quedan vacías.
+
+`--tal-cual` existe para cuando haya que depurar la propia migración de
+contraseñas. Si se usa, que sea a sabiendas.
+
+El acceso al VPS sale de `docs/VPS.md`; se puede apuntar a otra máquina
+con `MR_VPS_HOST` y `MR_VPS_KEY`.
+
+### Por qué hace falta traducir el volcado
+
+`pg_dump` escribe un archivo pensado para `psql`, y PGlite no es `psql`:
+lleva metacomandos (`\restrict`) que no son SQL, y vuelca los datos con
+`COPY ... FROM stdin` seguido de las filas en el mismo archivo, que
+funciona porque `psql` las va mandando por el protocolo. PGlite recibe el
+texto de golpe y contesta `syntax error at or near "1"`.
+
+`scripts/base-real.js` parte el volcado en trozos de SQL y bloques de
+datos, ejecuta el SQL tal cual y le pasa cada bloque por la vía propia de
+PGlite: `COPY ... FROM '/dev/blob'`. Es además mucho más rápido que
+convertirlo todo a `INSERT`.
+
+Un detalle que cuesta media hora si no se sabe: el volcado empieza con
+`set_config('search_path', '', false)` para que todo vaya calificado con
+su esquema, y eso deja la sesión sin `search_path`. Después de cargar hay
+que devolverlo a `public` o un `SELECT ... FROM users` a secas contesta
+`relation "users" does not exist`.
+
+### De paso, el respaldo que faltaba
+
+La sección 5 de `docs/VPS.md` dice que conviene bajar una copia a otro
+lado, porque un respaldo que solo existe en el servidor que respalda no
+protege de perder el servidor. `npm run db:traer` deja el `.sql.gz` en
+`datos-locales/`, así que cada vez que se usa para probar, de paso
+cumple eso.

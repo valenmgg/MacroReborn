@@ -9,7 +9,9 @@
   "scripts": {
     "test": "node --test",
     "test:smoke": "node scripts/smoke-local.js",
-    "db:local": "node scripts/servidor-local.js"
+    "db:local": "node scripts/servidor-local.js",
+    "db:traer": "node scripts/traer-base.js",
+    "db:real": "node scripts/servidor-local.js --real"
   },
   "repository": {
     "type": "git",
