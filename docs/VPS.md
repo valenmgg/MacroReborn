@@ -436,13 +436,23 @@ de verdad los avatares o le basta con nombre y nivel.
 1. **Rotar la contraseña de Neon**, que se compartió por chat durante
    la migración. (La del VPS ya está rotada — ver §9.)
 
-4. **Dar de baja Neon** cuando el VPS lleve un tiempo estable. Conviene
+2. **Dar de baja Neon** cuando el VPS lleve un tiempo estable. Conviene
    conservar el snapshot hasta entonces. Después se puede quitar
    `@neondatabase/serverless` de `package.json` y la rama de Neon de
    `_db.js`.
 
-5. **Las variables de Pusher** en `.env`, para que vuelvan los avisos en
-   tiempo real.
+### Resuelto
 
-6. **Publicar los cambios en git.** El código de la migración está en el
-   VPS y en el PC, pero sin commit.
+- **Las variables de Pusher** en `.env`, para que volvieran los avisos en
+  tiempo real. No se pusieron, y ya no hacen falta: los avisos dejaron de
+  necesitar un tercero. Se sostienen desde esta misma máquina con
+  Server-Sent Events, y el paquete `pusher` salió de `package.json`. El
+  porqué entero está en `docs/DESARROLLO.md` §9. **(16/09/2026)**
+
+- **Publicar los cambios en git.** El código de la migración estaba en el
+  VPS y en el PC, pero sin commit. Ya está publicado. **(16/09/2026)**
+
+(Esta lista llegó a estar numerada 1, 4, 5, 6: se habían borrado dos
+puntos sin renumerar el resto, así que no había forma de saber si se
+habían hecho o se habían perdido. Si se quita uno, que se quite entero o
+que baje a «Resuelto».)

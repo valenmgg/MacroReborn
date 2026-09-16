@@ -10,7 +10,7 @@ backfill y tests).
 ## 1. Qué cubre esta guía
 
 - Los módulos compartidos del backend (`api/_db.js`, `api/_password.js`,
-  `api/_pusher.js`, `api/_monedas.js`) y los cambios en `api/auth.js`,
+  `api/_avisos.js`, `api/_monedas.js`) y los cambios en `api/auth.js`,
   `api/users.js` y `api/content.js`.
 - La infraestructura local: `scripts/pglite.js`,
   `scripts/servidor-local.js`, `scripts/migrar-passwords.js` y
@@ -31,7 +31,12 @@ Antes cada archivo de la API creaba su conexión con
 
 Los handlers de esta rama (`api/auth.js`, `api/users.js` y
 `api/content.js`) usan `obtenerSql()` en vez de crear la conexión a mano.
-Los otros archivos de la API (`social.js`, `system.js`) no se tocaron.
+
+Cuando se escribió esto, `social.js` y `system.js` no pasaban por acá:
+llamaban a `neon()` directo en su primera línea. La mudanza al VPS lo
+arregló —contra un Postgres normal habrían seguido intentando hablar con
+Neon— y hoy **los siete handlers** pasan por `obtenerSql()`. Ver
+`docs/VPS.md` §3.3.
 
 ### 2.2 `api/_password.js` — contraseñas
 
@@ -51,12 +56,14 @@ completo):
   tiene texto plano (usuario viejo), compara el texto y, si coincide,
   migra a hash en la misma operación (migración perezosa).
 
-### 2.3 `api/_pusher.js` — instancia muda
+### 2.3 `api/_avisos.js` — los avisos en vivo
 
-Si faltan las variables `PUSHER_*` (típico en desarrollo local),
-`getPusher()` devuelve una instancia "muda" (`trigger` no hace nada)
-en vez de una rota que explota en cada aviso. En producción las
-variables siempre existen, así que ahí no cambia nada.
+`avisar(canal, evento, datos)`: el único sitio que sabe empujar algo al
+navegador sin que lo pida. Sustituyó a `api/_pusher.js`, que hablaba con
+un servicio de pago, en septiembre de 2026.
+
+La sección 9 cuenta el porqué entero, incluido cómo estuvo dos semanas
+sin funcionar sin que nadie lo notara.
 
 ### 2.4 Cambios en `api/auth.js` y `api/users.js`
 
@@ -157,7 +164,10 @@ npm run test:smoke
 El script busca un puerto libre, arranca `scripts/servidor-local.js` con una
 PGlite efímera, comprueba que el sitio responde, hace login con `demo` /
 `demo1234`, envía dos pulsos de XP y verifica que el primero otorga entre 10 y
-30 monedas y el segundo devuelve el no-op de diez minutos. Siempre termina el
+30 monedas y el segundo devuelve el no-op de diez minutos. Después abre una
+conexión de avisos en vivo, dispara un latido y comprueba que el aviso llega
+por esa línea (sección 9): es lo único que ejercita la cadena entera, porque
+las suites de `tests/` prueban cada pieza por separado. Siempre termina el
 proceso hijo, también cuando falla una aserción. No necesita una base externa;
 el servidor local usa un secreto efímero por defecto solo cuando no se
 proporciona `SESSION_SECRET` en el entorno.
@@ -591,3 +601,161 @@ lado, porque un respaldo que solo existe en el servidor que respalda no
 protege de perder el servidor. `npm run db:traer` deja el `.sql.gz` en
 `datos-locales/`, así que cada vez que se usa para probar, de paso
 cumple eso.
+
+---
+
+## 9. Los avisos en vivo
+
+Cuando alguien te menciona, te manda una solicitud de amistad o comenta
+en tu perfil, eso aparece sin que recargues. Esta sección cuenta cómo, y
+por qué la respuesta cambió en septiembre de 2026.
+
+### El problema de fondo
+
+La web funciona a preguntas: el navegador pide, el servidor contesta,
+siempre en ese orden. El servidor no puede hablar primero. Para que algo
+aparezca solo hace falta una conexión que quede **abierta**, por la que
+el servidor pueda escribir cuando tenga algo que contar.
+
+Eso lo hacía **Pusher**, un servicio que alquila esas conexiones. Y no
+era un capricho: en Vercel el código del servidor corría en funciones que
+viven unos segundos y se apagan, y una función así no puede sostener nada
+abierto. Era la única salida posible.
+
+### Por qué llevaba dos semanas roto sin que nadie lo viera
+
+La mudanza al VPS quitó esa limitación: hay un proceso de Node encendido
+de forma permanente. Pero nadie lo notó, porque las variables `PUSHER_*`
+**nunca se pusieron** en el `.env` del servidor.
+
+`api/_pusher.js` estaba escrito para no romperse si faltaban: devolvía
+una instancia muda que aceptaba la orden y no hacía nada. Era una buena
+decisión para desarrollo local y resultó ser una trampa en producción.
+El sitio pasó dos semanas emitiendo diez avisos al vacío mientras cada
+navegador mantenía abierto un WebSocket contra Pusher esperando algo que
+no iba a llegar nunca. Ni un error en los logs, ni un síntoma en
+pantalla: todo seguía apareciendo, sólo que al recargar.
+
+El comentario del propio módulo decía *"en producción estas variables
+SIEMPRE están definidas"*. Una afirmación así, cuando deja de ser cierta,
+es exactamente lo que impide encontrar el fallo.
+
+### Lo que hay ahora
+
+Server-Sent Events, servidos por la propia máquina. Cero dependencias
+nuevas y dos menos: el paquete `pusher` y el `<script>` de
+`js.pusher.com` que cargaban las 22 páginas.
+
+Un SSE es una respuesta HTTP que no se cierra. El navegador pide una vez
+y el servidor le va escribiendo líneas:
+
+```
+event: nueva-notificacion
+data: {"canal":"notificaciones-luis","datos":{"titulo":"Te mencionaron"}}
+```
+
+Una línea en blanco cierra cada aviso y una que empieza por `:` es un
+comentario que el navegador ignora. Ese es todo el protocolo.
+
+**Se eligió SSE y no WebSocket** porque los diez avisos del sitio van en
+una sola dirección, del servidor al navegador. Ninguno va al revés: un
+mensaje de chat se manda por una petición normal. Un WebSocket es una
+línea de dos direcciones y aquí sobraría la mitad — además de necesitar
+una librería en el servidor, que SSE no necesita.
+
+### Las piezas
+
+| Fichero | Qué hace |
+|---|---|
+| `api/_avisos.js` | El reparto. `avisar(canal, evento, datos)` y el registro de quién escucha qué. No sabe nada de HTTP, que es lo que deja probarlo sin levantar un servidor. |
+| `api/_avisos-sse.js` | La cara HTTP: `/api/avisos`, donde el navegador deja la línea abierta. |
+| `js/avisos.js` | La mitad del navegador. `MRAvisos.escuchar(canal, evento, fn)`. |
+| `js/realtime.js`, `js/perfil-realtime.js`, `js/usuario.js` | Los tres que escuchan. |
+
+`/api/avisos` **no pasa por el despacho de `/api/` de `server.js`**: ese
+despacho junta el cuerpo entero de la petición y contesta de una sola vez
+con un `res` simulado. Aquí hace falta lo contrario, el `res` de verdad y
+no cerrarlo, así que se intercepta antes.
+
+### El detalle que lo complica: dos procesos
+
+`cluster.js` arranca dos copias de `server.js`. La conexión abierta de
+una persona la sostiene **una sola** de ellas, y el aviso puede generarse
+en la otra, que no la tiene y no puede alcanzarla. El propio `cluster.js`
+lo dejó advertido: *"si algún día se guarda algo en memoria y se espera
+que persista, dejará de serlo"*.
+
+Se resuelve sin añadir nada: Postgres trae `LISTEN`/`NOTIFY`. Quien
+genera el aviso hace `NOTIFY`, los dos procesos escuchan, y el que
+sostiene la conexión la atiende. Hace falta una conexión `pg` **propia**
+y no una del pool: un `LISTEN` vive en la conexión que lo declara, y una
+del pool vuelve al pool en cuanto termina la consulta.
+
+Sin puente —en los tests, o con un solo proceso— la entrega dentro del
+proceso es la entrega completa, y es correcta. Por eso `npm run db:local`
+funciona igual sin configurar nada.
+
+### Los límites, y por qué están
+
+Antes este riesgo lo absorbía Pusher; ahora lo absorbe una máquina de
+950 MB.
+
+- **400 conexiones por proceso.** Pasado eso, un 503 con `Retry-After`.
+- **4 canales por conexión.** `js/usuario.js` necesita dos; sin tope, una
+  URL escrita a mano apunta una conexión a mil canales.
+- **1 MB pendiente por conexión.** Si el navegador deja de leer —pestaña
+  congelada, red muerta— Node acumula en memoria lo que no puede
+  entregar. Pasado ese tamaño se corta esa conexión; el navegador
+  reconecta solo.
+- **8000 bytes por aviso**, que es el tope de `NOTIFY`. Si uno se pasa,
+  viaja sin contenido: casi todas las escuchas del navegador lo ignoran y
+  vuelven a pedir lo que necesitan.
+
+### Tres cosas que no son adorno
+
+**`X-Accel-Buffering: no`.** Sin esa cabecera nginx acumula la respuesta
+en su buffer y no suelta un byte hasta que termine — y ésta no termina.
+El bloque `location = /api/avisos` de `infra/nginx/macroreborn.conf`
+repite lo mismo con `proxy_buffering off`: van las dos porque una es la
+intención del programa y la otra la del sitio, y el día que ese bloque se
+pierda en una reinstalación la cabecera lo salva.
+
+**Un latido cada 25 segundos.** `proxy_read_timeout` corta la conexión a
+los 60 segundos sin datos, y además es la única forma de enterarse de que
+el navegador se fue sin avisar.
+
+**El `retry` se reparte al azar entre 5 y 10 segundos.** Al reiniciar el
+servicio se caen todas las conexiones a la vez; con un valor fijo
+volverían todas al mismo segundo.
+
+### Lo que el navegador tiene que hacer y no es evidente
+
+`EventSource` reconecta solo cuando se corta la red, pero **se rinde para
+siempre** si el servidor contesta algo que no sea un 200 — por ejemplo el
+503 de "este proceso está lleno". Sin un reintento a mano, esa pestaña se
+queda muda hasta que alguien recargue, y nada en pantalla lo diría.
+`js/avisos.js` distingue los dos casos por `readyState`: `CONNECTING` es
+el navegador ya ocupándose, `CLOSED` es que se rindió.
+
+Y como esto **no es un bus con historia** —lo que no se entregó no se
+guarda en ningún sitio— quien vuelve de una caída tiene que volver a
+pedir. De ahí `MRAvisos.alReconectar()`, que los tres ficheros usan para
+repescar la campanita, los comentarios, la actividad y los logros.
+
+### Cómo probarlo
+
+Automático, con `npm run test:smoke`: abre la conexión como un navegador,
+dispara un latido y comprueba que el aviso llega por la línea. Es lo
+único que ejercita la cadena entera; las suites prueban cada pieza por
+separado.
+
+A mano:
+
+1. `npm run db:local` y entrar como `demo` / `demo1234`.
+2. Abrir DevTools → Network, filtrar por `avisos`. Debe aparecer **una**
+   petición a `/api/avisos?canales=notificaciones-demo` en estado
+   pendiente, que no termina. Una sola, aunque la página cargue varios
+   ficheros que escuchan.
+3. En la pestaña Response se ve llegar `: latido` cada 25 segundos.
+4. Sin haber entrado, esa petición **no** debe existir: quien no tiene
+   sesión no abre conexión.

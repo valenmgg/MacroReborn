@@ -11,6 +11,8 @@ existen y cómo probar los cambios localmente.
 | `docs/DESARROLLO.md` | Módulos del backend, infraestructura local (PGlite, servidor local, tests) y despliegue |
 | `docs/SEGURIDAD.md` | Sistema de hash de contraseñas, migración de datos existentes y plan de activación |
 | `docs/JUEGOS.md` | Cómo agregar un juego al catálogo: proceso completo, prueba local y notas de Ruffle/CORS e iframes |
+| `docs/VPS.md` | El servidor: máquina, nginx, base de datos, respaldos, seguridad y despliegue |
+| `docs/SEO.md` | Metadatos, sitemap, robots y lo que quedó recomendado para la v1.0 |
 
 ---
 
@@ -25,8 +27,9 @@ jugado, amigos, chat, notificaciones y perfiles de usuario.
 
 - **Frontend**: HTML/CSS/JS vanilla (sin frameworks), en la raíz del
   repo y en `js/`.
-- **Backend**: API serverless en `api/` (Vercel), contra una base
-  PostgreSQL en Neon.
+- **Backend**: handlers en `api/` servidos por `server.js` sobre Node,
+  contra un PostgreSQL en el mismo VPS. Antes era serverless en Vercel
+  contra Neon; la mudanza está contada en `docs/VPS.md`.
 - **Catálogo de juegos**: datos estáticos en `js/datos-juegos.js`; los
   juegos en sí se referencian desde CDNs externos (nada de binarios en
   el repo).
@@ -51,6 +54,9 @@ servidor de producción. Detalles en `docs/DESARROLLO.md`.
   existentes y backfill protegido — ver `docs/SEGURIDAD.md`.
 - **Juegos**: cómo se agrega un juego nuevo al catálogo (datos,
   portada, sitemap, prueba local) — ver `docs/JUEGOS.md`.
+- **Avisos en vivo**: cómo aparece una notificación sin recargar, con
+  Server-Sent Events servidos por la propia máquina — ver
+  `docs/DESARROLLO.md` §9.
 
 ## Convenciones del proyecto
 
