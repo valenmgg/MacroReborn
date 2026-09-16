@@ -725,7 +725,7 @@ function escaparHTML(texto) {
       return `<img src="imagenes/avatar.png" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f0b429;" alt="" loading="lazy">`;
     }
     if(avatarEsPNG(av)){
-      return `<img src="${avatarPNGData(av)}" style="width:40px;height:40px;border-radius:50%;object-fit:contain;border:2px solid #f0b429;" class="avatar-png-personalizado" alt="" loading="lazy">`;
+      return `<img data-src="${avatarPNGData(av)}" style="width:40px;height:40px;border-radius:50%;object-fit:contain;border:2px solid #f0b429;" class="avatar-png-personalizado" alt="" loading="lazy">`;
     }
     let capas = "";
     let rutasCapas = [];

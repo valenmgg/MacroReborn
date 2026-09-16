@@ -97,7 +97,7 @@ function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho) {
   if(avatarEsPNG(avatar)){
     return `
       <div class="${contenedorClase}">
-        <img src="${avatarPNGData(avatar)}" class="${capaClase} avatar-png-personalizado" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
+        <img data-src="${avatarPNGData(avatar)}" class="${capaClase} avatar-png-personalizado" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
       </div>
     `;
   }
@@ -442,7 +442,7 @@ function crAvatarCapasHTML(avatarCrudo, claseCapa) {
     return `<img src="imagenes/avatar.png" alt="" loading="lazy">`;
   }
   if(avatarEsPNG(avatar)){
-    return `<img src="${avatarPNGData(avatar)}" class="${claseCapa} avatar-png-personalizado" alt="" loading="lazy">`;
+    return `<img data-src="${avatarPNGData(avatar)}" class="${claseCapa} avatar-png-personalizado" alt="" loading="lazy">`;
   }
   let html = "";
   RK_ORDEN_CAPAS.forEach(tipo => {

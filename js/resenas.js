@@ -53,7 +53,7 @@
     }
 
     if(avatarEsPNG(avatar)){
-      return `<img src="${avatarPNGData(avatar)}" class="resena-avatar-simple avatar-png-personalizado" alt="${escaparHTML(nombre)}" loading="lazy">`;
+      return `<img data-src="${avatarPNGData(avatar)}" class="resena-avatar-simple avatar-png-personalizado" alt="${escaparHTML(nombre)}" loading="lazy">`;
     }
 
     let capas = "";

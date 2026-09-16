@@ -171,7 +171,7 @@ describe("el sitio emite las capas con data-src, no con src", () => {
     "js/core.js", "js/usuario.js", "js/usuario-actividad.js",
     "js/usuario-avatares-galeria.js", "js/perfil.js", "js/perfil-actividad.js",
     "js/perfil-avatares-galeria.js", "js/chat.js", "js/ranking.js",
-    "js/comunidad-ranking.js", "js/resenas.js"
+    "js/comunidad-ranking.js", "js/resenas.js", "js/actividad-comunidad.js"
   ];
 
   for (const archivo of archivos) {
@@ -188,6 +188,22 @@ describe("el sitio emite las capas con data-src, no con src", () => {
       assert.deepEqual(conSrc, [],
         archivo + " emite una capa de avatar con src en vez de data-src: " +
         "se descargaría aunque no se vea");
+
+      // Y los avatares PNG, que es donde más duele: uno solo puede pesar
+      // casi un mega. En un HAR de usuario.html había 984 kB de un PNG
+      // de alguien que había comentado, descargado desde una pestaña
+      // cerrada, porque la conversión a data-src se hizo solo en las
+      // capas y esta rama se quedó fuera.
+      //
+      // La excepción es el avatar grande del perfil visitado: está
+      // arriba del todo y se quiere cuanto antes. Se reconoce por su
+      // alt.
+      const pngEager = (codigo.match(/<img[^>]*(?<!-)\bsrc="\$\{avatarPNGData[^>]*>/g) || [])
+        .filter(et => !et.includes('alt="Avatar PNG"'));
+
+      assert.deepEqual(pngEager, [],
+        archivo + " emite un avatar PNG con src en vez de data-src: " +
+        "puede ser casi un mega y se descargaría aunque no se vea");
     });
   }
 });

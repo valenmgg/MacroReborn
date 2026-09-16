@@ -20,7 +20,7 @@ function avatarMiniActividad(nombre){
   }
 
   if(avatarEsPNG(avatar)){
-    return `<img src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
+    return `<img data-src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
   }
 
   // rutaDePrenda() de js/perfil.js, igual que hace el resto del perfil.

@@ -18,7 +18,7 @@
     if (!user?.avatar) return '<span>👤</span>';
     const avatar = typeof normalizarAvatar === "function" ? normalizarAvatar(user.avatar) : user.avatar;
     if(typeof avatarPNGData === "function" && avatarPNGData(avatar)){
-      return `<img src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">`;
+      return `<img data-src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">`;
     }
     if(typeof avatarMiniaturaHTML === "function"){
       return avatarMiniaturaHTML(avatar);
