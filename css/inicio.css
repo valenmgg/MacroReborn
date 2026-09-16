@@ -278,6 +278,27 @@ html {
   display: block;
 }
 
+/* Y esta regla de abajo es la que le devuelve el sentido al atributo hidden.
+
+   El display:block de aqui arriba es hoja de AUTOR; el display:none que el
+   navegador le da a [hidden] es hoja de USUARIO-AGENTE. En el cascade real
+   gana siempre la de autor, por poca especificidad que tenga, asi que el dia
+   que se escribio esa regla img.hidden = true dejo de esconder imagenes en
+   todo el sitio. La imagen se quedaba donde estaba, sin src, con el ancho y
+   el alto que tuviera puestos a mano: una caja vacia dentro de la cual el
+   navegador pinta su icono de "imagen rota", arriba a la izquierda.
+
+   Se veia en el maniqui del taller al volver a Desnudo o tirar de Azar: la
+   prenda se iba y dejaba el recuadro. Las cuatro reglas [hidden] sueltas que
+   andan por inicio.css, juego.css y jugar.css son esta misma trampa pisada
+   cuatro veces antes y parcheada a mano cada una por su lado.
+
+   Va con !important a proposito. Por especificidad ya le ganaria a .mr-root
+   img, pero hay ocho reglas mas en el sitio que le dan display a imagenes y
+   la proxima puede empatar; y no existe un motivo legitimo para que una hoja
+   de estilo contradiga a hidden, que quiere decir "esto no se dibuja". */
+.mr-root img[hidden] { display: none !important; }
+
 .mr-root ::selection {
   background: var(--gold);
   color: #1a1204;

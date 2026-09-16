@@ -791,6 +791,20 @@ function vestBytesDeCuerpo(texto) {
     if (!f || !f.url) {
       img.hidden = true;
       img.removeAttribute("src");
+      // Y se le quitan también las medidas, y eso es la otra mitad.
+      //
+      // Un <img> sin src pero con 233x359 puestos a mano sigue siendo una
+      // caja con su sitio en la maqueta. Sin medidas mide 0x0: es como
+      // nace en montarEscenario, y por eso una capa que no se había usado
+      // nunca no dejaba nada y una usada sí. Quien la esconde de verdad es
+      // .mr-root img[hidden] en css/inicio.css; esto es el cinturón por si
+      // alguien vuelve a escribirle un display a las imágenes y lo desarma
+      // otra vez.
+      img.style.left = "";
+      img.style.top = "";
+      img.style.width = "";
+      img.style.height = "";
+      img.style.transform = "";
       return;
     }
 

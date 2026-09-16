@@ -403,6 +403,39 @@ describe("vestir de una", () => {
     assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="pelo"]').hidden, true);
     assert.strictEqual(doc.querySelector('.vest-capa[data-ranura="modelo"]').hidden, false);
   });
+
+  // El test de aqui arriba pasaba con el fallo puesto, y por eso hace falta
+  // este. hidden valia true y la prenda se seguia viendo: .mr-root img de
+  // css/inicio.css le da display:block a todas las imagenes del sitio, y una
+  // regla de autor le gana siempre al display:none que el navegador reserva
+  // para [hidden]. No es cuestion de especificidad, es el orden de las hojas.
+  //
+  // Aqui no se puede medir si se ve: la hoja por defecto de jsdom avisa de
+  // que no modela especificidad y pone [hidden] al final para que gane, asi
+  // que en jsdom hidden esconde aunque en Chrome no lo hiciera.
+  //
+  // Lo que SI se puede medir es lo que daba algo que dibujar. Un <img> sin
+  // src pero con el ancho y el alto de la ultima prenda puestos a mano sigue
+  // siendo una caja, y el navegador le pinta dentro su icono de imagen rota:
+  // el recuadro con el borde fino. Sin medidas mide 0x0 y no hay donde
+  // pintar, que es como nacen las capas en montarEscenario -y por eso una
+  // capa que no se habia usado nunca no dejaba marca, y una usada si.
+  test("y la capa que se va no deja una caja con las medidas de antes", async () => {
+    const { doc } = await montar();
+    $(doc, "vestAbrir").click();
+    $(doc, "vestBasico").click();
+
+    const pelo = doc.querySelector('.vest-capa[data-ranura="pelo"]');
+    assert.ok(pelo.style.width, "la prenda tiene que estar puesta para que la prueba valga");
+
+    $(doc, "vestDesnudar").click();
+
+    assert.strictEqual(pelo.hasAttribute("src"), false);
+    assert.strictEqual(pelo.style.width, "");
+    assert.strictEqual(pelo.style.height, "");
+    assert.strictEqual(pelo.style.left, "");
+    assert.strictEqual(pelo.style.top, "");
+  });
 });
 
 describe("el panel clásico sigue funcionando en su página", () => {
