@@ -171,7 +171,18 @@ describe("el sitio emite las capas con data-src, no con src", () => {
     "js/core.js", "js/usuario.js", "js/usuario-actividad.js",
     "js/usuario-avatares-galeria.js", "js/perfil.js", "js/perfil-actividad.js",
     "js/perfil-avatares-galeria.js", "js/chat.js", "js/ranking.js",
-    "js/comunidad-ranking.js", "js/resenas.js", "js/actividad-comunidad.js"
+    "js/comunidad-ranking.js", "js/resenas.js", "js/actividad-comunidad.js",
+    // El panel de arte pinta el catálogo entero en tarjetas, y el vestidor
+    // pinta la rejilla del guardarropa: son de las listas más largas del
+    // sitio y faltaban en esta lista.
+    //
+    // Pero que quede dicho hasta dónde llega este invariante: la expresión
+    // de abajo solo caza src="${ruta}" DENTRO DE PLANTILLAS, y esos dos
+    // archivos se arman con createElement. Así que acá solo protegen
+    // contra que alguien meta una plantilla nueva. La red de verdad para el
+    // vestidor es el espía del setter de src en
+    // tests/vestidor-pantalla.test.js, que mira lo que pasa de verdad.
+    "js/arte.js", "js/arte-vestidor.js"
   ];
 
   for (const archivo of archivos) {

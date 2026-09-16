@@ -657,3 +657,108 @@ describe("el contrato con el servidor, leído del servidor", () => {
       "tanto margen deja la tanda innecesariamente pequeña");
   });
 });
+
+// ==============================
+// LAS BARRERAS
+// ==============================
+// Invariantes sobre el texto del fuente. No prueban comportamiento:
+// impiden que alguien deshaga por descuido una decisión que no se ve a
+// ojo y que ninguna prueba de comportamiento barata caza.
+
+// Quita comentarios y contenido de cadenas, para que un invariante no
+// salte por una palabra que aparece en una explicación. Es tosco a
+// propósito: no es un parser, es un filtro.
+function soloCodigo(fuente) {
+  return fuente
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^[ \t]*\/\/.*$/gm, " ")
+    .replace(/([^:])\/\/.*$/gm, "$1 ")
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''");
+}
+
+const CODIGO = soloCodigo(FUENTE);
+
+describe("barreras del vestidor", () => {
+  // Requisito del encargo: nada de rotación. Interpolar rota mal el dibujo
+  // de línea limpia, que es justo lo que el catálogo tiene.
+  test("no se rota nada, nunca", () => {
+    assert.doesNotMatch(CODIGO, /\brotate\s*\(/,
+      "apareció una rotación en el vestidor");
+    assert.doesNotMatch(CODIGO, /\brotacion|\brotar\b/i);
+  });
+
+  // El lienzo del horno es FIJO. Si siguiera la medida del archivo, la
+  // caja de recorte del canvas dejaría de ser la del escenario y el
+  // artista vería el dibujo entero mientras se publica uno cortado.
+  test("el lienzo del horno no sigue nunca al archivo", () => {
+    const asignaciones = CODIGO.match(/canvas\.(width|height)\s*=\s*[^;]+/g) || [];
+
+    assert.strictEqual(asignaciones.length, 2,
+      "se esperaban dos asignaciones al tamaño del canvas, hay " + asignaciones.length);
+
+    assert.ok(asignaciones.some(a => /width\s*=\s*VEST_LIENZO_ANCHO/.test(a)),
+      "el ancho del canvas tiene que ser VEST_LIENZO_ANCHO: " + asignaciones.join(" | "));
+    assert.ok(asignaciones.some(a => /height\s*=\s*VEST_LIENZO_ALTO/.test(a)),
+      "el alto del canvas tiene que ser VEST_LIENZO_ALTO: " + asignaciones.join(" | "));
+
+    assert.doesNotMatch(CODIGO, /canvas\.(width|height)\s*=\s*[^;]*natural/,
+      "el canvas no puede tomar la medida de la imagen");
+  });
+
+  // Las dos medidas del lienzo viven en UN sitio. Escritas a mano en
+  // cualquier otro lado, una corrección futura arreglaría la mitad.
+  test("327 y 504 se escriben una sola vez cada uno", () => {
+    const anchos = CODIGO.match(/\b327\b/g) || [];
+    const altos = CODIGO.match(/\b504\b/g) || [];
+
+    assert.strictEqual(anchos.length, 1,
+      "el 327 aparece " + anchos.length + " veces en el código del vestidor");
+    assert.strictEqual(altos.length, 1,
+      "el 504 aparece " + altos.length + " veces en el código del vestidor");
+
+    assert.match(CODIGO, /const VEST_LIENZO_ANCHO\s*=\s*327/);
+    assert.match(CODIGO, /const VEST_LIENZO_ALTO\s*=\s*504/);
+  });
+
+  // Y el 505 del editor de perfil no se cuela: falsearía en un 0,2 % la
+  // cifra que el artista se lleva a su programa de dibujo.
+  test("y el 505 del editor de perfil no se cuela acá", () => {
+    assert.doesNotMatch(CODIGO, /\b505\b/,
+      "el vestidor mide en 327x504, no en 327x505");
+  });
+
+  // La ZONA A tiene que poder recortarse y evaluarse sin navegador. Si
+  // alguien mete un document ahí, el test de geometría revienta con
+  // ReferenceError... pero solo si la función se llega a llamar. Esto lo
+  // caza aunque no se llame.
+  test("la ZONA A no sabe que existe el DOM", () => {
+    const i = FUENTE.indexOf("const VEST_LIENZO_ANCHO");
+    const j = FUENTE.indexOf("// ZONA B — LA PANTALLA");
+    const zonaA = soloCodigo(FUENTE.slice(i, j));
+
+    assert.doesNotMatch(zonaA, /\bdocument\b/, "la ZONA A tocó el document");
+    assert.doesNotMatch(zonaA, /\bwindow\b/, "la ZONA A tocó el window");
+  });
+
+  // El horno nunca devuelve el original cuando el artista pidió un
+  // ajuste. Se comprueba de verdad en tests/vestidor-horneado.test.js;
+  // esto es el recordatorio de que hornearPrenda no tiene ninguna rama de
+  // respaldo silencioso.
+  test("hornearPrenda no tiene ninguna salida que devuelva el original", () => {
+    const i = CODIGO.indexOf("async function hornearPrenda");
+    const j = CODIGO.indexOf("async function pngDeSubida");
+    assert.ok(i !== -1 && j > i, "no se encontró hornearPrenda");
+
+    const horno = CODIGO.slice(i, j);
+
+    // Leer item.dataUrl está bien: es de donde sale la imagen que se
+    // decodifica. Lo que no puede haber es un return que lo devuelva.
+    const devuelve = (horno.match(/return[^;]*item\.dataUrl[^;]*;/g) || []);
+    assert.deepStrictEqual(devuelve, [],
+      "el horno devuelve el original por algún camino: eso publica lo que el artista no vio");
+
+    // Y sí tiene que leerlo, o no estaría decodificando nada.
+    assert.match(horno, /cargarImagen\(item\.dataUrl\)/);
+  });
+});
