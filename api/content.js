@@ -10,6 +10,7 @@ const { MonedasService } = require("./_monedas");
 const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
 const crypto = require("crypto");
 const png = require("./_png");
+const rafaga = require("./_rafaga");
 
 // La conexión se pide a api/_db.js en vez de crearla acá con
 // neon(process.env.DATABASE_URL). En producción es exactamente la misma
@@ -771,6 +772,16 @@ async function avatarPrenda(req, res) {
   const binario = Buffer.isBuffer(filas[0].datos)
     ? filas[0].datos
     : Buffer.from(filas[0].datos);
+
+  // Se cuenta para el aviso por ráfaga. Va sin await a propósito: contar
+  // no puede retrasar una imagen, y api/_rafaga.js no lanza nunca.
+  //
+  // OJO con lo que esto ve y lo que no: nginx cachea /prendas/ durante
+  // 365 días, así que una petición que acierte en esa caché no llega
+  // hasta aquí. Lo salva el caso que importa —quien se lleva el catálogo
+  // entero se lleva también lo que no lleva casi nadie, y eso no está
+  // cacheado—, pero está explicado entero en api/_rafaga.js.
+  rafaga.contarPrenda(req, huella);
 
   res.setHeader("Content-Type", "image/png");
   res.setHeader("Content-Length", binario.length);
