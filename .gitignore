@@ -12,4 +12,4 @@ revision-lienzo.html
 revision-lienzo/
 
 # Imagen temporal para un anuncio de Discord. Se hace, se captura y se borra.
-anuncio.html
+anuncio-*.html
