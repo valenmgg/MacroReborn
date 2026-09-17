@@ -400,7 +400,7 @@ async function avatarEstadoPrenda(req, res) {
 }
 
 // ==============================
-// GET /api/content?action=avatar-catalogo
+// GET /api/content?action=avatar-catalogo-completo
 // ==============================
 // Todo lo que el editor de avatares necesita para construirse solo:
 // qué modelos hay, qué prendas se ofrecen, cómo se llama cada una, de
@@ -496,7 +496,166 @@ async function construirCatalogo(version) {
   };
 }
 
+// ==============================
+// EL ÍNDICE PÚBLICO: SOLO LO QUE HAY PUESTO
+// ==============================
+// Hasta ahora esta acción entregaba el catálogo ENTERO —las 630 prendas
+// con su nombre, su ranura, su precio y su URL— a cualquiera que la
+// pidiera, sin sesión. Una petición daba el mapa completo y 630
+// descargas daban el arte: 6,6 MB. Es la forma más cómoda que existe de
+// copiar el trabajo del equipo de dibujo, y no hacía falta saber nada.
+//
+// El reparto ahora es otro, porque son dos trabajos distintos:
+//
+//   DIBUJAR  lo hacen las 24 páginas que muestran avatares, y lo necesita
+//            cualquiera, con cuenta o sin ella. Para eso alcanza con
+//            saber dónde está el dibujo de lo que la gente LLEVA PUESTO.
+//
+//   VESTIR   lo hace el editor, y ése sí necesita el catálogo entero con
+//            nombres y precios. Pero el editor es de quien tiene cuenta,
+//            así que puede pedirlo con su sesión.
+//
+// Esta función es la primera mitad. Devuelve un objeto plano
+// valor -> URL y nada más: sin nombres, sin precios, sin ranuras, sin
+// saber qué existe y no está puesto. Quien no tenga cuenta ya no puede
+// enumerar el catálogo, solo ver lo que alguien eligió enseñar.
+//
+// Se incluyen las retiradas que sigan puestas, por el mismo motivo de
+// siempre: retirar una prenda la saca del editor, no del avatar de quien
+// ya la llevaba.
+//
+// LO QUE ESTO NO ARREGLA SOLO: mientras /imagenes/<modelo>/<prenda>.png
+// siguiera sirviendo el dibujo, cerrar el índice no serviría de nada,
+// porque ese nombre se adivina ("tora_pelo3" -> /imagenes/tora/pelo3.png)
+// y se enumera sin necesidad de índice ninguno. Esa puerta se cierra en
+// server.js, en el mismo cambio que ésta.
+async function construirIndicePublico() {
+  // Las dos tablas donde vive un avatar: el que la persona lleva puesto
+  // y los que tiene guardados en su galería. Son dos consultas y no un
+  // UNION a propósito: la columna avatar no tiene el mismo tipo en las
+  // dos según el motor (jsonb en Postgres, text en la maqueta local de
+  // los tests) y unirlas falla con "UNION types text and jsonb cannot be
+  // matched". Es la misma razón que ya está escrita en
+  // valoresYaEnUso() de api/_avatar-catalogo.js.
+  const [puestos, guardados] = await Promise.all([
+    sql`SELECT avatar FROM users WHERE avatar IS NOT NULL;`,
+    sql`SELECT avatar FROM saved_avatars;`
+  ]);
+
+  const enUso = new Set();
+
+  for (const fila of [...puestos, ...guardados]) {
+    let avatar = fila.avatar;
+    if (typeof avatar === "string") {
+      try { avatar = JSON.parse(avatar); } catch (_) { continue; }
+    }
+    if (!avatar || typeof avatar !== "object" || Array.isArray(avatar)) continue;
+
+    // Un avatar PNG subido a mano no tiene capas: no aporta prendas.
+    if (avatar.tipo === "png") continue;
+
+    for (const [capa, valor] of Object.entries(avatar)) {
+      if (!CAPAS_AVATAR.includes(capa)) continue;
+      if (typeof valor === "string" && valor && valor !== "ninguno") enUso.add(valor);
+    }
+  }
+
+  if (!enUso.size) return {};
+
+  // Una sola consulta con el conjunto entero. Publicadas y retiradas por
+  // igual: acá lo que manda es que esté puesta, no que se pueda elegir.
+  const filas = await sql`
+    SELECT p.valor, a.sha256
+    FROM avatar_prendas p
+    JOIN avatar_archivos a ON a.id = p.archivo_id
+    WHERE p.valor = ANY(${Array.from(enUso)});
+  `;
+
+  const rutas = {};
+  for (const f of filas) rutas[f.valor] = "/prendas/" + f.sha256 + ".png";
+  return rutas;
+}
+
+
+// El índice público se cachea aparte del catálogo y por tiempo, no por
+// versión, porque cambia por un motivo distinto: no cuando el equipo de
+// arte publica una prenda, sino cuando CUALQUIERA se cambia de ropa. No
+// existe un entero en la base que cuente eso, y añadir uno significaría
+// escribir en una fila compartida en cada guardado de avatar.
+//
+// Sesenta segundos es el mismo tiempo que ya decía la cabecera
+// Cache-Control de esta acción, así que no empeora nada que no
+// estuviera ya aceptado.
+//
+// QUÉ PASA EN ESA VENTANA, dicho claro: si alguien se pone una prenda
+// que nadie llevaba, durante hasta un minuto esa capa no le aparece a
+// quien mire desde otra pantalla —rutaCapaAvatar() en js/core.js
+// devuelve null y la capa se omite, que es lo que hace desde que se
+// arregló lo de "tora_piel7"—. No se ve una imagen rota, se ve el avatar
+// sin esa prenda. Quien se la puso la ve bien enseguida, porque el
+// editor trabaja con el catálogo completo.
+const INDICE_PUBLICO_TTL_MS = 60 * 1000;
+let _indicePublicoEnMemoria = null;   // { hasta, firma, cuerpo }
+
+// Para los tests, y solo para eso. En producción no hace falta llamarla:
+// el minuto de vida del índice ya lo renueva solo. Misma idea que
+// invalidarCache() en api/_avatar-catalogo.js, que existe por lo mismo.
+// Sin esto, un test que viste a alguien y vuelve a preguntar recibe la
+// respuesta cacheada y parece que el índice no se entera de nada.
+function invalidarIndicePublico() {
+  _indicePublicoEnMemoria = null;
+}
+
 async function avatarCatalogo(req, res) {
+  const ahora = Date.now();
+
+  if (!_indicePublicoEnMemoria || _indicePublicoEnMemoria.hasta <= ahora) {
+    const rutas = await construirIndicePublico();
+
+    // La firma es la identidad del índice: si nadie se cambió de ropa,
+    // sale la misma y el navegador se ahorra la descarga con un 304.
+    // Va sobre las claves ordenadas para que no dependa del orden en
+    // que la base devuelva las filas.
+    const firma = crypto
+      .createHash("sha256")
+      .update(Object.keys(rutas).sort().join("|"))
+      .digest("hex")
+      .slice(0, 16);
+
+    _indicePublicoEnMemoria = {
+      hasta: ahora + INDICE_PUBLICO_TTL_MS,
+      firma,
+      cuerpo: { success: true, rutas }
+    };
+  }
+
+  const etag = 'W/"indice-' + _indicePublicoEnMemoria.firma + '"';
+  res.setHeader("ETag", etag);
+  res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
+
+  if (req.headers && req.headers["if-none-match"] === etag) {
+    return res.status(304).end();
+  }
+
+  return res.status(200).json(_indicePublicoEnMemoria.cuerpo);
+}
+
+
+// ==============================
+// GET /api/content?action=avatar-catalogo-completo   (pide sesión)
+// ==============================
+// La otra mitad: el catálogo entero, que es lo que el editor necesita
+// para construirse. Esto es lo que antes se entregaba a cualquiera.
+//
+// El guard de arriba de este archivo solo cubre POST y DELETE, así que
+// la sesión se exige acá a mano. No hace falta comprobar quién es: basta
+// con que haya una cuenta detrás. Es una barrera contra el raspado
+// anónimo, no un permiso por persona; las prendas que cada uno puede
+// EQUIPAR se siguen validando en api/_avatar-catalogo.js al guardar, que
+// es donde importa.
+async function avatarCatalogoCompleto(req, res) {
+  if (!requerirAuth(req, res)) return;
+
   const filas = await sql`SELECT version FROM avatar_catalogo_version WHERE id = 1;`;
   const version = filas.length ? Number(filas[0].version) : 0;
 
@@ -508,7 +667,11 @@ async function avatarCatalogo(req, res) {
   // no cambió, el navegador se ahorra volver a bajarse los ~90 kB.
   const etag = 'W/"catalogo-' + version + '"';
   res.setHeader("ETag", etag);
-  res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
+
+  // "private": esto lleva el catálogo entero y va detrás de una sesión,
+  // así que no puede quedarse en una caché compartida donde lo alcance
+  // alguien sin cuenta. Es justo lo que este cambio viene a evitar.
+  res.setHeader("Cache-Control", "private, max-age=60, must-revalidate");
 
   if (req.headers && req.headers["if-none-match"] === etag) {
     return res.status(304).end();
@@ -2286,6 +2449,7 @@ module.exports = async function handler(req, res) {
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
     if (action === "avatar-prenda") return await avatarPrenda(req, res);
     if (action === "avatar-catalogo") return await avatarCatalogo(req, res);
+    if (action === "avatar-catalogo-completo") return await avatarCatalogoCompleto(req, res);
     if (action === "avatar-panel") return await avatarPanel(req, res);
     if (action === "avatar-subir-prendas") return await avatarSubirPrendas(req, res);
     if (action === "avatar-estado-prenda") return await avatarEstadoPrenda(req, res);
@@ -2297,3 +2461,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: "Error interno del servidor" });
   }
 };
+
+// El handler es lo que exporta este archivo, así que la puerta para los
+// tests viaja colgada de él.
+module.exports.invalidarIndicePublico = invalidarIndicePublico;

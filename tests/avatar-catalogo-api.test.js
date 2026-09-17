@@ -1,24 +1,25 @@
 // ==============================
 // TESTS DEL ENDPOINT DE CATÁLOGO — tests/avatar-catalogo-api.test.js
 // ==============================
-// El catálogo de prendas deja de estar escrito a mano en perfil.html y
-// pasa a servirse desde la base. Esto prueba el endpoint que lo entrega.
+// El catálogo de prendas se sirve desde la base, y desde este cambio se
+// sirve PARTIDO EN DOS, porque son dos trabajos distintos con dos
+// públicos distintos:
+//
+//   avatar-catalogo            público, sin sesión. Solo valor -> URL, y
+//                              solo de las prendas que alguien LLEVA
+//                              PUESTAS. Es lo justo para DIBUJAR.
+//
+//   avatar-catalogo-completo   pide sesión. Nombres, ranuras, precios,
+//                              retiradas: el catálogo entero. Es lo que
+//                              necesita el editor para VESTIR.
+//
+// Antes esto era una sola acción pública que entregaba las 630 prendas
+// con su URL a quien preguntara. Una petición daba el mapa completo y
+// 630 descargas daban el arte: 6,6 MB. Esa es la razón de ser de este
+// archivo.
 //
 // (No confundir con tests/avatar-catalogo.test.js, que prueba el módulo
-// api/_avatar-catalogo.js, el que valida avatares contra el disco.)
-//
-// Lo que se prueba acá:
-//   - Separa los modelos base de las prendas.
-//   - Solo salen las publicadas. Lo apagado no se ofrece.
-//   - El precio sale de la tienda, y null significa gratis.
-//   - Cada prenda trae su URL con la huella del dibujo.
-//   - Manda las 15 capas en su orden de dibujo, para que el editor no
-//     tenga que llevar su propia copia de esa lista.
-//   - ETag y 304, para no rebajar ~90 kB en cada visita.
-//   - Y el importante: al subir la versión, la caché en memoria se
-//     entera. Es lo que evita que una prenda recién publicada aparezca
-//     y desaparezca al recargar según cuál de los dos procesos del
-//     cluster conteste.
+// api/_avatar-catalogo.js, el que valida avatares.)
 //
 // Correr:  npm test
 
@@ -30,9 +31,11 @@ const crypto = require("crypto");
 
 const { crearBaseLocal, crearSqlPGlite } = require("../scripts/pglite");
 const { usarSqlLocal } = require("../api/_db");
+const { crearToken } = require("../api/_auth");
 
 let db;
 let contentHandler;
+let sesion;
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -62,7 +65,17 @@ async function meterPrenda(valor, modelo, capa, nombre, publicada, semilla) {
   return archivo.sha;
 }
 
+async function meterUsuario(username, avatar) {
+  const res = await db.query(
+    `INSERT INTO users (username, password_hash, level, xp, status, created_at, last_login, avatar)
+     VALUES ($1, 'hash-de-prueba', 1, 0, 'active', now(), now(), $2) RETURNING id`,
+    [username, avatar === undefined || avatar === null ? null : JSON.stringify(avatar)]
+  );
+  return res.rows[0].id;
+}
+
 let shaBotas;
+let shaRetirada;
 
 before(async () => {
   db = await crearBaseLocal();
@@ -75,22 +88,52 @@ before(async () => {
   shaBotas = await meterPrenda("prueba_botas1", "prueba", "botas", "Botas de combate", true, "p1");
   await meterPrenda("prueba_remera1", "prueba", "remera", "Remera 1", true, "p2");
 
+  // Publicada y que NO lleva nadie. Es la que prueba que el índice
+  // público no enumera el catálogo: existe, se puede comprar, y aun así
+  // no tiene por qué salir en una respuesta anónima.
+  await meterPrenda("prueba_guantes1", "prueba", "guantes", "Guantes 1", true, "p4");
+
   // Apagada: es arte recuperado que todavía no se miró.
   await meterPrenda("prueba_boca9", "prueba", "boca", "Boca 9", false, "p3");
+
+  // Retirada PERO puesta: quien ya la llevaba tiene que seguir viéndola.
+  shaRetirada = await meterPrenda("prueba_pelo9", "prueba", "pelo", "Pelo 9", false, "p5");
 
   // Y una de pago, para comprobar que el precio llega.
   await db.query(
     `INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
      VALUES ('botas', 'prueba', 'prueba_botas1', 'Botas de combate', 140)`
   );
+
+  // Alguien que lleva puestas las botas y la retirada.
+  const id = await meterUsuario("vestida", {
+    modelo: "prueba",
+    botas: "prueba_botas1",
+    pelo: "prueba_pelo9",
+    remera: "ninguno"
+  });
+  sesion = crearToken({ id, username: "vestida" });
+
+  // Y una segunda cuenta que solo tiene la remera GUARDADA en su
+  // galería, sin llevarla puesta. Cuenta igual: saved_avatars es la otra
+  // tabla donde vive un avatar.
+  const id2 = await meterUsuario("guardadora", null);
+  await db.query(
+    `INSERT INTO saved_avatars (user_id, slot, avatar) VALUES ($1, 1, $2)`,
+    [id2, JSON.stringify({ modelo: "prueba", remera: "prueba_remera1" })]
+  );
+
+  // Una tercera con un PNG subido a mano: no tiene capas y no debe
+  // aportar nada al índice ni reventar el recorrido.
+  await meterUsuario("pngera", { tipo: "png", src: "data:image/png;base64,AAAA" });
 });
 
-function llamar(query, headers) {
+function llamar(accion, query, headers) {
   return new Promise((resolve) => {
     const cabeceras = {};
     const req = {
       method: "GET",
-      query: Object.assign({ action: "avatar-catalogo" }, query || {}),
+      query: Object.assign({ action: accion }, query || {}),
       body: {},
       headers: headers || {}
     };
@@ -105,10 +148,124 @@ function llamar(query, headers) {
   });
 }
 
+// El índice público vive un minuto en memoria. En un test eso significa
+// que un cambio hecho a mitad no se vería, así que se tira la caché
+// antes de cada llamada. Ver invalidarIndicePublico() en api/content.js.
+const publico = (query, headers) => {
+  contentHandler.invalidarIndicePublico();
+  return llamar("avatar-catalogo", query, headers);
+};
+
+const conSesion = (query, headers) =>
+  llamar("avatar-catalogo-completo", query,
+    Object.assign({ authorization: "Bearer " + sesion }, headers || {}));
+
+
+// ==============================
+// EL ÍNDICE PÚBLICO
 // ==============================
 
-test("separa los modelos base de las prendas", async () => {
-  const r = await llamar();
+test("el índice público no pide sesión", async () => {
+  const r = await publico();
+
+  assert.equal(r.codigo, 200);
+  assert.equal(r.cuerpo.success, true);
+  assert.ok(r.cuerpo.rutas, "debería traer el mapa de rutas");
+});
+
+test("trae lo que alguien lleva puesto, con su URL con huella", async () => {
+  const r = await publico();
+
+  assert.equal(r.cuerpo.rutas["prueba_botas1"], "/prendas/" + shaBotas + ".png");
+});
+
+test("NO trae una prenda publicada que no lleva nadie", async () => {
+  const r = await publico();
+
+  assert.ok(
+    !("prueba_guantes1" in r.cuerpo.rutas),
+    "el índice público no debe enumerar el catálogo: solo lo que está puesto"
+  );
+});
+
+test("sí trae una retirada, si alguien la lleva puesta", async () => {
+  const r = await publico();
+
+  // Retirar una prenda la saca del editor, no del avatar de quien ya la
+  // llevaba. Si no saliera acá, esa persona se vería sin pelo.
+  assert.equal(r.cuerpo.rutas["prueba_pelo9"], "/prendas/" + shaRetirada + ".png");
+});
+
+test("también mira la galería, no solo el avatar puesto", async () => {
+  const r = await publico();
+
+  assert.equal(
+    typeof r.cuerpo.rutas["prueba_remera1"], "string",
+    "una prenda guardada en saved_avatars también hay que poder dibujarla"
+  );
+});
+
+test("no se cuela 'ninguno' ni las claves de un avatar PNG", async () => {
+  const r = await publico();
+
+  assert.ok(!("ninguno" in r.cuerpo.rutas));
+  assert.ok(!("tipo" in r.cuerpo.rutas), "un avatar PNG no aporta prendas");
+  assert.ok(!("src" in r.cuerpo.rutas));
+});
+
+test("el índice público NO lleva nombres, precios ni ranuras", async () => {
+  const r = await publico();
+  const texto = JSON.stringify(r.cuerpo);
+
+  assert.ok(!("prendas" in r.cuerpo), "eso es del catálogo completo");
+  assert.ok(!("modelos" in r.cuerpo));
+  assert.ok(!("capas" in r.cuerpo));
+  assert.ok(!texto.includes("Botas de combate"), "ni un nombre de prenda");
+  assert.ok(!texto.includes("140"), "ni un precio");
+});
+
+test("el índice público contesta 304 con el mismo ETag", async () => {
+  const primera = await publico();
+  const etag = primera.cabeceras["ETag"];
+
+  assert.ok(etag, "debería mandar ETag");
+
+  const segunda = await publico({}, { "if-none-match": etag });
+  assert.equal(segunda.codigo, 304);
+  assert.ok(!segunda.cuerpo, "un 304 no lleva cuerpo");
+});
+
+test("si alguien se pone una prenda nueva, el índice se entera", async () => {
+  const antes = await publico();
+  assert.ok(!("prueba_guantes1" in antes.cuerpo.rutas));
+
+  await db.query(
+    `UPDATE users SET avatar = $1 WHERE username = 'vestida'`,
+    [JSON.stringify({ modelo: "prueba", botas: "prueba_botas1", guantes: "prueba_guantes1" })]
+  );
+
+  const despues = await publico();
+  assert.ok(
+    "prueba_guantes1" in despues.cuerpo.rutas,
+    "al vestirla, la prenda tiene que poder dibujarse"
+  );
+  assert.notEqual(despues.cabeceras["ETag"], antes.cabeceras["ETag"]);
+});
+
+
+// ==============================
+// EL CATÁLOGO COMPLETO
+// ==============================
+
+test("el catálogo completo sin sesión da 401", async () => {
+  const r = await llamar("avatar-catalogo-completo");
+
+  assert.equal(r.codigo, 401);
+  assert.equal(r.cuerpo.success, false);
+});
+
+test("con sesión, separa los modelos base de las prendas", async () => {
+  const r = await conSesion();
 
   assert.equal(r.codigo, 200);
   assert.equal(r.cuerpo.success, true);
@@ -117,7 +274,7 @@ test("separa los modelos base de las prendas", async () => {
 });
 
 test("solo salen las prendas publicadas", async () => {
-  const r = await llamar();
+  const r = await conSesion();
   const valores = r.cuerpo.prendas.map(p => p.valor);
 
   assert.ok(valores.includes("prueba_botas1"));
@@ -126,7 +283,7 @@ test("solo salen las prendas publicadas", async () => {
 });
 
 test("el precio viene de la tienda, y null es gratis", async () => {
-  const r = await llamar();
+  const r = await conSesion();
 
   const botas = r.cuerpo.prendas.find(p => p.valor === "prueba_botas1");
   const remera = r.cuerpo.prendas.find(p => p.valor === "prueba_remera1");
@@ -136,14 +293,14 @@ test("el precio viene de la tienda, y null es gratis", async () => {
 });
 
 test("cada prenda trae la URL con la huella de su dibujo", async () => {
-  const r = await llamar();
+  const r = await conSesion();
   const botas = r.cuerpo.prendas.find(p => p.valor === "prueba_botas1");
 
   assert.equal(botas.url, "/prendas/" + shaBotas + ".png");
 });
 
 test("manda las 15 capas en su orden de dibujo", async () => {
-  const r = await llamar();
+  const r = await conSesion();
 
   assert.equal(r.cuerpo.capas.length, 15);
   assert.equal(r.cuerpo.capas[0], "fondo");
@@ -155,13 +312,22 @@ test("manda las 15 capas en su orden de dibujo", async () => {
   );
 });
 
+test("el catálogo completo se cachea en privado, nunca compartido", async () => {
+  const r = await conSesion();
+
+  // Va detrás de una sesión y lleva el catálogo entero: si una caché
+  // compartida se quedara con esta respuesta, la alcanzaría alguien sin
+  // cuenta y este cambio no habría servido de nada.
+  assert.match(r.cabeceras["Cache-Control"], /private/);
+});
+
 test("con el mismo ETag contesta 304 y no reenvía el catálogo", async () => {
-  const primera = await llamar();
+  const primera = await conSesion();
   const etag = primera.cabeceras["ETag"];
 
   assert.ok(etag, "debería mandar ETag");
 
-  const segunda = await llamar({}, { "if-none-match": etag });
+  const segunda = await conSesion({}, { "if-none-match": etag });
   assert.equal(segunda.codigo, 304);
   assert.ok(!segunda.cuerpo, "un 304 no lleva cuerpo");
 });
@@ -171,7 +337,7 @@ test("al subir la versión, la caché en memoria se entera", async () => {
   // procesos y cada uno cachea el catálogo por su cuenta; si la caché no
   // mirara la versión, una prenda recién publicada aparecería y
   // desaparecería al recargar según quién contestara.
-  const antes = await llamar();
+  const antes = await conSesion();
   assert.ok(!antes.cuerpo.prendas.some(p => p.valor === "prueba_pelo1"));
 
   await meterPrenda("prueba_pelo1", "prueba", "pelo", "Pelo 1", true, "p9");
@@ -180,7 +346,7 @@ test("al subir la versión, la caché en memoria se entera", async () => {
   // Al subirla, tiene que reconstruir.
   await db.query("UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1");
 
-  const despues = await llamar();
+  const despues = await conSesion();
   assert.ok(
     despues.cuerpo.prendas.some(p => p.valor === "prueba_pelo1"),
     "la prenda nueva debería aparecer tras subir la versión"
