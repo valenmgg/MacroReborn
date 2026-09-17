@@ -35,12 +35,18 @@ const HUELLA_PELO = "1".repeat(64);
 const HUELLA_TORA = "2".repeat(64);
 const HUELLA_RETIRADA = "3".repeat(64);
 
+// El índice PÚBLICO: un mapa plano valor -> URL y nada más. Modelos,
+// prendas y retiradas vienen mezclados a propósito, porque para dibujar
+// dan todos igual; la diferencia entre "se puede elegir" y "solo se
+// puede dibujar" la decide el editor, que se arma con otra respuesta
+// (avatar-catalogo-completo, y esa sí pide sesión).
 const CATALOGO = {
   success: true,
-  version: 7,
-  modelos: [{ valor: "tora", url: "/prendas/" + HUELLA_TORA + ".png" }],
-  prendas: [{ valor: "tora_pelo3", url: "/prendas/" + HUELLA_PELO + ".png" }],
-  retiradas: [{ valor: "cereza_piel4", url: "/prendas/" + HUELLA_RETIRADA + ".png" }]
+  rutas: {
+    "tora": "/prendas/" + HUELLA_TORA + ".png",
+    "tora_pelo3": "/prendas/" + HUELLA_PELO + ".png",
+    "cereza_piel4": "/prendas/" + HUELLA_RETIRADA + ".png"
+  }
 };
 
 // Levanta el trozo de core.js que va del mapa a avatarMiniaturaHTML,
@@ -124,17 +130,24 @@ describe("derecho adquirido: lo retirado se sigue viendo", () => {
     assert.notEqual(ruta("cereza_piel4"), null);
   });
 
-  // Este test es el que sujeta el arreglo por el lado peligroso: si
-  // alguien quita "retiradas" del servidor o del mapa, las retiradas
-  // pasan a ser valores colgando y desaparecen de golpe de los avatares
-  // de quien las lleva. Antes eso no se notaba porque TODO caía a la
-  // ruta inventada.
-  test("si el catálogo llega SIN la lista de retiradas, se nota acá", async () => {
-    const sinRetiradas = () => Promise.resolve({
+  // Este test es el que sujeta el arreglo por el lado peligroso: si el
+  // servidor deja de incluir una prenda puesta en el índice, esa prenda
+  // pasa a ser un valor colgando y desaparece de golpe del avatar de
+  // quien la lleva. Antes eso no se notaba porque TODO caía a la ruta
+  // inventada.
+  //
+  // Es exactamente el riesgo que introduce el índice público: ya no
+  // manda las 630, manda lo que hay puesto. Si el cálculo de "lo que hay
+  // puesto" se equivoca, el fallo se ve acá.
+  test("si el índice llega SIN una prenda puesta, se nota acá", async () => {
+    const sinLaRetirada = () => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ ...CATALOGO, retiradas: [] })
+      json: () => Promise.resolve({
+        success: true,
+        rutas: { "tora": CATALOGO.rutas["tora"], "tora_pelo3": CATALOGO.rutas["tora_pelo3"] }
+      })
     });
-    const { ruta, cargar } = montar(sinRetiradas);
+    const { ruta, cargar } = montar(sinLaRetirada);
     await cargar();
 
     assert.equal(ruta("cereza_piel4"), null);

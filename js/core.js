@@ -475,19 +475,30 @@ let _promesaCatalogoAvatares = null;
 function cargarCatalogoAvatares(){
   if(_promesaCatalogoAvatares) return _promesaCatalogoAvatares;
 
+  // Este es el índice PÚBLICO, y trae una sola cosa: valor -> URL del
+  // dibujo, de las prendas que alguien lleva puestas. Nada de nombres,
+  // ranuras ni precios.
+  //
+  // Antes esta misma llamada bajaba el catálogo entero -las 630 prendas
+  // con todos sus datos-, y lo bajaba sin sesión. Eso convertía una
+  // petición en el índice completo del trabajo del equipo de dibujo, y
+  // las 630 descargas siguientes en una copia del catálogo. Lo que el
+  // editor necesita de más ahora se pide aparte y con sesión, en
+  // cargarCatalogoCompleto() de js/perfil.js.
+  //
+  // Las retiradas vienen mezcladas con el resto y está bien: acá lo
+  // único que importa es poder DIBUJAR lo que alguien lleva puesto. Una
+  // prenda retirada hay que poder dibujarla —quien ya la llevaba sigue
+  // con ella—, y elegirla o no se decide en el editor, que se arma con
+  // otra respuesta.
   _promesaCatalogoAvatares = fetch("/api/content?action=avatar-catalogo")
     .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
     .then(datos => {
       if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
       RUTAS_DE_PRENDA.clear();
-      (datos.modelos || []).forEach(m => RUTAS_DE_PRENDA.set(m.valor, m.url));
-      (datos.prendas || []).forEach(p => RUTAS_DE_PRENDA.set(p.valor, p.url));
-
-      // Las retiradas también se dibujan: hay gente que las lleva
-      // puestas desde antes. Entran solo en este mapa, que es para
-      // dibujar; el editor se arma con modelos y prendas, así que
-      // siguen sin poder elegirse.
-      (datos.retiradas || []).forEach(r => RUTAS_DE_PRENDA.set(r.valor, r.url));
+      Object.entries(datos.rutas || {}).forEach(([valor, url]) => {
+        RUTAS_DE_PRENDA.set(valor, url);
+      });
 
       return datos;
     })

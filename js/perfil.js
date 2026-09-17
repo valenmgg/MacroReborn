@@ -338,12 +338,46 @@ let _promesaCatalogo = null;
 // De esa llamada sale el mapa de URLs para dibujar. Lo que el editor
 // necesita además —nombres, ranuras, precios— está en el mismo cuerpo de
 // la respuesta, así que se guarda en CATALOGO desde acá.
+// El catálogo llega por dos puertas distintas, y esta página usa las dos
+// porque hace dos cosas:
+//
+//   VESTIR   el editor necesita nombres, ranuras y precios. Eso es el
+//            catálogo completo, y desde que dejó de ser público hay que
+//            pedirlo con la sesión. El interceptor de js/core.js le
+//            cuelga el Bearer solo, así que acá no hay nada que firmar.
+//
+//   DIBUJAR  los avatares de los comentarios, de la gente que pasa por
+//            el perfil, del propio dueño. Eso lo cubre el índice público
+//            de cargarCatalogoAvatares(), y lo puede ver cualquiera.
+//
+// Sin sesión, el completo contesta 401 y se cae al público: la página
+// sigue dibujando todos los avatares, y CATALOGO se queda en null, que
+// es justo lo que apaga el editor. Es el comportamiento correcto — quien
+// no tiene cuenta no tiene nada que vestir.
 function cargarCatalogo(){
   if(_promesaCatalogo) return _promesaCatalogo;
 
-  _promesaCatalogo = cargarCatalogoAvatares()
+  _promesaCatalogo = fetch("/api/content?action=avatar-catalogo-completo")
+    .then(r => {
+      if(r.status === 401) return null;   // sin sesión: no hay editor
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
     .then(datos => {
-      if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
+      // Sin sesión: se dibuja con el índice público y no se arma editor.
+      if(!datos){
+        return cargarCatalogoAvatares().then(publico => {
+          CATALOGO = null;
+          RUTAS_PRENDA.clear();
+          RUTAS_RETIRADAS.clear();
+          Object.entries((publico && publico.rutas) || {}).forEach(([valor, url]) => {
+            RUTAS_PRENDA.set(valor, url);
+          });
+          return null;
+        });
+      }
+
+      if(!datos.success) throw new Error("el catálogo vino sin éxito");
       CATALOGO = datos;
       RUTAS_PRENDA.clear();
       datos.modelos.forEach(m => RUTAS_PRENDA.set(m.valor, m.url));
