@@ -329,14 +329,22 @@ describe("publicar y retirar", () => {
     assert.equal((await estado(999999, false, ADMIN())).codigo, 404);
   });
 
-  test("lo retirado sigue saliendo en el panel, pero no en el catálogo público", async () => {
+  test("lo retirado sigue saliendo en el panel, pero no en el índice público", async () => {
     await estado(idPropia, false, ARTISTA());
 
     const p = await panel(ARTISTA());
     assert.ok(p.cuerpo.prendas.some(x => x.id === idPropia), "el panel debe seguir mostrándola");
 
+    // El índice público ya no es "el catálogo menos lo retirado": es
+    // "lo que alguien lleva puesto". Esta prenda no la lleva nadie, así
+    // que no tiene por qué salir —y si mañana alguien la llevara, sí
+    // saldría aunque esté retirada, que es el derecho adquirido de
+    // siempre.
+    const fila = await db.query("SELECT valor FROM avatar_prendas WHERE id = $1", [idPropia]);
+    const valor = fila.rows[0].valor;
+
     const publico = await llamar("GET", { action: "avatar-catalogo" }, {}, null);
-    assert.ok(!publico.cuerpo.prendas.some(x => x.id === idPropia), "el catálogo público no");
+    assert.ok(!(valor in publico.cuerpo.rutas), "el índice público no debe enumerarla");
   });
 });
 
