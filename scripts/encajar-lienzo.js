@@ -101,8 +101,9 @@ function armarPagina(fichas) {
         </figure>`).join("");
 
     return `
-    <article class="p" data-metodo="${f.metodo}">
+    <article class="p${f.sospechosa ? " mala" : ""}" data-metodo="${f.metodo}">
       <header>
+        ${f.sospechosa ? '<span class="chapa">REVISAR — la proporción no es la del lienzo</span>' : ""}
         <h3>${f.valores}</h3>
         <p><b>${f.metodo}</b> · ${f.desde} → 327×504 · ${f.capa} · ${f.pesoAntes} → ${f.pesoDespues}${f.aviso ? ` · <em>${f.aviso}</em>` : ""}</p>
       </header>
@@ -129,6 +130,10 @@ function armarPagina(fichas) {
   .barra button.on { background:#2d4a6b; border-color:#4a7ab0; }
   .p { border:1px solid #242c3a; border-radius:10px; padding:14px;
        margin-bottom:18px; background:#171b24; }
+  .p.mala { border-color:#a8452f; background:#1f1715; }
+  .chapa { display:inline-block; background:#a8452f; color:#fff; font-size:11px;
+           font-weight:700; letter-spacing:.3px; padding:3px 9px;
+           border-radius:5px; margin-bottom:8px; }
   .p header h3 { margin:0; font-size:15px; color:#9ecbff; word-break:break-all; }
   .p header p { margin:2px 0 12px; color:#9aa6b8; font-size:12px; }
   .p header em { color:#d9a441; font-style:normal; }
@@ -314,7 +319,25 @@ async function main() {
         } catch (_) { /* si no se puede, se enseña solo el estirado */ }
       }
 
+      // ¿La proporcion de origen es la del lienzo?
+      //
+      // Casi todo lo descuadrado del catalogo esta bien encuadrado y solo
+      // viene a otra escala: un 1338x2066 es 0,6476 y el lienzo es
+      // 0,6488, o sea un 0,2 % de diferencia. Eso baja al lienzo nitido y
+      // no hay nada que decidir.
+      //
+      // Lo que SI hay que mirar con lupa es lo que trae otra proporcion
+      // de verdad -un cuadrado, un apaisado-, porque ahi no existe
+      // transformacion que quede bien: encajarlo lo deja con margenes y
+      // estirarlo lo aplasta. Esas se marcan para que salten a la vista y
+      // se puedan apartar.
+      const [anchoOrigen, altoOrigen] = String(c.desde).split("x").map(Number);
+      const proporcion = anchoOrigen / altoOrigen;
+      const proporcionLienzo = lienzo.LIENZO_ANCHO / lienzo.LIENZO_ALTO;
+      const sospechosa = Math.abs(proporcion - proporcionLienzo) / proporcionLienzo > 0.01;
+
       fichas.push({
+        sospechosa,
         valores: c.valores,
         metodo: c.metodo,
         desde: c.desde,
@@ -326,6 +349,11 @@ async function main() {
         variantes
       });
     }
+
+    // Las marcadas primero: son las unicas que piden una decision, y son
+    // cuatro entre ciento veinticinco. Enterradas en medio de la lista no
+    // las ve nadie.
+    fichas.sort((a, b) => (b.sospechosa ? 1 : 0) - (a.sospechosa ? 1 : 0));
 
     fs.writeFileSync(PAGINA_REVISION, armarPagina(fichas));
 
