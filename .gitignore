@@ -4,3 +4,9 @@ node_modules/
 # La copia local de la base de produccion. Trae cuentas, comentarios y
 # mensajes de 141 personas: no entra en git ni por accidente.
 datos-locales/
+
+# Pagina temporal para revisar a ojo las prendas que se llevaron al
+# lienzo de 327x504 (scripts/encajar-lienzo.js --revision). Se mira en
+# local y se borra; no tiene por que existir en el repo ni desplegarse.
+revision-lienzo.html
+revision-lienzo/
