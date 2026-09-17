@@ -10,3 +10,6 @@ datos-locales/
 # local y se borra; no tiene por que existir en el repo ni desplegarse.
 revision-lienzo.html
 revision-lienzo/
+
+# Imagen temporal para un anuncio de Discord. Se hace, se captura y se borra.
+anuncio.html
