@@ -33,8 +33,14 @@ const path = require("path");
 const crypto = require("crypto");
 
 const lienzo = require("../api/_lienzo");
-const { abrirBaseReal } = require("./base-real");
-const { crearSqlPGlite } = require("./pglite");
+
+// ./base-real y ./pglite NO se piden aqui arriba a proposito: los dos
+// acaban cargando PGlite, que es una dependencia de DESARROLLO. En el
+// VPS se instala con `npm install --omit=dev`, asi que no esta, y pedirla
+// de entrada hace que el script se caiga antes de empezar aunque vaya a
+// trabajar contra produccion, donde PGlite no pinta nada.
+//
+// Paso de verdad al desplegar: MODULE_NOT_FOUND en la primera linea.
 
 const PGDATA = process.env.MR_PGDATA || path.join(__dirname, "..", "datos-locales", "pgdata");
 const RAIZ = path.join(__dirname, "..");
@@ -57,6 +63,10 @@ async function abrirBase() {
     const { obtenerSql } = require("../api/_db");
     return { sql: obtenerSql(), cerrar: async () => {} };
   }
+
+  // Solo aqui, que es el unico camino que las usa.
+  const { abrirBaseReal } = require("./base-real");
+  const { crearSqlPGlite } = require("./pglite");
 
   const db = await abrirBaseReal(PGDATA);
   if (!db) {
