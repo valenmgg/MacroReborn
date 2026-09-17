@@ -43,6 +43,11 @@ const { abrirBaseReal } = require("./base-real");
 const MODO_REAL = process.argv.includes("--real") || process.env.MR_BASE === "real";
 const PGDATA = path.join(__dirname, "..", "datos-locales", "pgdata");
 const { usarSqlLocal } = require("../api/_db");
+
+// Las mismas rutas de prenda que server.js, del mismo modulo y no
+// copiadas: este servidor es OTRO, y mientras el cierre de la ruta
+// adivinable vivio dentro de server.js, aqui no se aplicaba.
+const { traducirRutaCanonica, esPrendaDeAvatar } = require("../api/_prendas-ruta");
 const avisosSSE = require("../api/_avisos-sse");
 
 const PUERTO = Number(process.env.PORT) || 3001;
@@ -203,13 +208,15 @@ async function main() {
     }
 
     // ----- /prendas/<huella>.png -----
-    // En producción esto lo traduce server.js: la URL con la huella del
-    // contenido es lo que permite cachear las prendas un año. Acá se hace
-    // lo mismo para que el editor y el vestidor pidan exactamente las
-    // mismas direcciones que en el sitio de verdad.
-    const comoPrenda = /^\/prendas\/([a-f0-9]{64})\.png$/.exec(url.pathname);
-    if (comoPrenda) {
-      req.url = "/api/content?action=avatar-prenda&v=" + comoPrenda[1];
+    // La misma traducción que hace server.js, y del mismo módulo: la URL
+    // con la huella del contenido es lo que permite cachear las prendas
+    // un año, y el editor tiene que pedir aquí exactamente las mismas
+    // direcciones que en el sitio de verdad.
+    //
+    // Antes esto era una copia de la expresión regular. Las copias se
+    // quedan viejas: ver el comentario de api/_prendas-ruta.js.
+    if (traducirRutaCanonica(url)) {
+      req.url = url.pathname + url.search;
       return servidor.emit("request", req, res);
     }
 
@@ -220,6 +227,15 @@ async function main() {
     if (!archivo.startsWith(RAIZ)) {
       res.writeHead(403);
       return res.end("Prohibido");
+    }
+
+    // El arte de los avatares no sale por su nombre adivinable, igual que
+    // en producción. Esto faltaba, y hacía que probar el cierre en local
+    // dijera que no funcionaba cuando en el sitio de verdad sí: el
+    // fichero está en el disco y este servidor lo servía tal cual.
+    if (await esPrendaDeAvatar(rutaRelativa)) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("No encontrado: " + rutaRelativa);
     }
 
     fs.readFile(archivo, (err, datos) => {

@@ -16,28 +16,20 @@
 //
 // Correr:  npm test
 
-const { test, before, describe } = require("node:test");
+const { test, describe } = require("node:test");
 const assert = require("node:assert");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
 
-const FUENTE = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+// Se usa la función real, importada.
+//
+// Antes esto se sacaba de server.js leyendo el archivo y evaluando un
+// trozo en una vm. Dejó de funcionar el día que la función se mudó a su
+// propio módulo —que es lo que hubo que hacer para que el servidor de
+// desarrollo la compartiera— y el test se rompió sin que nada estuviera
+// mal. Un require no tiene ese problema.
+const { traducirRutaCanonica: traducir } = require("../api/_prendas-ruta");
 
 const HUELLA = "a".repeat(64);
 const OTRA_HUELLA = "0123456789abcdef".repeat(4);
-
-let traducir;
-
-before(() => {
-  const i = FUENTE.indexOf("const RUTA_DE_PRENDA");
-  const j = FUENTE.indexOf("async function main()");
-  assert.ok(i !== -1 && j !== -1, "no se encontró el bloque en server.js");
-
-  const contexto = { Buffer, console: { error() {}, log() {} }, obtenerSql: () => null };
-  vm.createContext(contexto);
-  traducir = vm.runInContext(FUENTE.slice(i, j) + "\n;traducirRutaCanonica", contexto);
-});
 
 const url = ruta => new URL(ruta, "http://localhost");
 

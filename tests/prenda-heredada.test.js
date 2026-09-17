@@ -22,18 +22,23 @@
 
 const { test, before, describe } = require("node:test");
 const assert = require("node:assert");
-const fsReal = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
 const crypto = require("node:crypto");
 
 const { crearBaseLocal, crearSqlPGlite } = require("../scripts/pglite");
+const { usarSqlLocal } = require("../api/_db");
 
-const FUENTE = fsReal.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+// La función real, importada.
+//
+// Antes esto se sacaba de server.js leyendo el archivo y evaluando un
+// trozo en una vm. Dejó de funcionar el día que la función se mudó a su
+// propio módulo —que es lo que hubo que hacer para que el servidor de
+// desarrollo la compartiera, ver api/_prendas-ruta.js— y el test se
+// rompió sin que nada estuviera mal.
+const { esPrendaDeAvatar: esPrenda, invalidarValores } = require("../api/_prendas-ruta");
+
 const FIRMA_PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 let db;
-let esPrenda;
 let consultas;
 
 // El PNG que se guarda en la base para las pruebas.
@@ -43,11 +48,14 @@ const PNG = Buffer.concat([
   Buffer.alloc(40, 7)
 ]);
 
-function trozoDeServidor() {
-  const i = FUENTE.indexOf("const RUTA_DE_PRENDA");
-  const j = FUENTE.indexOf("async function main()");
-  assert.ok(i !== -1 && j !== -1, "no se encontró el bloque en server.js");
-  return FUENTE.slice(i, j);
+// Pone un sql que apunta lo que le piden, para poder comprobar que la
+// caché de valores hace su trabajo y no lee la tabla en cada imagen.
+function espiar(sqlReal) {
+  consultas = [];
+  usarSqlLocal((trozos, ...valores) => {
+    consultas.push(String(trozos && trozos.raw ? trozos.raw.join("?") : trozos));
+    return sqlReal(trozos, ...valores);
+  });
 }
 
 async function meterPrenda(valor, modelo, capa, publicada, datos) {
@@ -72,27 +80,11 @@ async function meterPrenda(valor, modelo, capa, publicada, datos) {
   return sha;
 }
 
-// Monta el bloque real de server.js con un sql que cuenta consultas, para
-// poder comprobar que la caché hace su trabajo.
-function montar(sqlReal) {
-  consultas = [];
-  const espiado = (trozos, ...valores) => {
-    consultas.push(String(trozos.raw ? trozos.raw.join("?") : trozos));
-    return sqlReal(trozos, ...valores);
-  };
-
-  const contexto = {
-    Buffer,
-    console: { error() {}, log() {} },
-    obtenerSql: () => espiado
-  };
-  vm.createContext(contexto);
-  return vm.runInContext(trozoDeServidor() + "\n;esPrendaDeAvatar", contexto);
-}
-
 before(async () => {
   db = await crearBaseLocal();
   const sql = crearSqlPGlite(db);
+
+  usarSqlLocal(sql);
 
   await meterPrenda("cereza_fondo40", "cereza", "fondo", true, PNG);
   await meterPrenda("cereza_piel4", "cereza", "piel", false,
@@ -100,7 +92,8 @@ before(async () => {
   await meterPrenda("sonda", "sonda", "modelo", true,
     Buffer.concat([PNG, Buffer.from("modelo")]));
 
-  esPrenda = montar(sql);
+  espiar(sql);
+  invalidarValores();
 });
 
 // ==============================
@@ -187,31 +180,88 @@ describe("la caché de valores", () => {
   });
 });
 
+// ------------------------------------------------------------------
+// LOS DOS SERVIDORES
+// ------------------------------------------------------------------
+// Este proyecto tiene DOS: server.js, que es el de produccion, y
+// scripts/servidor-local.js, que es el que levanta `npm run db:real` y
+// tiene su propio manejo de estaticos.
+//
+// Cuando el cierre de la ruta adivinable vivia dentro de server.js, el
+// local no lo tenia: /imagenes/tora/pelo3.png seguia devolviendo el
+// dibujo en local mientras en produccion ya daba 404. Probarlo en local
+// decia que el arreglo no funcionaba cuando si funcionaba, que es la
+// peor forma de equivocarse porque invita a deshacer algo que estaba
+// bien.
+//
+// Estos dos leen el codigo de verdad. No comprueban que el guard
+// funcione —de eso se encargan los de arriba— sino que este PUESTO en
+// los dos sitios.
+describe("los dos servidores usan el mismo modulo", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const leer = (...p) => fs.readFileSync(path.join(__dirname, "..", ...p), "utf8");
+
+  test("server.js lo pide y lo llama", () => {
+    const fuente = leer("server.js");
+
+    assert.match(fuente, /require\(["'].\/api\/_prendas-ruta["']\)/);
+    assert.match(fuente, /await esPrendaDeAvatar\(/);
+  });
+
+  test("scripts/servidor-local.js tambien", () => {
+    const fuente = leer("scripts", "servidor-local.js");
+
+    assert.match(fuente, /require\(["']\.\.\/api\/_prendas-ruta["']\)/);
+    assert.match(fuente, /await esPrendaDeAvatar\(/,
+      "el servidor de desarrollo tiene que cerrar la misma puerta que el de produccion");
+  });
+
+  test("ninguno se guarda una copia de la expresion regular", () => {
+    // Una copia se queda vieja en cuanto alguien toca el original. Ya
+    // paso con ORDEN_CAPAS_AVATAR en once archivos, donde dos llevaban
+    // el orden cambiado y el mismo avatar se dibujaba distinto segun la
+    // pagina.
+    for (const archivo of [["server.js"], ["scripts", "servidor-local.js"]]) {
+      const fuente = leer(...archivo);
+      assert.ok(
+        !/\/\^\\\/prendas\\\/\(\[a-f0-9\]/.test(fuente),
+        archivo.join("/") + " tiene una copia de la ruta por huella"
+      );
+    }
+  });
+});
+
 describe("si la base no responde", () => {
+  // Se tira la caché a propósito: con valores guardados el módulo
+  // contesta de memoria y no llegaría a enterarse de que la base está
+  // caída, que es justo lo que se quiere probar aquí.
+  const conLaBaseCaida = async (fn) => {
+    const sql = crearSqlPGlite(db);
+    invalidarValores();
+    usarSqlLocal(() => Promise.reject(new Error("base caída")));
+    try {
+      await fn();
+    } finally {
+      usarSqlLocal(sql);
+      invalidarValores();
+    }
+  };
+
   test("se niega igual: ante la duda, no se abre la puerta", async () => {
     // Preferimos un logo que no carga durante un rato antes que dejar
     // escapar el catálogo por la ruta vieja. El arte no deja de verse
     // por esto: sale por /prendas/<huella>.png, que no pasa por aquí.
-    const contexto = {
-      Buffer,
-      console: { error() {}, log() {} },
-      obtenerSql: () => () => Promise.reject(new Error("base caída"))
-    };
-    vm.createContext(contexto);
-    const roto = vm.runInContext(trozoDeServidor() + "\n;esPrendaDeAvatar", contexto);
-
-    assert.equal(await roto("/imagenes/cereza/fondo40.png"), true);
+    await conLaBaseCaida(async () => {
+      assert.equal(await esPrenda("/imagenes/cereza/fondo40.png"), true);
+    });
   });
 
   test("pero una ruta sin forma de prenda sigue pasando", async () => {
-    const contexto = {
-      Buffer,
-      console: { error() {}, log() {} },
-      obtenerSql: () => () => Promise.reject(new Error("base caída"))
-    };
-    vm.createContext(contexto);
-    const roto = vm.runInContext(trozoDeServidor() + "\n;esPrendaDeAvatar", contexto);
-
-    assert.equal(await roto("/css/inicio.css"), false);
+    // El filtro por forma va ANTES de tocar la base, así que un .css no
+    // se convierte en 404 porque Postgres tenga un mal día.
+    await conLaBaseCaida(async () => {
+      assert.equal(await esPrenda("/css/inicio.css"), false);
+    });
   });
 });
