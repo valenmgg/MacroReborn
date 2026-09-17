@@ -135,8 +135,16 @@ async function main() {
       continue;
     }
 
+    // El mismo criterio que la puerta de entrada de arte.html: medidas y
+    // entrelazado. La PROFUNDIDAD no entra, y es a proposito.
+    //
+    // Ocho archivos del catalogo son paletas de 2 y 4 bits. Miden
+    // 327x504 y se ven igual que cualquier otro -la profundidad de una
+    // paleta no cambia el dibujo, solo cuantos colores caben-, y encima
+    // pesan menos que en 8 bits. Avisar de ellos era mandar a alguien a
+    // arreglar algo que no esta roto.
     if (cabecera.ancho !== ANCHO || cabecera.alto !== ALTO ||
-        cabecera.profundidad !== 8 || cabecera.entrelazado !== 0) {
+        cabecera.entrelazado !== 0) {
       fueraDeLienzo.push({
         id: fila.id,
         sha: fila.sha256,
@@ -221,17 +229,17 @@ async function main() {
   }
 
   if (fueraDeLienzo.length) {
-    console.log("-- FUERA DEL LIENZO CANONICO (" + ANCHO + "x" + ALTO + ", 8 bits, sin entrelazar) --");
+    console.log("-- FUERA DEL LIENZO CANONICO (" + ANCHO + "x" + ALTO + ", sin entrelazar) --");
     console.log("");
-    console.log("  Estos NO se corrigen aqui. Recortar, estirar o rellenar");
-    console.log("  el dibujo de otra persona es una decision de arte, no de");
-    console.log("  codigo: un pixel de mas o de menos mueve la prenda sobre");
-    console.log("  el avatar de quien la lleva puesta. Se listan para que el");
-    console.log("  equipo de dibujo decida que hacer con cada grupo.");
+    console.log("  Estos NO se corrigen aqui: este script solo escribe la");
+    console.log("  autoria y no toca un pixel. Para llevarlos al lienzo:");
     console.log("");
-    console.log("  Lo que si queda cerrado es la puerta de entrada: desde");
-    console.log("  este cambio, una subida nueva que no venga en el lienzo");
-    console.log("  canonico se rechaza en arte.html.");
+    console.log("    node scripts/encajar-lienzo.js --revision   para mirarlo");
+    console.log("    node scripts/encajar-lienzo.js --aplicar    para hacerlo");
+    console.log("");
+    console.log("  Y hay que hacerlo ANTES que este script y en la misma");
+    console.log("  ventana: los dos cambian el sha256, que es la URL, y en");
+    console.log("  dias distintos la gente redescarga el catalogo dos veces.");
     console.log("");
 
     const grupos = new Map();
