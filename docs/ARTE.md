@@ -119,24 +119,48 @@ Que esto no estuviera puesto se nota: de 438 archivos en producción, **80
 están fuera del lienzo**, y entre ellos hay un 1919×1079 y un 1338×2066.
 Eso es un pantallazo o un dibujo sin recortar, subido sin querer.
 
-**Los 80 de dentro NO se corrigen por código.** Recortar, estirar o
-rellenar el dibujo de otra persona mueve la prenda sobre el avatar de
-quien la lleva puesta, y esa es una decisión del equipo de arte. El
-informe del horno los lista agrupados por medida para que decidan qué
-hacer con cada grupo. Lo que queda cerrado es la puerta de entrada, para
-que esa lista no siga creciendo.
+El `327×505` que abunda es el lienzo original de macrojuegos: su editor
+servía un `<img>` de 327×505 y parte del arte se hizo para ese marco.
 
-Grupos, tal como salen del informe:
+### Y los que ya estaban dentro: `scripts/encajar-lienzo.js`
 
 ```
-36 archivos (42 prendas)  326x503        11 archivos       varios tamaños sueltos
-21 archivos (81 prendas)  327x505         1 archivo        654x1010
- 7 archivos ( 7 prendas)  327x504 4 bits  1 archivo        1919x1079
- 4 archivos ( 4 prendas)  327x505 4 bits  1 archivo        1338x2066
+node scripts/encajar-lienzo.js --revision   informe + página para mirarlo
+node scripts/encajar-lienzo.js --aplicar    lo escribe en la base
 ```
 
-El `327×505` es el lienzo original de macrojuegos: su editor servía un
-`<img>` de 327×505 y parte del arte se hizo para ese marco.
+La política **no se inventa**: se copia la que `js/arte-vestidor.js` ya
+tiene escrita, y que dice que la base es el **pegado 1:1** y no el
+encaje, porque mover píxeles enteros es un calco y no toca el dibujo.
+El motor de píxeles está en `api/_lienzo.js`, sin librerías de imagen.
+
+Tres caminos, y cuál se toma lo decide el propio dibujo:
+
+| método | archivos | qué hace | ¿pierde calidad? |
+|---|---|---|---|
+| **calco** | 50 | a un píxel del lienzo y con el borde vacío: rellena o recorta una fila | **No.** Los píxeles que quedan son los de origen, y se conserva la paleta |
+| **estirado** | 12 | a un píxel pero con dibujo en lo que se recortaría: estira al lienzo exacto | Remuestrea, pero no pierde contenido ni deja franjas |
+| **encaje** | 10 | otra proporción de verdad: `k = min(327/w, 504/h)`, centrado | Sí, y es lo correcto ahí |
+
+Los 72 que cambian pesan 1736 kB y pasan a **1658 kB**: además adelgazan.
+
+**Por qué los doce se estiran en vez de encajarse**, que es el detalle que
+más cuesta ver: son todos **fondos** de 327×505. Encajarlos preservando
+la proporción los dejaría en 326×504 con una franja transparente de un
+píxel al lado — o sea una costura visible en el borde de cada avatar que
+lleve ese fondo. Estirar un 0,2 % no se ve; una franja transparente sí.
+
+Ocho de esos doce son degradados: al estirarse pasan de 68–256 colores a
+2.400–19.600, no caben en paleta y engordan de ~26 kB a ~70 kB. Se
+revisaron a ojo con `--revision` y se aceptó el coste.
+
+**Lo que NO se toca:** ocho archivos que miden 327×504 en paleta de 2 y 4
+bits. La profundidad de una paleta no cambia el dibujo, solo cuántos
+colores caben, y encima pesan menos que en 8 bits.
+
+> **El orden importa.** `encajar-lienzo` va **antes** que el horno de la
+> autoría y **en la misma ventana**: los dos cambian el `sha256`, que es
+> la URL, y en días distintos la gente redescarga el catálogo dos veces.
 
 ---
 
