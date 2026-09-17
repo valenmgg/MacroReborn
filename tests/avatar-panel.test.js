@@ -33,9 +33,37 @@ let db;
 let contentHandler;
 let idArtista, idOtroArtista, idAdmin, idPelado;
 
-// PNGs reales de 1x1, distintos entre sí.
-const PNG_A = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-const PNG_B = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+// PNGs de verdad en el lienzo canónico, que es lo único que el panel
+// acepta desde que se cerró la puerta de entrada.
+//
+// Se construyen aquí en vez de pegar un base64 gigante: así se puede
+// pedir cualquier medida y se ve de un vistazo qué distingue a uno del
+// otro. Gris de 8 bits, sin entrelazar, un color plano por imagen.
+const zlib = require("node:zlib");
+const { escribirBloques } = require("../api/_png");
+
+function pngDe(ancho, alto, tono) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(ancho, 0);
+  ihdr.writeUInt32BE(alto, 4);
+  ihdr[8] = 8;    // 8 bits por muestra
+  ihdr[9] = 0;    // gris
+  ihdr[12] = 0;   // sin entrelazar
+
+  // Cada fila va precedida de su byte de filtro, y 0 es "sin filtro".
+  const fila = Buffer.concat([Buffer.from([0]), Buffer.alloc(ancho, tono)]);
+  const crudo = Buffer.concat(Array.from({ length: alto }, () => fila));
+
+  return escribirBloques([
+    { tipo: "IHDR", datos: ihdr },
+    { tipo: "IDAT", datos: zlib.deflateSync(crudo) },
+    { tipo: "IEND", datos: Buffer.alloc(0) }
+  ]);
+}
+
+const LIENZO = [327, 504];
+const PNG_A = pngDe(...LIENZO, 10);
+const PNG_B = pngDe(...LIENZO, 200);
 
 const comoDataUrl = b => "data:image/png;base64," + b.toString("base64");
 
@@ -177,7 +205,7 @@ describe("subir prendas", () => {
     // El artista mandó "dibujo.png" y "Remera de rayas"; el identificador
     // lo pone el servidor.
     assert.equal(uno.valor, "tora_remera1");
-    assert.equal(uno.medidas, "1x1");
+    assert.equal(uno.medidas, LIENZO[0] + "x" + LIENZO[1]);
 
     const fila = await db.query("SELECT * FROM avatar_prendas WHERE valor = 'tora_remera1'");
     assert.equal(fila.rows[0].nombre, "Remera de rayas");
@@ -236,6 +264,43 @@ describe("subir prendas", () => {
     const roto = r.cuerpo.resultados.find(x => x.archivo === "roto.png");
     assert.equal(roto.ok, false);
     assert.match(roto.error, /PNG/i);
+  });
+
+  test("el lienzo tiene que ser el canónico", async () => {
+    // Todas las capas se dibujan superpuestas en el mismo encuadre, así
+    // que una que venga con otras medidas no se cae: se ESTIRA hasta el
+    // marco de las demás y descuadra el dibujo sin que nadie se entere
+    // hasta que alguien se lo pone y le queda el pelo torcido.
+    //
+    // Que esto no estuviera puesto se nota en la copia de producción: de
+    // 438 archivos hay 80 fuera del lienzo, y entre ellos un 1919x1079 y
+    // un 1338x2066. Eso es un pantallazo subido sin querer.
+    const fuera = [
+      [326, 503],     // el grupo más numeroso del catálogo viejo
+      [327, 505],     // el lienzo de macrojuegos, un píxel más alto
+      [1919, 1079],   // un pantallazo
+      [654, 1008]     // el doble, que estirado se ve igual pero pesa cuatro veces
+    ];
+
+    for (const [ancho, alto] of fuera) {
+      const r = await subir([prendaDePrueba({ png: comoDataUrl(pngDe(ancho, alto, 55)) })], ARTISTA());
+
+      assert.equal(r.cuerpo.entraron, 0, "no debería entrar " + ancho + "x" + alto);
+      assert.match(r.cuerpo.resultados[0].error, /lienzo/i);
+      // El mensaje dice qué medida trae, que es lo que el artista
+      // necesita para arreglarlo sin adivinar.
+      assert.match(r.cuerpo.resultados[0].error, new RegExp(ancho + "x" + alto));
+    }
+  });
+
+  test("el lienzo canónico sí entra", async () => {
+    const r = await subir([prendaDePrueba({
+      capa: "pantalon",
+      nombre: "Pantalon canonico",
+      png: comoDataUrl(pngDe(...LIENZO, 77))
+    })], ARTISTA());
+
+    assert.equal(r.cuerpo.entraron, 1);
   });
 
   test("se rechaza lo que no debería entrar", async () => {

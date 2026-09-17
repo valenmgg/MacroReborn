@@ -9,6 +9,7 @@ const { MonedasService } = require("./_monedas");
 // del catálogo para que el editor no tenga que llevar su propia copia.
 const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
 const crypto = require("crypto");
+const png = require("./_png");
 
 // La conexión se pide a api/_db.js en vez de crearla acá con
 // neon(process.env.DATABASE_URL). En producción es exactamente la misma
@@ -127,6 +128,12 @@ const TOPE_POR_PRENDA = 1024 * 1024;   // el mismo que el avatar PNG del admin
 const TOPE_POR_TANDA = 20;
 const FIRMA_PNG_SUBIDA = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
+// El lienzo canónico de una prenda. Es el mismo que usa el horno
+// (scripts/hornear-catalogo.js) y el mismo que ya da por supuesto el
+// maniquí del taller.
+const LIENZO_ANCHO = 327;
+const LIENZO_ALTO = 504;
+
 function leerPngSubido(texto) {
   const match = typeof texto === "string"
     ? texto.match(/^data:image\/png;base64,([A-Za-z0-9+/=]+)$/)
@@ -151,14 +158,48 @@ function leerPngSubido(texto) {
     return { error: "El archivo no es un PNG de verdad" };
   }
 
-  // El IHDR es el primer bloque de un PNG y siempre está en el mismo
-  // sitio, así que las medidas se leen de 24 bytes sin instalar nada.
-  // Todavía no se rechaza nada por tamaño: se guardan para poder exigir
-  // el lienzo de 327x504 más adelante sin releer el catálogo entero.
+  // El lienzo canónico, y aquí sí se rechaza.
+  //
+  // Todas las capas de un avatar se dibujan superpuestas en el mismo
+  // encuadre. Una que venga con otras medidas no se cae: se ESTIRA hasta
+  // el marco de las demás, y estirar un dibujo lo descuadra un poco sin
+  // que nadie se entere hasta que alguien se lo pone y le queda el pelo
+  // torcido.
+  //
+  // Que esto no estuviera puesto se nota en la copia de producción: de
+  // 438 archivos hay 80 fuera del lienzo, y entre ellos un 1919x1079 y
+  // un 1338x2066. Eso es un pantallazo o un dibujo sin recortar, subido
+  // sin querer, ocupando sitio y estirándose sobre el avatar de alguien.
+  //
+  // Lo de dentro NO se toca por esto: recortar o estirar el dibujo de
+  // otra persona es una decisión del equipo de arte, no del código.
+  // Esto solo cierra la puerta de entrada para que la lista de 80 no
+  // siga creciendo.
+  let cabecera;
+  try {
+    cabecera = png.leerCabecera(binario);
+  } catch (error) {
+    return { error: "El PNG está corrupto: " + error.message };
+  }
+
+  if (cabecera.ancho !== LIENZO_ANCHO || cabecera.alto !== LIENZO_ALTO) {
+    return {
+      error: "El lienzo tiene que ser de " + LIENZO_ANCHO + "x" + LIENZO_ALTO +
+             " (este viene en " + cabecera.ancho + "x" + cabecera.alto + ")"
+    };
+  }
+
+  // Entrelazado (Adam7) no: se ve apareciendo por pasadas, y ninguna
+  // prenda del catálogo lo usa. Rechazarlo evita tener que soportar dos
+  // formas de leer los píxeles el día que haga falta leerlos.
+  if (cabecera.entrelazado !== 0) {
+    return { error: "El PNG no puede estar entrelazado; guárdalo sin entrelazar" };
+  }
+
   return {
     binario,
-    ancho: binario.readUInt32BE(16),
-    alto: binario.readUInt32BE(20)
+    ancho: cabecera.ancho,
+    alto: cabecera.alto
   };
 }
 
