@@ -154,9 +154,9 @@ Esto es lo más barato de todo el plan y probablemente lo que más peso
 tiene cuando hay que pedirle a otro sitio que retire material: sin un
 titular con nombre y un contacto, no hay a quién reclamar.
 
-> **Pendiente:** `contacto@macroreborn.com` es un marcador. Hay que crear
-> ese buzón o cambiarlo por el que se vaya a leer de verdad. Una
-> dirección de retirada que nadie atiende es peor que no ponerla.
+El contacto es `macroreborn0@gmail.com`. Hay que **leerlo**: una dirección
+de retirada que nadie atiende es peor que no ponerla, porque promete un
+canal que no existe.
 
 ---
 
@@ -233,7 +233,7 @@ El análisis completo de su sistema está en la memoria del proyecto.
 
 ## 7. Lo que sigue abierto
 
-- El buzón de `contacto@macroreborn.com`.
+- El buzón de `macroreborn0@gmail.com`.
 - Los 80 archivos fuera del lienzo: decisión del equipo de arte.
 - Un navegador que ya tuviera cacheada una `imagenes/<modelo>/<x>.png`
   la conserva hasta 30 días (`immutable`). El cierre de esa ruta aplica a
