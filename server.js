@@ -144,32 +144,40 @@ const HANDLERS = {
 };
 
 // ==============================
-// PRENDAS DE AVATAR QUE YA NO ESTÁN EN EL DISCO
+// LA RUTA VIEJA DE LAS PRENDAS DEJA DE SERVIR ARTE
 // ==============================
-// El arte de los avatares se mudó a la base (migración 018) y desde
-// arte.html el equipo de dibujo sube prendas nuevas que NUNCA llegan a
-// tener un fichero en imagenes/.
+// El arte de los avatares vive en la base desde la migración 018, y su
+// URL buena es /prendas/<huella sha256>.png: el nombre ES el contenido,
+// así que se cachea un año sin poder quedarse vieja.
 //
-// El problema es que casi todo el frontend sigue armando la ruta a mano
-// a partir del valor guardado: "cereza_fondo40" -> imagenes/cereza/
-// fondo40.png. Solo el editor del perfil consulta el catálogo. Así que
-// una prenda subida por el panel se veía bien en el editor y se perdía
-// —capa que no se dibuja, 404 en la consola— en Ranking, Comunidad,
-// chat, amigos, los perfiles ajenos, las galerías y la portada.
+// Durante la mudanza quedó abierta la ruta de antes,
+// imagenes/<modelo>/<prenda>.png, sirviendo el mismo dibujo desde el
+// disco o, si el fichero no estaba, desde la base. Era compatibilidad
+// hacia atrás y tenía sentido mientras el frontend armara esa ruta a
+// mano.
 //
-// Esto lo resuelve de una vez para los once archivos: cuando el fichero
-// no está en el disco, se busca esa misma prenda en la base y se sirve
-// desde ahí. Las URL de siempre siguen funcionando, incluidas las que
-// hay guardadas en avatares de hace meses.
+// El problema es que ese nombre SE ADIVINA. "tora_pelo3" es
+// imagenes/tora/pelo3.png, y el nombrado es sistemático: modelo, capa y
+// un número. Cualquiera enumera pelo1, pelo2, pelo3... por cada capa y
+// por cada modelo, y se lleva el catálogo entero sin necesitar índice
+// ninguno. Cerrar el índice del catálogo —que es lo que se hizo en la
+// acción avatar-catalogo— no sirve de nada mientras esta puerta siga
+// abierta, porque es la misma puerta.
 //
-// La URL canónica sigue siendo la del catálogo, que lleva la huella del
-// contenido y se cachea un año. Esta es una vía de compatibilidad: se
-// cachea con ETag y revalidación, porque el nombre no dice nada del
-// contenido y una prenda podría cambiar de dibujo.
+// Así que ahora estas rutas devuelven 404 cuando corresponden a una
+// prenda de verdad, esté el fichero en el disco o no. El arte solo sale
+// por /prendas/<huella>.png, que es una dirección que hay que conocer y
+// no se puede adivinar.
+//
+// Lo que NO se toca: imagenes/logo.png, imagenes/og-image.png,
+// imagenes/juegos/... y compañía. No son prendas, no están en
+// avatar_prendas, y se siguen sirviendo como siempre. Por eso el corte
+// se decide consultando la base y no con una lista escrita a mano: una
+// lista se queda vieja en cuanto el equipo de arte sube un modelo nuevo.
 
-// Solo se intenta con rutas que tengan la forma de una prenda. Sin este
-// filtro, cualquier escáner pidiendo imágenes al azar acabaría
-// consultando la base en cada 404.
+// Solo se mira si la ruta tiene forma de prenda. Sin este filtro,
+// cualquier escáner pidiendo imágenes al azar acabaría consultando la
+// base en cada 404.
 const RUTA_DE_PRENDA = /^\/imagenes\/([a-z0-9]+)(?:\/([a-z0-9]+))?\.png$/;
 
 // La URL canónica de una prenda: /prendas/<huella sha256>.png.
@@ -207,50 +215,63 @@ function valorDePrenda(rutaRelativa) {
   return m[2] ? m[1] + "_" + m[2] : m[1];
 }
 
-async function servirPrendaDeLaBase(req, res, rutaRelativa) {
+// El conjunto de valores que SON una prenda, cacheado.
+//
+// Se cachea por la misma razón que el catálogo en api/content.js: esto
+// se consulta en cada imagen que alguien pida con forma de prenda, y un
+// escáner insistente no puede convertirse en una consulta por petición.
+//
+// La versión del catálogo manda, igual que en el resto del proyecto:
+// avatar_catalogo_version es una fila por clave primaria, así que
+// comprobarla es barato y los dos procesos del cluster se enteran solos
+// cuando el equipo de arte publica algo, sin hablar entre ellos.
+//
+// Entran las retiradas también (no se filtra por `publicada`): una
+// prenda retirada sigue siendo arte del equipo, y su dibujo tampoco
+// tiene por qué salir por la ruta adivinable.
+let _valoresDePrenda = null;   // { version, conjunto }
+
+async function conjuntoDeValores(sql) {
+  let version = null;
+  try {
+    const filas = await sql`SELECT version FROM avatar_catalogo_version WHERE id = 1;`;
+    version = filas.length ? Number(filas[0].version) : null;
+  } catch (error) {
+    // Si no se puede leer la versión, se sirve lo que haya en memoria
+    // antes que dejar pasar una prenda por la ruta vieja.
+    console.error("valores de prenda: no se pudo leer la versión", error.message);
+    if (_valoresDePrenda) return _valoresDePrenda.conjunto;
+    throw error;
+  }
+
+  if (_valoresDePrenda && _valoresDePrenda.version === version) {
+    return _valoresDePrenda.conjunto;
+  }
+
+  const filas = await sql`SELECT valor FROM avatar_prendas;`;
+  const conjunto = new Set(filas.map(f => f.valor));
+  _valoresDePrenda = { version, conjunto };
+  return conjunto;
+}
+
+// ¿Esta ruta de imagenes/ corresponde a una prenda de avatar?
+//
+// Ante la duda se contesta que SÍ, y por eso el catch devuelve true: si
+// la base no responde, preferimos un logo que no carga durante un rato
+// antes que abrir la puerta por la que se fue el catálogo. El arte no
+// deja de verse por esto —sale por /prendas/<huella>.png, que no pasa
+// por aquí—, así que el coste de equivocarse por este lado es bajo.
+async function esPrendaDeAvatar(rutaRelativa) {
   const valor = valorDePrenda(rutaRelativa);
   if (!valor) return false;
 
-  let filas;
   try {
-    const sql = obtenerSql();
-    filas = await sql`
-      SELECT a.datos, a.sha256
-      FROM avatar_prendas p
-      JOIN avatar_archivos a ON a.id = p.archivo_id
-      WHERE p.valor = ${valor}
-      LIMIT 1;
-    `;
+    const conjunto = await conjuntoDeValores(obtenerSql());
+    return conjunto.has(valor);
   } catch (error) {
-    console.error("prenda desde la base:", error.message);
-    return false;
-  }
-
-  if (!filas.length) return false;
-
-  // Se sirve aunque esté retirada: quien la tenga puesta en su avatar
-  // tiene que seguir viéndola. Retirar saca una prenda del editor, no
-  // del avatar de quien ya la llevaba.
-  const binario = Buffer.isBuffer(filas[0].datos)
-    ? filas[0].datos
-    : Buffer.from(filas[0].datos);
-
-  const etag = '"' + filas[0].sha256.slice(0, 32) + '"';
-  res.setHeader("ETag", etag);
-  res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
-
-  if (req.headers["if-none-match"] === etag) {
-    res.writeHead(304);
-    res.end();
+    console.error("prenda por la ruta vieja:", error.message);
     return true;
   }
-
-  res.writeHead(200, {
-    "Content-Type": "image/png",
-    "Content-Length": binario.length
-  });
-  res.end(binario);
-  return true;
 }
 
 async function main() {
@@ -360,6 +381,14 @@ async function main() {
       return res.end("No encontrado: " + rutaRelativa);
     }
 
+    // El arte de los avatares no sale por su nombre adivinable, ni
+    // aunque el fichero siga en el disco. Solo por /prendas/<huella>.png.
+    // Ver el bloque "LA RUTA VIEJA DE LAS PRENDAS DEJA DE SERVIR ARTE".
+    if (await esPrendaDeAvatar(rutaRelativa)) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("No encontrado: " + rutaRelativa);
+    }
+
     // ----- ETag y respuestas 304 -----
     // Hasta ahora esto solo ponía Content-Type. Sin ETag ni
     // Last-Modified, un navegador no tiene forma de preguntar "¿esto
@@ -378,14 +407,6 @@ async function main() {
     // dejar de decir `immutable` en los scripts.
     fs.stat(archivo, async (errStat, datosArchivo) => {
       if (errStat || !datosArchivo.isFile()) {
-        // Puede ser una prenda de avatar que vive en la base y no en el
-        // disco: subida desde el panel del equipo de arte.
-        try {
-          if (await servirPrendaDeLaBase(req, res, rutaRelativa)) return;
-        } catch (error) {
-          console.error("prenda desde la base:", error.message);
-        }
-        if (res.writableEnded) return;
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
         return res.end("No encontrado: " + rutaRelativa);
       }
