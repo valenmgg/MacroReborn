@@ -48,6 +48,7 @@ const { usarSqlLocal } = require("../api/_db");
 // copiadas: este servidor es OTRO, y mientras el cierre de la ruta
 // adivinable vivio dentro de server.js, aqui no se aplicaba.
 const { traducirRutaCanonica, esPrendaDeAvatar } = require("../api/_prendas-ruta");
+const { resolverRutaEstatica } = require("../api/_ruta-estatica");
 const avisosSSE = require("../api/_avisos-sse");
 
 const PUERTO = Number(process.env.PORT) || 3001;
@@ -221,7 +222,19 @@ async function main() {
     }
 
     // ----- Archivos estáticos -----
-    const rutaRelativa = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+    // Misma resolución que server.js, del mismo módulo, por la misma
+    // razón que la ruta canónica de aquí arriba: una copia se queda
+    // vieja, y una diferencia entre los dos servidores hace que probar
+    // en local dé un resultado engañoso. Aquí vivía la misma barra de
+    // más que sacaba el arte en producción.
+    const resuelta = resolverRutaEstatica(url.pathname);
+
+    if (!resuelta.ok) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("Petición mal formada");
+    }
+
+    const rutaRelativa = resuelta.ruta;
     const archivo = path.join(RAIZ, rutaRelativa);
 
     if (!archivo.startsWith(RAIZ)) {

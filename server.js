@@ -152,6 +152,10 @@ const {
   esPrendaDeAvatar
 } = require("./api/_prendas-ruta");
 
+// Por el mismo motivo: la resolucion de la ruta estatica se comparte y
+// se prueba desde un test, en vez de vivir suelta en el handler.
+const { resolverRutaEstatica } = require("./api/_ruta-estatica");
+
 async function main() {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
@@ -246,7 +250,21 @@ async function main() {
     }
 
     // ----- Archivos estáticos -----
-    const rutaRelativa = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+    //
+    // La ruta se decodifica y se normaliza en un solo sitio
+    // (api/_ruta-estatica.js) para que la cadena con la que se DECIDE
+    // sea exactamente la misma con la que se ABRE el archivo. Cuando
+    // eran dos lecturas distintas de la misma URL, una barra de más
+    // bastaba para sacar el arte de los avatares. El porqué entero está
+    // en el comentario de ese módulo.
+    const resuelta = resolverRutaEstatica(url.pathname);
+
+    if (!resuelta.ok) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      return res.end("Petición mal formada");
+    }
+
+    const rutaRelativa = resuelta.ruta;
     const archivo = path.join(RAIZ, rutaRelativa);
 
     if (!archivo.startsWith(RAIZ)) {
