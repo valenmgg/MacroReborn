@@ -798,7 +798,9 @@ async function avatarPrenda(req, res) {
 // un solo archivo por límite de Serverless Functions en Vercel.
 //
 // GET    /api/content?action=comments&username=X
-// POST   /api/content?action=comments   { profileUsername, texto, authorUsername }
+// POST   /api/content?action=comments   { profileUsername, texto }
+//        (el autor sale de la sesión; si llega un authorUsername en el
+//         cuerpo se ignora, ver el comentario del handler)
 // DELETE /api/content?action=comments   { commentId }
 //
 // GET  /api/content?action=likes&targetType=comment&targetIds=1,2,3&username=X
@@ -933,7 +935,7 @@ async function comments(req, res) {
   }
 
   if (req.method === "POST") {
-    const { profileUsername, texto, authorUsername } = req.body || {};
+    const { profileUsername, texto } = req.body || {};
 
     if (!profileUsername || !texto || !texto.trim()) {
       return res.status(400).json({ success: false, error: "Datos incompletos" });
@@ -944,8 +946,25 @@ async function comments(req, res) {
       return res.status(404).json({ success: false, error: "Usuario no encontrado" });
     }
 
-    const nombreAutor = (authorUsername && authorUsername.trim()) ? authorUsername.trim() : "Usuario";
-    const authorId = await getUserId(nombreAutor);
+    // El autor es quien tiene la sesión. El cuerpo traía un campo
+    // `authorUsername` que se usaba tal cual, y ese nombre NO está en la
+    // lista que comprueba el guard del despachador -que mira `username`,
+    // `origenNombre`, `reportedBy` y `moderatorUsername`-, así que
+    // cualquiera con cuenta podía publicar un comentario firmado con el
+    // nombre de otra persona.
+    //
+    // Y no era solo la firma: `getUserId(nombreAutor)` resolvía el
+    // `author_user_id` REAL de la víctima, con lo que la fila quedaba
+    // indistinguible de una legítima; la notificación "X comentó en tu
+    // perfil" salía a su nombre; y la comprobación de bloqueo de abajo
+    // se hacía contra el nombre falso, así que también servía para
+    // saltarse un bloqueo.
+    //
+    // Tomarlo del token arregla de paso la sensibilidad a mayúsculas:
+    // `req.auth.sub` es el id de verdad, no el resultado de buscar un
+    // nombre que puede resolver a dos cuentas distintas.
+    const nombreAutor = req.auth.username;
+    const authorId = req.auth.sub;
 
     const esPropioPerfil = String(profileUsername).trim().toLowerCase() === String(nombreAutor).trim().toLowerCase();
     if (!esPropioPerfil && await hayBloqueoEntreUsuarios(sql, profileUsername, nombreAutor)) {
@@ -1203,19 +1222,43 @@ async function chat(req, res) {
   }
 
   if (req.method === "DELETE") {
-    const { messageId, username } = req.body || {};
+    const { messageId } = req.body || {};
 
     if (!messageId) {
       return res.status(400).json({ success: false, error: "Falta messageId" });
     }
 
-    // Solo el autor puede borrar su propio mensaje (mismo criterio que
-    // ya usaba la UI, que solo mostraba el botón "Borrar" en los
-    // mensajes propios).
-    if (username) {
-      await sql`DELETE FROM chat_messages WHERE id = ${messageId} AND username = ${username};`;
-    } else {
-      await sql`DELETE FROM chat_messages WHERE id = ${messageId};`;
+    // Solo el autor puede borrar su propio mensaje, y quién es el autor
+    // lo dice la SESIÓN, no el cuerpo de la petición.
+    //
+    // Antes había dos ramas: si venía `username` se filtraba por autor,
+    // y si no venía se borraba por id a secas. Y el guard del
+    // despachador solo compara `body.username` cuando ese campo existe
+    // (`body.username && ...`), así que omitirlo esquivaba las dos
+    // barreras a la vez: cualquiera de las 144 cuentas podía borrar
+    // cualquier mensaje, y vaciar el chat entero con un bucle sobre los
+    // ids, que vienen en la respuesta del GET.
+    //
+    // Se compara también por nombre para los 2 mensajes de 151 que
+    // quedaron con `user_id` nulo de antes de que existiera esa columna:
+    // sin esa segunda condición sus autores no podrían borrarlos.
+    const borrados = await sql`
+      DELETE FROM chat_messages
+      WHERE id = ${messageId}
+        AND (
+          user_id = ${req.auth.sub}
+          OR (user_id IS NULL AND LOWER(username) = LOWER(${req.auth.username}))
+        )
+      RETURNING id;
+    `;
+
+    // Antes esto devolvía success:true pasara lo que pasara, así que un
+    // borrado que no borraba nada se veía igual que uno que sí.
+    if (borrados.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: "Solo se puede borrar un mensaje propio"
+      });
     }
 
     return res.status(200).json({ success: true });
@@ -1268,15 +1311,18 @@ async function notifications(req, res) {
   }
 
   if (req.method === "DELETE") {
-    const { username } = req.body || {};
-    if (!username) {
-      return res.status(400).json({ success: false, error: "Falta username" });
-    }
-
-    const userId = await getUserId(username);
-    if (userId) {
-      await sql`DELETE FROM notifications WHERE user_id = ${userId};`;
-    }
+    // El dueño de las notificaciones que se borran es quien tiene la
+    // sesión. El `username` del cuerpo se ignora a propósito.
+    //
+    // El guard del despachador hace una excepción para `notifications`:
+    // si viene `origenNombre` y coincide con la sesión, ya no comprueba
+    // `username`. Esa excepción existe para el POST, donde mandar una
+    // notificación A OTRA PERSONA es justo lo que se quiere. Pero se
+    // aplicaba igual al DELETE, así que con
+    // {username:"victima", origenNombre:"yo"} se borraban TODAS las
+    // notificaciones de otra persona: sus solicitudes de amistad, sus
+    // menciones y los avisos de la moderación.
+    await sql`DELETE FROM notifications WHERE user_id = ${req.auth.sub};`;
 
     return res.status(200).json({ success: true });
   }

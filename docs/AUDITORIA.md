@@ -59,9 +59,9 @@ que pueden costar una cuenta de usuario o el sitio entero.
 | 4 | 2026-09-18 | Seguridad | XSS almacenado en la biografía: se ejecuta en todo el que abra la comunidad | `js/comunidad-ranking.js:398` | 15 min |
 | 5 | 2026-09-18 | Seguridad | XSS dirigido por notificación: cualquiera se la manda a quien quiera | `js/notificaciones.js:179` | 15 min |
 | 6 | - | Seguridad | No hay `Content-Security-Policy` en ninguna parte. Es la red que falta bajo los cuatro anteriores | nginx | 1 h |
-| 7 | - | Seguridad | Cualquier usuario borra cualquier mensaje del chat omitiendo el campo `username` | `api/content.js:1217` | 10 min |
-| 8 | - | Seguridad | Cualquier usuario borra todas las notificaciones de otro | `api/content.js:1270` | 10 min |
-| 9 | - | Seguridad | Se puede firmar un comentario con el nombre de otra persona | `api/content.js:947` | 15 min |
+| 7 | 2026-09-18 | Seguridad | Cualquier usuario borra cualquier mensaje del chat omitiendo el campo `username` | `api/content.js:1217` | 10 min |
+| 8 | 2026-09-18 | Seguridad | Cualquier usuario borra todas las notificaciones de otro | `api/content.js:1270` | 10 min |
+| 9 | 2026-09-18 | Seguridad | Se puede firmar un comentario con el nombre de otra persona | `api/content.js:947` | 15 min |
 | 10 | 2026-09-18 | Seguridad | `GET /%C0%80` tumba el proceso: `decodeURIComponent` sin `try/catch` | `server.js:249` | 10 min |
 | 11 | 2026-09-18 | Seguridad | La barra de más expone el arte: `/imagenes//tora/pelo3.png` devuelve 200. Mismo arreglo que el 10 | `server.js:249` | incluido en el 10 |
 | 12 | - | Seguridad | El token vive 7 días en `localStorage`, sin revocación. Cerrar sesión no lo invalida | `api/_auth.js:3` | 1 día |
