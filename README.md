@@ -11,6 +11,7 @@ existen y cómo probar los cambios localmente.
 | `docs/DESARROLLO.md` | Módulos del backend, infraestructura local (PGlite, servidor local, tests) y despliegue |
 | `docs/SEGURIDAD.md` | Sistema de hash de contraseñas, migración de datos existentes y plan de activación |
 | `docs/JUEGOS.md` | Cómo agregar un juego al catálogo: proceso completo, prueba local y notas de Ruffle/CORS e iframes |
+| `docs/ARTE.md` | Cómo se protege el catálogo de prendas: qué compra cada pieza y qué no |
 | `docs/VPS.md` | El servidor: máquina, nginx, base de datos, respaldos, seguridad y despliegue |
 | `docs/SEO.md` | Metadatos, sitemap, robots y lo que quedó recomendado para la v1.0 |
 | `docs/AUDITORIA.md` | Lista viva de lo que hay por arreglar, por orden de importancia, con su estado |
