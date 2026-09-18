@@ -13,3 +13,12 @@ revision-lienzo/
 
 # Imagen temporal para un anuncio de Discord. Se hace, se captura y se borra.
 anuncio-*.html
+
+# Copia de la memoria de Claude Code, que vive fuera del proyecto en
+# ~/.claude/projects/.../memory/ y por tanto NO se salva copiando esta
+# carpeta. Se duplica aqui para que viaje a Drive con todo lo demas.
+#
+# Fuera de git a proposito: el repositorio es publico y estos archivos
+# llevan preferencias personales y un correo. Si algun dia el repo pasa
+# a privado, se puede reconsiderar.
+memoria-claude/
