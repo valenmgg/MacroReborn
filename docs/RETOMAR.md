@@ -17,22 +17,24 @@ fuera y hay que copiarlas aparte.
 | Qué | Dónde está en el PC | ¿Dónde hay copia? |
 |---|---|---|
 | **La llave SSH del servidor** | `C:\Users\luisd\.ssh\macroreborn-vps-key.pem` | Sí, en Drive: `02_Proyectos_Software\Proyectos de código\Oracle Cloud - MacroReborn\` |
-| **La memoria de Claude Code** | `C:\Users\luisd\.claude\projects\C--Users-luisd-Documents-Macroreborn\memory\` | Sí: copiada en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
+| **La memoria y las conversaciones de Claude Code** | `C:\Users\luisd\.claude\projects\C--Users-luisd-Documents-Macroreborn\` | Sí: copiado entero en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
 | **El `.env` del proyecto** | Solo en el servidor, en `~/MacroReborn/.env` | No hace falta copiarlo: se lee desde allí |
 
-La carpeta de memoria son nueve archivos de texto con lo aprendido del
-proyecto: cómo entrar al servidor, por qué `fail2ban` está apagado, qué
-protege de verdad el plan del arte, cómo firmar los commits. Pesa 44 kB
-y es lo más barato de salvar y lo más caro de perder.
+Ahí dentro hay dos cosas distintas, y las dos viven fuera del proyecto:
 
-Para devolverla a su sitio en el PC nuevo se copia `memoria-claude/` a
-`~/.claude/projects/<carpeta>/memory/`. **El nombre de `<carpeta>` sale
-de la ruta del proyecto**, con las barras convertidas en guiones: si el
-proyecto vuelve a quedar en `C:\Users\luisd\Documents\Macroreborn`, es
-`C--Users-luisd-Documents-Macroreborn`. Si acaba en otro sitio, cambia.
+- **`memory/`**: nueve archivos con lo aprendido del proyecto (cómo
+  entrar al servidor, por qué `fail2ban` está apagado, qué protege de
+  verdad el plan del arte, cómo firmar los commits). Son 44 kB y es lo
+  más barato de salvar y lo más caro de perder: es lo que hace que una
+  sesión nueva sepa de qué va esto sin contárselo todo otra vez.
+- **Las conversaciones**: once sesiones completas en `.jsonl`, 153 MB.
+  Útiles para consultar qué se decidió y por qué, aunque no se cargan
+  solas.
 
-Esa copia **no se actualiza sola**. Conviene refrescarla antes de volver
-a formatear.
+`memoria-claude/LEEME.md` explica cuál es cuál, cómo devolverlas a su
+sitio y cómo refrescar la copia. **No se actualiza sola**, así que
+conviene rehacerla antes de volver a formatear, y con la sesión cerrada
+para que la conversación en curso esté completa.
 
 En la carpeta del proyecto hay además dos cosas que **no** conviene
 subir a Drive tal cual:
