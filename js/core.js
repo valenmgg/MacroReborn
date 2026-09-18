@@ -5,6 +5,46 @@
 // de los scripts puedan usar leerJSON() de forma segura.
 // ============================================
 
+// ============================================
+// ESCAPAR TEXTO ANTES DE METERLO EN HTML
+// ============================================
+// Un solo sitio con la versión correcta, disponible en las 28 páginas
+// porque core.js se carga en todas.
+//
+// Por qué hacía falta: había 19 copias de "escaparHTML" repartidas por
+// js/, en tres variantes con distinta cobertura, y las páginas que
+// pintan lo que escriben OTROS usuarios eran justo las que no tenían
+// ninguna. Tres XSS almacenados salieron de ahí: la biografía en la
+// lista de comunidad, el título y el mensaje de una notificación, y el
+// texto de un reporte dentro del panel de administración -este último
+// se ejecuta en el navegador de un administrador, y con el token de
+// sesión en localStorage eso es la cuenta entera.
+//
+// Escapa también las comillas, que es lo que le falta a la variante más
+// repetida (la del truco `div.textContent` + `div.innerHTML`): esa
+// escapa & < > pero NUNCA las comillas, porque en un nodo de texto no
+// hacen falta. El problema es que el resultado se mete dentro de
+// atributos -title="...", data-usuario="..."- y ahí una comilla se sale
+// del atributo sin necesidad de un solo "<".
+//
+// Se llama MRTexto y no escaparHTML a propósito: varios archivos
+// declaran su propia función con ese nombre en el ámbito global, y dos
+// declaraciones iguales se pisan según el orden de carga. Unificar las
+// 19 copias es otra tarea (docs/AUDITORIA.md, punto 73); esto no la
+// estorba.
+const MRTexto = {
+  escapar(valor) {
+    return String(valor === null || valor === undefined ? "" : valor)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+};
+
+if (typeof window !== "undefined") window.MRTexto = MRTexto;
+
 /**
  * Envoltorio seguro de JSON.parse.
  * Si el valor guardado en localStorage está corrupto o mal formado,
