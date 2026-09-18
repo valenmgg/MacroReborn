@@ -224,7 +224,7 @@ function rkRenderizar(filtro = "") {
 
         ${rkAvatarHTML(usuario.avatar, "rk-podio-avatar", "capa-rk")}
 
-        <p class="rk-podio-nombre">${usuario.nombre}</p>
+        <p class="rk-podio-nombre">${MRTexto.escapar(usuario.nombre)}</p>
 
         ${_rkModo === "logros" || _rkOrdenarPorLogros
           ? `<span class="rk-delta rk-neutro">🏅 ${usuario.puntosLogros} puntos</span>`
@@ -248,7 +248,7 @@ function rkRenderizar(filtro = "") {
 
         ${rkAvatarHTML(usuario.avatar, "rk-mini-avatar", "capa-rk-mini")}
 
-        <p class="rk-mini-nombre">${usuario.nombre}</p>
+        <p class="rk-mini-nombre">${MRTexto.escapar(usuario.nombre)}</p>
         <p class="rk-mini-puesto">${puesto}º</p>
 
         ${_rkModo === "logros" || _rkOrdenarPorLogros
@@ -377,7 +377,7 @@ function comRenderUsuarios(lista) {
 
         ${rkAvatarHTML(usuario.avatar, "avatar-tarjeta", "capa-tarjeta")}
 
-        <h3 class="usuario-nombre">${usuario.nombre}</h3>
+        <h3 class="usuario-nombre">${MRTexto.escapar(usuario.nombre)}</h3>
 
         ${typeof insigniasBloqueHTML === "function" ? insigniasBloqueHTML(usuario.nombre, true) : ""}
 
@@ -395,7 +395,7 @@ function comRenderUsuarios(lista) {
           </div>` : ""}
         </div>
 
-        ${usuario.bio ? `<p class="usuario-bio">${usuario.bio}</p>` : ""}
+        ${usuario.bio ? `<p class="usuario-bio">${MRTexto.escapar(usuario.bio)}</p>` : ""}
 
         <a href="usuario.html?usuario=${encodeURIComponent(usuario.nombre)}" class="btn-ver-perfil">👤 Ver perfil</a>
 
@@ -483,7 +483,7 @@ async function crCargarEstadisticas() {
       const llegados = datos.recienLlegados || [];
       crRecienLlegados.innerHTML = llegados.length
         ? llegados.map(u => `
-            <a href="usuario.html?usuario=${encodeURIComponent(u.username)}" class="cr-avatar-chico" title="${u.username}">
+            <a href="usuario.html?usuario=${encodeURIComponent(u.username)}" class="cr-avatar-chico" title="${MRTexto.escapar(u.username)}">
               ${crAvatarCapasHTML(u.avatar, "cr-capa-chica")}
             </a>
           `).join("")
@@ -513,11 +513,11 @@ async function crCargarModeracion() {
 
     crListaModeracion.innerHTML = datos.staff.map(s => `
       <div class="cr-fila-staff">
-        <a href="usuario.html?usuario=${encodeURIComponent(s.username)}" class="cr-avatar-chico" title="${s.username}">
+        <a href="usuario.html?usuario=${encodeURIComponent(s.username)}" class="cr-avatar-chico" title="${MRTexto.escapar(s.username)}">
           ${crAvatarCapasHTML(s.avatar, "cr-capa-chica")}
         </a>
         <div class="cr-staff-info">
-          <p class="cr-staff-nombre">${s.username}</p>
+          <p class="cr-staff-nombre">${MRTexto.escapar(s.username)}</p>
           <p class="cr-staff-rol">${ICONO_ROL[s.rol] || "•"} ${s.rol}</p>
         </div>
         <span class="cr-punto-estado ${s.conectado ? "cr-conectado" : ""}" title="${s.conectado ? "Conectado" : "Desconectado"}"></span>
@@ -567,7 +567,7 @@ function crRenderConectados(lista, filtro = "") {
   }
 
   crGridConectados.innerHTML = conectados.slice(0, 24).map(u => `
-    <a href="usuario.html?usuario=${encodeURIComponent(u.nombre)}" title="${u.nombre}">
+    <a href="usuario.html?usuario=${encodeURIComponent(u.nombre)}" title="${MRTexto.escapar(u.nombre)}">
       ${crAvatarCapasHTML(u.avatar, "cr-capa-chica")}
     </a>
   `).join("");
@@ -628,9 +628,9 @@ async function crCargarTienda() {
       return `
         <div class="cr-item-tienda">
           <div class="cr-item-tienda-imagen">
-            ${ruta ? `<img data-src="${ruta}" alt="${item.nombre}" loading="lazy">` : ""}
+            ${ruta ? `<img data-src="${ruta}" alt="${MRTexto.escapar(item.nombre)}" loading="lazy">` : ""}
           </div>
-          <p class="cr-item-tienda-nombre">${item.nombre}</p>
+          <p class="cr-item-tienda-nombre">${MRTexto.escapar(item.nombre)}</p>
           <p class="cr-item-tienda-precio">🪙 ${item.precio}</p>
           ${boton}
         </div>
@@ -713,11 +713,11 @@ async function crCargarFeed() {
 
       return `
         <div class="cr-feed-item">
-          <a href="usuario.html?usuario=${encodeURIComponent(item.username)}" class="cr-feed-avatar" title="${item.username}">
+          <a href="usuario.html?usuario=${encodeURIComponent(item.username)}" class="cr-feed-avatar" title="${MRTexto.escapar(item.username)}">
             ${crAvatarCapasHTML(item.avatar, "cr-capa-chica")}
           </a>
           <div class="cr-feed-texto">
-            <p>${texto}</p>
+            <p>${MRTexto.escapar(texto)}</p>
             <span class="cr-feed-hora">${hace}</span>
           </div>
         </div>

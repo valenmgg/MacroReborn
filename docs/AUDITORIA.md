@@ -54,10 +54,10 @@ que pueden costar una cuenta de usuario o el sitio entero.
 | # | Estado | Categoría | Qué pasa | Dónde | Esfuerzo |
 |---|---|---|---|---|---|
 | 1 | - | Seguridad | 109 de 113 juegos se sirven desde el propio origen, sin `sandbox`. 177 referencias a ramas mutables de GitHub pueden leer el token de sesión de quien juega | `js/jugar.js:60` | 1 tarde + probar juegos |
-| 2 | - | Seguridad | XSS en los reportes: `contentTexto` es texto libre y se pinta sin escapar dentro del navegador de un administrador | `js/admin.js:583` | 30 min |
+| 2 | 2026-09-18 | Seguridad | XSS en los reportes: `contentTexto` es texto libre y se pinta sin escapar dentro del navegador de un administrador | `js/admin.js:583` | 30 min |
 | 3 | - | Seguridad | `/api/avisos` no pide sesión: cualquiera lee en vivo las notificaciones y la presencia de cualquiera | `api/_avisos-sse.js:71` | 1 h |
-| 4 | - | Seguridad | XSS almacenado en la biografía: se ejecuta en todo el que abra la comunidad | `js/comunidad-ranking.js:398` | 15 min |
-| 5 | - | Seguridad | XSS dirigido por notificación: cualquiera se la manda a quien quiera | `js/notificaciones.js:179` | 15 min |
+| 4 | 2026-09-18 | Seguridad | XSS almacenado en la biografía: se ejecuta en todo el que abra la comunidad | `js/comunidad-ranking.js:398` | 15 min |
+| 5 | 2026-09-18 | Seguridad | XSS dirigido por notificación: cualquiera se la manda a quien quiera | `js/notificaciones.js:179` | 15 min |
 | 6 | - | Seguridad | No hay `Content-Security-Policy` en ninguna parte. Es la red que falta bajo los cuatro anteriores | nginx | 1 h |
 | 7 | - | Seguridad | Cualquier usuario borra cualquier mensaje del chat omitiendo el campo `username` | `api/content.js:1217` | 10 min |
 | 8 | - | Seguridad | Cualquier usuario borra todas las notificaciones de otro | `api/content.js:1270` | 10 min |

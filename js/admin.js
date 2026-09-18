@@ -156,7 +156,7 @@
         return `
           <button
             class="btn-insignia-toggle ${tiene ? "activa-insignia" : ""}"
-            data-usuario="${usuario.username}"
+            data-usuario="${MRTexto.escapar(usuario.username)}"
             data-insignia="${insignia.id}"
             data-rol="${esRol ? "1" : "0"}"
             title="${tiene ? "Quitar" : "Asignar"} ${insignia.nombre}"
@@ -211,7 +211,7 @@
           <div class="admin-tarjeta-usuario">
 
             <div class="admin-tarjeta-cabecera">
-              <h3>${usuario.username}</h3>
+              <h3>${MRTexto.escapar(usuario.username)}</h3>
               ${chipEstadoCuenta(usuario)}
             </div>
 
@@ -229,10 +229,10 @@
             </div>
 
             <div class="admin-tarjeta-acciones">
-              <button class="btn-advertir" data-usuario="${usuario.username}" ${esUnoMismo ? "disabled title=\"No podés advertirte a vos mismo\"" : ""}>⚠️ Advertir usuario</button>
+              <button class="btn-advertir" data-usuario="${MRTexto.escapar(usuario.username)}" ${esUnoMismo ? "disabled title=\"No podés advertirte a vos mismo\"" : ""}>⚠️ Advertir usuario</button>
               ${usuario.suspendido
-                ? `<button class="btn-reactivar" data-usuario="${usuario.username}">✅ Reactivar usuario</button>`
-                : `<button class="btn-suspender" data-usuario="${usuario.username}" ${esUnoMismo ? "disabled title=\"No podés suspender tu propia cuenta\"" : ""}>🚫 Suspender usuario</button>`
+                ? `<button class="btn-reactivar" data-usuario="${MRTexto.escapar(usuario.username)}">✅ Reactivar usuario</button>`
+                : `<button class="btn-suspender" data-usuario="${MRTexto.escapar(usuario.username)}" ${esUnoMismo ? "disabled title=\"No podés suspender tu propia cuenta\"" : ""}>🚫 Suspender usuario</button>`
               }
             </div>
 
@@ -516,17 +516,17 @@
         <div class="admin-tarjeta-historial">
 
           <div class="admin-historial-cabecera">
-            <span class="admin-historial-accion">${entrada.accionIcono} ${entrada.accionEtiqueta}</span>
+            <span class="admin-historial-accion">${MRTexto.escapar(entrada.accionIcono)} ${MRTexto.escapar(entrada.accionEtiqueta)}</span>
             <span class="chip-rol ${entrada.rol === "Administrador" ? "chip-rol-admin" : "chip-rol-moderador"}">
-              ${entrada.rol === "Administrador" ? "👑" : "🛡️"} ${entrada.rol}
+              ${entrada.rol === "Administrador" ? "👑" : "🛡️"} ${MRTexto.escapar(entrada.rol)}
             </span>
           </div>
 
           <div class="admin-historial-datos">
-            <span><b>Hecho por:</b> ${entrada.usuario}</span>
-            ${entrada.usuarioAfectado ? `<span><b>Usuario afectado:</b> ${entrada.usuarioAfectado}</span>` : ""}
-            <span><b>Motivo:</b> ${entrada.motivo}</span>
-            <span><b>Fecha:</b> ${entrada.fecha}</span>
+            <span><b>Hecho por:</b> ${MRTexto.escapar(entrada.usuario)}</span>
+            ${entrada.usuarioAfectado ? `<span><b>Usuario afectado:</b> ${MRTexto.escapar(entrada.usuarioAfectado)}</span>` : ""}
+            <span><b>Motivo:</b> ${MRTexto.escapar(entrada.motivo)}</span>
+            <span><b>Fecha:</b> ${MRTexto.escapar(entrada.fecha)}</span>
           </div>
 
         </div>
@@ -572,7 +572,7 @@
       const esChat = reporte.origen === "chatGeneral";
       const origen = esChat
         ? "💬 Chat general"
-        : `👤 Perfil de ${reporte.origen}`;
+        : `👤 Perfil de ${MRTexto.escapar(reporte.origen)}`;
       const fecha = new Date(reporte.created_at).toLocaleString("es-AR");
 
       return `
@@ -580,12 +580,12 @@
 
           <div class="admin-reporte-origen">${origen} · ${fecha}</div>
 
-          <p class="admin-reporte-texto">"${reporte.texto}"</p>
+          <p class="admin-reporte-texto">"${MRTexto.escapar(reporte.texto)}"</p>
 
           <div class="admin-reporte-datos">
-            <span><b>Autor:</b> ${reporte.usuario || "Desconocido"}</span>
-            <span><b>Reportado por:</b> ${reporte.reportadoPor}</span>
-            <span><b>Motivo:</b> ${reporte.motivo}</span>
+            <span><b>Autor:</b> ${MRTexto.escapar(reporte.usuario || "Desconocido")}</span>
+            <span><b>Reportado por:</b> ${MRTexto.escapar(reporte.reportadoPor)}</span>
+            <span><b>Motivo:</b> ${MRTexto.escapar(reporte.motivo)}</span>
           </div>
 
           <div class="admin-tarjeta-acciones">
@@ -593,10 +593,10 @@
             <button class="btn-eliminar-reporte" data-id="${reporte.id}" data-origen="${esChat ? "comentario" : "publicacion"}">🗑️ Eliminar ${esChat ? "comentario" : "publicación"}</button>
             ${autor
               ? `
-                <button class="btn-advertir" data-usuario="${reporte.usuario}">⚠️ Advertir autor</button>
+                <button class="btn-advertir" data-usuario="${MRTexto.escapar(reporte.usuario)}">⚠️ Advertir autor</button>
                 ${autorSuspendido
-                  ? `<button class="btn-reactivar" data-usuario="${reporte.usuario}">✅ Reactivar autor</button>`
-                  : `<button class="btn-suspender" data-usuario="${reporte.usuario}">🚫 Suspender autor</button>`}
+                  ? `<button class="btn-reactivar" data-usuario="${MRTexto.escapar(reporte.usuario)}">✅ Reactivar autor</button>`
+                  : `<button class="btn-suspender" data-usuario="${MRTexto.escapar(reporte.usuario)}">🚫 Suspender autor</button>`}
               `
               : ""
             }

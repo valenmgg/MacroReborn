@@ -176,9 +176,9 @@ async function renderNotificacionesDropdown(){
     contenedor.innerHTML = lista.slice(0, 6).map(noti => `
 
         <div class="notif-dropdown-item ${noti.leida ? "" : "no-leida"}">
-            <h4>${noti.titulo}</h4>
-            <p>${noti.mensaje}</p>
-            <span>${noti.fecha}</span>
+            <h4>${MRTexto.escapar(noti.titulo)}</h4>
+            <p>${MRTexto.escapar(noti.mensaje)}</p>
+            <span>${MRTexto.escapar(noti.fecha)}</span>
         </div>
 
     `).join("");
@@ -254,12 +254,12 @@ async function renderNotificaciones(){
 
         <div class="notificacion ${noti.leida ? "leida" : "no-leida"}">
 
-            <h3>${noti.titulo}</h3>
+            <h3>${MRTexto.escapar(noti.titulo)}</h3>
 
-            <p>${noti.mensaje}</p>
+            <p>${MRTexto.escapar(noti.mensaje)}</p>
 
             <div class="fecha">
-                ${noti.fecha}
+                ${MRTexto.escapar(noti.fecha)}
             </div>
 
         </div>
