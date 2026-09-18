@@ -15,6 +15,7 @@ existen y cómo probar los cambios localmente.
 | `docs/VPS.md` | El servidor: máquina, nginx, base de datos, respaldos, seguridad y despliegue |
 | `docs/SEO.md` | Metadatos, sitemap, robots y lo que quedó recomendado para la v1.0 |
 | `docs/AUDITORIA.md` | Lista viva de lo que hay por arreglar, por orden de importancia, con su estado |
+| `docs/RETOMAR.md` | Cómo volver a trabajar tras formatear el PC: qué no está en el repo, cómo levantar el entorno y en qué punto está todo |
 
 ---
 
