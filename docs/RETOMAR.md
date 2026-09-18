@@ -17,13 +17,22 @@ fuera y hay que copiarlas aparte.
 | Qué | Dónde está en el PC | ¿Dónde hay copia? |
 |---|---|---|
 | **La llave SSH del servidor** | `C:\Users\luisd\.ssh\macroreborn-vps-key.pem` | Sí, en Drive: `02_Proyectos_Software\Proyectos de código\Oracle Cloud - MacroReborn\` |
-| **La memoria de Claude Code** | `C:\Users\luisd\.claude\projects\C--Users-luisd-Documents-Macroreborn\memory\` | **No. Hay que copiarla a mano.** |
+| **La memoria de Claude Code** | `C:\Users\luisd\.claude\projects\C--Users-luisd-Documents-Macroreborn\memory\` | Sí: copiada en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
 | **El `.env` del proyecto** | Solo en el servidor, en `~/MacroReborn/.env` | No hace falta copiarlo: se lee desde allí |
 
 La carpeta de memoria son nueve archivos de texto con lo aprendido del
 proyecto: cómo entrar al servidor, por qué `fail2ban` está apagado, qué
-protege de verdad el plan del arte, cómo firmar los commits. Pesa 22 kB
+protege de verdad el plan del arte, cómo firmar los commits. Pesa 44 kB
 y es lo más barato de salvar y lo más caro de perder.
+
+Para devolverla a su sitio en el PC nuevo se copia `memoria-claude/` a
+`~/.claude/projects/<carpeta>/memory/`. **El nombre de `<carpeta>` sale
+de la ruta del proyecto**, con las barras convertidas en guiones: si el
+proyecto vuelve a quedar en `C:\Users\luisd\Documents\Macroreborn`, es
+`C--Users-luisd-Documents-Macroreborn`. Si acaba en otro sitio, cambia.
+
+Esa copia **no se actualiza sola**. Conviene refrescarla antes de volver
+a formatear.
 
 En la carpeta del proyecto hay además dos cosas que **no** conviene
 subir a Drive tal cual:
