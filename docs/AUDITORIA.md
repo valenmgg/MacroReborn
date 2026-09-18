@@ -62,8 +62,8 @@ que pueden costar una cuenta de usuario o el sitio entero.
 | 7 | - | Seguridad | Cualquier usuario borra cualquier mensaje del chat omitiendo el campo `username` | `api/content.js:1217` | 10 min |
 | 8 | - | Seguridad | Cualquier usuario borra todas las notificaciones de otro | `api/content.js:1270` | 10 min |
 | 9 | - | Seguridad | Se puede firmar un comentario con el nombre de otra persona | `api/content.js:947` | 15 min |
-| 10 | - | Seguridad | `GET /%C0%80` tumba el proceso: `decodeURIComponent` sin `try/catch` | `server.js:249` | 10 min |
-| 11 | - | Seguridad | La barra de más expone el arte: `/imagenes//tora/pelo3.png` devuelve 200. Mismo arreglo que el 10 | `server.js:249` | incluido en el 10 |
+| 10 | 2026-09-18 | Seguridad | `GET /%C0%80` tumba el proceso: `decodeURIComponent` sin `try/catch` | `server.js:249` | 10 min |
+| 11 | 2026-09-18 | Seguridad | La barra de más expone el arte: `/imagenes//tora/pelo3.png` devuelve 200. Mismo arreglo que el 10 | `server.js:249` | incluido en el 10 |
 | 12 | - | Seguridad | El token vive 7 días en `localStorage`, sin revocación. Cerrar sesión no lo invalida | `api/_auth.js:3` | 1 día |
 | 13 | - | Infraestructura | 75 commits solo existen en el PC y en el VPS. GitHub está en el 15/09 | — | 2 min |
 | 14 | - | Decisión | El repositorio es público: 630 prendas descargables con `git clone`. Anula todo lo que promete `docs/ARTE.md` | GitHub | decisión |
