@@ -16,9 +16,38 @@ fuera y hay que copiarlas aparte.
 
 | Qué | Dónde está en el PC | ¿Dónde hay copia? |
 |---|---|---|
-| **La llave SSH del servidor** | `C:\Users\luisd\.ssh\macroreborn-vps-key.pem` | Sí, en Drive: `02_Proyectos_Software\Proyectos de código\Oracle Cloud - MacroReborn\` |
-| **La memoria y las conversaciones de Claude Code** | `C:\Users\luisd\.claude\projects\C--Users-luisd-Documents-Macroreborn\` | Sí: copiado entero en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
+| **La llave SSH del servidor** | `~/.ssh/macroreborn-vps-key` | **Se perdió dos veces. Ver §1.1** |
+| **La memoria y las conversaciones de Claude Code** | `~/.claude/projects/<carpeta>/` | Sí: copiado entero en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
 | **El `.env` del proyecto** | Solo en el servidor, en `~/MacroReborn/.env` | No hace falta copiarlo: se lee desde allí |
+
+### 1.1 La llave SSH se ha perdido dos veces. Léelo antes de formatear
+
+**Septiembre de 2026:** se formateó el PC sin nada en local. Se
+reconstruyó desde Drive.
+
+**19 de septiembre de 2026:** se volvió a formatear. Esta vez la copia
+del proyecto sí viajó a Drive y **sobrevivió todo** —código, git,
+memorias, conversaciones—, pero la llave no estaba dentro del proyecto:
+vivía en `G:\Mi unidad\02_Proyectos_Software\Proyectos de código\Oracle
+Cloud - MacroReborn\`, y al reorganizar Drive esa carpeta desapareció.
+Búsqueda exhaustiva de todo Drive y de `C:`, `D:`, `E:` y `F:`: **cero
+archivos `.pem`**.
+
+Las dos veces el fallo fue el mismo, y la lección es una sola: **lo que
+viaja bien es lo que está DENTRO de la carpeta que se copia.** Lo que
+está fuera se pierde aunque esté anotado, porque la anotación envejece
+antes que el olvido.
+
+**Cómo recuperar el acceso.** El sitio sigue funcionando solo; lo que se
+pierde es administrarlo y desplegar. Se recupera por Azure:
+
+1. Portal de Azure → la máquina virtual → **Ayuda** → **Restablecer
+   contraseña** → **Restablecer clave pública SSH**, usuario
+   `azureuser`, y pegar la clave pública nueva.
+2. O por línea de comandos:
+   `az vm user update -u azureuser --ssh-key-value <ruta a la .pub> -g <grupo> -n <vm>`
+
+Para generar un par nuevo: `ssh-keygen -t ed25519 -f ~/.ssh/macroreborn-vps-key`
 
 Ahí dentro hay dos cosas distintas, y las dos viven fuera del proyecto:
 
@@ -52,8 +81,10 @@ subir a Drive tal cual:
 |---|---|
 | Sitio en producción | https://macroreborn.com |
 | Servidor | Azure, `172.184.203.20`, Ubuntu 24.04 **ARM64**, 2 vCPU, 950 MB de RAM |
-| Entrar | `ssh -i "<ruta de la llave>" azureuser@172.184.203.20` |
+| Entrar | `ssh -i ~/.ssh/macroreborn-vps-key azureuser@172.184.203.20` |
 | Ruta del proyecto en el servidor | `/home/azureuser/MacroReborn` |
+| Ruta del proyecto en el PC | `D:\Macroreborn` (desde el 19/09/2026; antes `C:\Users\luisd\Documents\Macroreborn`) |
+| Copia en Drive | `G:\Mi unidad\01_Proyectos_Software\Proyectos de código\Macroreborn\` (desde el 19/09/2026; antes `02_Proyectos_Software\...`) |
 | Repositorio | `github.com/valenmgg/MacroReborn` (**público**, ver `docs/AUDITORIA.md` punto 14) |
 | Base de datos | PostgreSQL 16 en el propio servidor, solo escucha en `127.0.0.1` |
 | Respaldos | `~/respaldos/diarios/` en el servidor, uno cada noche a las 3:30, se guardan 14 días |
