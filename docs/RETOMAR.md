@@ -16,7 +16,7 @@ fuera y hay que copiarlas aparte.
 
 | Qué | Dónde está en el PC | ¿Dónde hay copia? |
 |---|---|---|
-| **La llave SSH del servidor** | `~/.ssh/macroreborn-vps-key` | **Se perdió dos veces. Ver §1.1** |
+| **La llave SSH del servidor** | `~/.ssh/macroreborn-vps-key` | En **Bitwarden**, elemento de tipo Clave SSH. Ver §1.1 |
 | **La memoria y las conversaciones de Claude Code** | `~/.claude/projects/<carpeta>/` | Sí: copiado entero en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
 | **El `.env` del proyecto** | Solo en el servidor, en `~/MacroReborn/.env` | No hace falta copiarlo: se lee desde allí |
 
@@ -41,13 +41,59 @@ antes que el olvido.
 **Cómo recuperar el acceso.** El sitio sigue funcionando solo; lo que se
 pierde es administrarlo y desplegar. Se recupera por Azure:
 
-1. Portal de Azure → la máquina virtual → **Ayuda** → **Restablecer
-   contraseña** → **Restablecer clave pública SSH**, usuario
-   `azureuser`, y pegar la clave pública nueva.
-2. O por línea de comandos:
+1. Generar un par nuevo:
+   `ssh-keygen -t ed25519 -f ~/.ssh/macroreborn-vps-key`
+2. Portal de Azure → la máquina virtual (`macroreborn-vps`) → **Ayuda** →
+   **Restablecer contraseña** → modo **Restablecer clave pública SSH**,
+   usuario `azureuser`, y pegar el contenido del `.pub`.
+3. O por línea de comandos:
    `az vm user update -u azureuser --ssh-key-value <ruta a la .pub> -g <grupo> -n <vm>`
 
-Para generar un par nuevo: `ssh-keygen -t ed25519 -f ~/.ssh/macroreborn-vps-key`
+**Ojo: Azure AÑADE la clave, no reemplaza.** Después hay que quitar a
+mano la vieja de `~/.ssh/authorized_keys`, o el servidor sigue aceptando
+una llave cuyo paradero se desconoce.
+
+### 1.2 Lo que se hizo el 19/09/2026
+
+Clave activa, la única que entra:
+
+```
+SHA256:NtNfiLpBLPf+zKj2oJbGsM5KbkJsjKNROogkcLG8Lr8   ed25519   macroreborn-vps-2026-09-19
+```
+
+Se quitó la anterior (`SHA256:xUnZ0B9e4opNR0nBIbcGM4uzpfG8ZNKe+9wcVPF4EwU`,
+RSA 3072, comentario `generated-by-azure`) de **dos** sitios, no de uno:
+estaba autorizada para `azureuser` **y también para `root`**, y como
+`PermitRootLogin` está en `without-password`, quien tuviera ese `.pem`
+entraba directamente como root. El `authorized_keys` de root quedó
+vacío, así que ya no hay ninguna vía de acceso como root por SSH
+(`PasswordAuthentication` está en `no`). Se administra con `sudo` desde
+`azureuser`, como siempre.
+
+Quedan copias de los dos archivos originales en el servidor, por si
+acaso: `~/.ssh/authorized_keys.antes-limpieza-2026-09-19` y
+`/root/.ssh/authorized_keys.antes-limpieza-2026-09-19`.
+
+### 1.3 Dónde vive ahora la llave, y por qué ahí
+
+En **Bitwarden**, como elemento de tipo Clave SSH. No en una carpeta de
+Drive, que es lo que falló las dos veces.
+
+El razonamiento, por si hay que rehacerlo:
+
+- **La cuenta de Azure es el respaldo de verdad.** Mientras se controle
+  esa cuenta, siempre se puede recuperar el acceso, se pierda la llave
+  que se pierda. Lo crítico que hay que custodiar es esa cuenta con su
+  segundo factor; la llave SSH es una comodidad.
+- **La llave en Bitwarden** es la comodidad. Si el PC arde, se saca
+  desde el móvil. Bitwarden puede además hacer de agente SSH, y entonces
+  la clave privada ni siquiera necesita estar en el disco.
+- **Una segunda llave autorizada** en otro equipo hace que perder una
+  deje de ser un problema. Es gratis.
+
+Lo que **no** hay que volver a hacer es dejarla suelta en una carpeta de
+Drive. Falló dos veces por el mismo motivo: la carpeta se movió y la
+ruta anotada envejeció antes que el olvido.
 
 Ahí dentro hay dos cosas distintas, y las dos viven fuera del proyecto:
 
