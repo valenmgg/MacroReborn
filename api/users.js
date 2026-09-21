@@ -6,6 +6,7 @@ const { requerirAuth } = require("./_auth");
 const { MonedasService } = require("./_monedas");
 const { crearNotificacionServidor } = require("./_notifications");
 const { validarAvatar } = require("./_avatar-catalogo");
+const avatarCompuesto = require("./_avatar-compuesto");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -312,11 +313,19 @@ async function updateAvatar(req, res) {
     return res.status(400).json({ success: false, error: revision.error });
   }
 
+  // El compuesto del servidor, de una vez y no en cada lectura: una
+  // lista de comunidad pide 500 usuarios y recalcular la huella ahi
+  // seria 500 consultas al catalogo. Si esto falla, se guarda igual con
+  // la huella en NULL: quien guarda su avatar no puede quedarse sin
+  // guardarlo porque el disco este lleno. Ver api/_avatar-compuesto.js.
+  const huella = await avatarCompuesto.asegurarSinFallar(sql, revision.avatar);
+
   const user = await sql`
     UPDATE users
-    SET avatar = ${JSON.stringify(revision.avatar)}
+    SET avatar = ${JSON.stringify(revision.avatar)},
+        avatar_compuesto = ${huella}
     WHERE username = ${username}
-    RETURNING id, username, avatar;
+    RETURNING id, username, avatar, avatar_compuesto;
   `;
 
   if (user.length === 0) {

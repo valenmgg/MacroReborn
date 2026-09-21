@@ -4,6 +4,7 @@ const { requerirAuth, crearPase, PASE_TTL_MS } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
+const avatarCompuesto = require("./_avatar-compuesto");
 // CAPAS es la lista de las 15 capas en su orden de dibujo. Es la del
 // servidor, gemela de ORDEN_CAPAS_AVATAR en js/core.js. Se manda dentro
 // del catálogo para que el editor no tenga que llevar su propia copia.
@@ -2195,12 +2196,19 @@ async function avatarGallery(req, res) {
       return res.status(400).json({ success: false, error: revision.error });
     }
 
+    // Las ranuras tambien llevan compuesto: la galeria las pinta igual
+    // que un avatar puesto. Mismo criterio y mismo perdon si falla que
+    // en api/users.js.
+    const huella = await avatarCompuesto.asegurarSinFallar(sql, revision.avatar);
+
     const fila = await sql`
-      INSERT INTO saved_avatars (user_id, slot, avatar)
-      VALUES (${userId}, ${slotNum}, ${JSON.stringify(revision.avatar)})
+      INSERT INTO saved_avatars (user_id, slot, avatar, avatar_compuesto)
+      VALUES (${userId}, ${slotNum}, ${JSON.stringify(revision.avatar)}, ${huella})
       ON CONFLICT (user_id, slot)
-      DO UPDATE SET avatar = ${JSON.stringify(revision.avatar)}, updated_at = now()
-      RETURNING id, slot, avatar;
+      DO UPDATE SET avatar = ${JSON.stringify(revision.avatar)},
+                    avatar_compuesto = ${huella},
+                    updated_at = now()
+      RETURNING id, slot, avatar, avatar_compuesto;
     `;
 
     // Reemplazar el diseño de un casillero limpia los votos viejos:
