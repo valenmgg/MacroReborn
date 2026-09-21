@@ -989,10 +989,12 @@ async function comments(req, res) {
         nombreAutor
       );
     }
+    // Sin punto final: la plantilla de notificarMencionesServidor lo pone.
+    // Con los dos, cada mención llegaba terminada en dos puntos.
     await notificarMencionesServidor(
       texto.trim(),
       nombreAutor,
-      `en un comentario en el perfil de ${profileUsername}.`
+      `en un comentario en el perfil de ${profileUsername}`
     );
 
     // Push en tiempo real: avisa a quien tenga el perfil abierto (el
