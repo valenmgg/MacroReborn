@@ -14,9 +14,9 @@
 //      hoy apilando quince <img>, o el día del cambio los avatares de
 //      181 personas cambiarían de aspecto. Eso sería un cambio de
 //      producto disfrazado de cambio técnico.
-//   3. EL FORMATO SIGUE AL CONTENIDO. JPG no tiene alfa. Un avatar sin
-//      capa de fondo tiene que salir en PNG o se le pinta encima un
-//      rectángulo que nadie pidió.
+//   3. EL FONDO CUANDO NO LO HAY. JPG no tiene alfa, asi que un avatar
+//      sin capa de fondo se aplana sobre blanco. Si no se aplanara,
+//      esos pixeles saldrian negros, que es lo que hay en memoria.
 //   4. LA MISMA RECETA, LOS MISMOS BYTES. La URL va a llevar la huella
 //      del contenido y se va a cachear un año. Si componer dos veces
 //      diera dos resultados, esa caché serviría basura.
@@ -134,7 +134,7 @@ describe("apilar las capas", () => {
 
 });
 
-describe("el formato sigue al contenido", () => {
+describe("la salida", () => {
 
   test("con fondo opaco sale JPG", () => {
     const r = C.renderizar([pngLiso(40, 60, 80, 255)], [[62, 96]]);
@@ -148,19 +148,28 @@ describe("el formato sigue al contenido", () => {
     assert.equal(jpg[jpg.length - 1], 0xD9);
   });
 
-  test("sin fondo sale PNG, porque JPG no tiene alfa", () => {
-    // Son 6 de 117 avatares hoy. En JPG se les pintaría encima un
-    // rectángulo de color que nadie eligió.
+  test("sin fondo TAMBIEN sale JPG, aplanado sobre blanco", () => {
+    // Decidido el 21/09/2026: un solo formato, sin una rama aparte que
+    // mantener. Son 6 de 117 avatares, y veran un rectangulo blanco
+    // donde antes se veia la pagina.
     const r = C.renderizar([pngConCaja(200, 50, 50, 100, 100, 50, 50)], [[62, 96]]);
-    assert.equal(r.formato, "png");
-    assert.equal(r.transparente, true);
-    assert.ok(lienzo.leerPixeles(r.salidas["62x96"]), "no es un PNG legible");
+    assert.equal(r.formato, "jpg");
+    assert.equal(r.transparente, true, "el aviso de que llevaba alfa se perdio");
+    assert.equal(r.salidas["62x96"][0], 0xFF);
   });
 
-  test("se puede forzar el formato, y entonces se aplana", () => {
-    const r = C.renderizar([pngConCaja(200, 50, 50, 100, 100, 50, 50)], [[62, 96]], { formato: "jpg" });
-    assert.equal(r.formato, "jpg");
-    assert.equal(r.salidas["62x96"][0], 0xFF);
+  test("y el hueco queda blanco, no negro", () => {
+    // Sin aplanar, jpeg-js ignora el alfa y escribe lo que haya en
+    // memoria detras, que es cero: negro. Es el fallo que no se ve en
+    // una comparacion de objetos y si en la cara de un avatar.
+    const plano = C.aplanar(C.componer([pngConCaja(200, 50, 50, 10, 10, 20, 20)]));
+    assert.deepStrictEqual(pixel(plano, 300, 480), [255, 255, 255, 255]);
+  });
+
+  test("se puede pedir PNG a proposito, y entonces conserva el alfa", () => {
+    const r = C.renderizar([pngConCaja(200, 50, 50, 100, 100, 50, 50)], [[62, 96]], { formato: "png" });
+    assert.equal(r.formato, "png");
+    assert.ok(lienzo.leerPixeles(r.salidas["62x96"]), "no es un PNG legible");
   });
 
   test("aplanar deja todo opaco y respeta el color de relleno", () => {

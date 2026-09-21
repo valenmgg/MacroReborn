@@ -33,11 +33,16 @@ const ALTO = lienzo.LIENZO_ALTO;
 // más y no se ven mejor.
 const CALIDAD = 80;
 
-// Con qué se rellena el hueco cuando no hay capa de fondo y aun así hay
-// que entregar un JPG, que no tiene alfa. Es el fondo oscuro del sitio.
-// No se usa en el camino normal: un avatar sin fondo sale en PNG, que
-// es el formato que corresponde a un dibujo con transparencia.
-const FONDO_POR_DEFECTO = { r: 17, g: 24, b: 39 };
+// Con qué se rellena el hueco cuando no hay capa de fondo. JPG no tiene
+// alfa, así que un avatar sin fondo necesita un color debajo o los
+// píxeles transparentes salen negros, que es lo que haya en memoria.
+//
+// Blanco, decidido el 21/09/2026. Son 6 de 117 avatares y 9 de 98
+// ranuras: quien no eligió fondo verá un rectángulo blanco donde antes
+// se veía la página. Es un cambio visible para esas personas, y se
+// aceptó a cambio de que TODO salga en el mismo formato, sin una rama
+// aparte que mantener.
+const FONDO_POR_DEFECTO = { r: 255, g: 255, b: 255 };
 
 // ------------------------------------------------------------------
 // MEZCLAR
@@ -108,7 +113,13 @@ function componer(pngs) {
 
   for (const png of pngs) {
     if (!png || !png.length) continue;
-    encimar(base, alLienzo(lienzo.leerPixeles(png)).rgba);
+    // La columna bytea llega como Buffer con el driver de Postgres y
+    // como Uint8Array con PGlite, que es el de los tests y el de la
+    // copia local. Buffer.from cubre los dos, y sin esto el mismo
+    // codigo funciona en produccion y falla en local, que es la peor
+    // forma de romperse. Mismo apaño que api/content.js.
+    const binario = Buffer.isBuffer(png) ? png : Buffer.from(png);
+    encimar(base, alLienzo(lienzo.leerPixeles(binario)).rgba);
   }
 
   return { rgba: base, ancho: ANCHO, alto: ALTO };
@@ -118,9 +129,9 @@ function componer(pngs) {
 // SALIDA
 // ------------------------------------------------------------------
 
-// ¿Queda algo transparente? Decide el formato: JPG no tiene alfa, así
-// que un avatar sin fondo tiene que salir en PNG o se le pinta un
-// rectángulo de color que no pidió. Son 6 de 117 hoy.
+// ¿Queda algo transparente? Ya no decide el formato, pero sí decide si
+// hay que aplanar antes de codificar, y se informa hacia fuera porque
+// quien mire una previsualización querrá saberlo.
 function tieneTransparencia(img) {
   for (let i = 3; i < img.rgba.length; i += 4) {
     if (img.rgba[i] !== 255) return true;
@@ -207,7 +218,10 @@ function renderizar(pngs, tamanos, opciones) {
   const op = opciones || {};
   const base = componer(pngs);
   const transparente = tieneTransparencia(base);
-  const formato = op.formato || (transparente ? "png" : "jpg");
+
+  // Siempre JPG salvo que se pida otra cosa. Lo que no lleve fondo se
+  // aplana sobre blanco: ver FONDO_POR_DEFECTO.
+  const formato = op.formato || "jpg";
 
   const salidas = {};
   for (const [ancho, alto] of tamanos) {
