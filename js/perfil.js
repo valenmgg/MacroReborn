@@ -1888,9 +1888,9 @@ document.getElementById("botonComentar")?.addEventListener("click", async ()=>{
   input.value="";
   await renderComentarios();
 
-  if(typeof notificarMenciones === "function" && usuarioActivo){
-    notificarMenciones(texto, usuarioActivo.nombre, "en un comentario en el perfil de " + datosUsuario.nombre + ".");
-  }
+  // La notificación de mención la crea el servidor al guardar el
+  // comentario (notificarMencionesServidor, en api/content.js) desde el
+  // 19/08/2026. Aquí se creaba también, y cada mención llegaba dos veces.
 
   // ==============================
   // LOGRO PRIMER COMENTARIO
