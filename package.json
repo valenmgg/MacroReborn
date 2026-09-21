@@ -11,7 +11,8 @@
     "test:smoke": "node scripts/smoke-local.js",
     "db:local": "node scripts/servidor-local.js",
     "db:traer": "node scripts/traer-base.js",
-    "db:real": "node scripts/servidor-local.js --real"
+    "db:real": "node scripts/servidor-local.js --real",
+    "revision:avatares": "node scripts/revision-avatares.js"
   },
   "repository": {
     "type": "git",

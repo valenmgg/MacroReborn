@@ -70,6 +70,22 @@ Irrelevante, porque se compone **al guardar** y no al mirar. Rehacer los
 | 327×504 | 91 kB | 36 kB de media |
 | 62×96 | 13 kB | 4 kB |
 
+
+**Cuánto cambia el dibujo al pasar por JPG de calidad 80.** Medido
+comparando el compuesto exacto contra el JPG decodificado, canal por
+canal, sobre seis avatares reales:
+
+| | |
+|---|---|
+| Desviación media | de 0,31 a 3,96 sobre 255 |
+| Desviación máxima | de 27 a 75 |
+| Píxeles que se desvían más de 16 | del 0,01 % al 2,54 % |
+
+La media es imperceptible. El máximo no lo es, y está donde se espera:
+en los bordes duros del trazo, que es el punto flojo de JPG y abunda en
+un dibujo de línea. Ese 0,5 % a 2,5 % de píxeles es lo que hay que mirar
+de cerca antes de dar la calidad por buena. Subir a 92 lo reduce y pesa
+un 60 % más; `npm run revision:avatares -- --calidad 92` deja verlo.
 **Lo que gana la página de comunidad**, que hoy pinta 181 tarjetas:
 
 | | Bytes |
@@ -97,7 +113,7 @@ Por eso importa servir cada tamaño en su sitio.
 | Formato | **JPG**. No hace falta transparencia y pesa la mitad |
 | Calidad | 80. A 88 pesa un 30 % más sin verse mejor |
 | Tamaños | 62×96 para listas, 327×504 para el perfil |
-| Sin capa de fondo | PNG, porque sin fondo sí hace falta alfa. Son 6 de 117 |
+| Sin capa de fondo | **JPG aplanado sobre blanco**. Son 6 de 117 y 9 de 98 ranuras |
 | Codificador | `jpeg-js`: JavaScript puro, cero dependencias, sin binario nativo |
 | Dónde se guardan | **En disco**, no en Postgres. Ver 4 |
 | Cuándo se componen | Al guardar el avatar |
@@ -186,6 +202,27 @@ Contra el arte de verdad, en el VPS, el 21/09/2026:
   de lo que depende poder cachear la URL un año.
 - Dos de esos diez salieron en PNG por no llevar fondo, que es
   exactamente lo previsto.
+
+### Cómo mirarlo con los ojos
+
+Las pruebas dicen que el orden y el alfa están bien, pero no dicen si el
+avatar se ve como se veía. Eso lo dice el ojo, y para eso está
+`npm run revision:avatares`.
+
+Arma una página donde cada avatar sale dos veces: a la izquierda las
+capas apiladas como las apila hoy el navegador, a la derecha la sola
+imagen del servidor. Si las dos columnas se ven iguales, el cambio no
+altera el producto.
+
+```
+npm run revision:avatares                     doce, de datos-locales
+npm run revision:avatares -- --cuantos 40
+npm run revision:avatares -- --calidad 92
+```
+
+Escribe en `revision-avatares/`, fuera de git porque lleva arte dentro.
+La copia de `datos-locales` envejece rápido: si algo no cuadra, correr
+antes `npm run db:traer`.
 ### Fase 2 — Guardar y servir
 
 - Migración: una columna con la huella del compuesto en `users` y en

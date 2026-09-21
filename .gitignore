@@ -11,6 +11,11 @@ datos-locales/
 revision-lienzo.html
 revision-lienzo/
 
+# Pagina para mirar a ojo los avatares compuestos por el servidor
+# (npm run revision:avatares). Se mira y se borra; no tiene por que
+# existir en el repo ni desplegarse. Ademas lleva arte dentro.
+revision-avatares/
+
 # Imagen temporal para un anuncio de Discord. Se hace, se captura y se borra.
 anuncio-*.html
 
