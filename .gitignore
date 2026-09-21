@@ -22,3 +22,27 @@ anuncio-*.html
 # llevan preferencias personales y un correo. Si algun dia el repo pasa
 # a privado, se puede reconsiderar.
 memoria-claude/
+
+# Los dibujos de las prendas de avatar: las seis carpetas de modelo y el
+# dibujo base de cada modelo. Desde la migración 018 el sitio los sirve
+# desde la base de datos (avatar_archivos), así que estos PNG son las
+# copias originales, no lo que ve nadie. Salieron de git el 21/09/2026
+# porque el repositorio es público y con `git clone` se llevaban el
+# catálogo entero. Se conservan en el disco de quien trabaja (son los
+# originales tal como los entregó el equipo de dibujo, antes del horno de
+# autoría) y en la copia de Drive. Ver docs/ARTE.md y docs/RETOMAR.md.
+#
+# Ojo: siguen en el historial de GitHub hasta ese día. Sacarlos de ahí
+# requiere reescribir el historial (docs/AUDITORIA.md, punto 75).
+imagenes/tora/
+imagenes/cereza/
+imagenes/max/
+imagenes/fiora/
+imagenes/fengchao/
+imagenes/fenglei/
+imagenes/tora.png
+imagenes/cereza.png
+imagenes/max.png
+imagenes/fiora.png
+imagenes/fengchao.png
+imagenes/fenglei.png
