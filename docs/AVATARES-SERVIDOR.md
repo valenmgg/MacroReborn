@@ -169,7 +169,7 @@ rompen nada mientras tanto.
 | # | Estado | Fase | Qué entra | Rompe algo |
 |---|---|---|---|---|
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
-| 2 | - | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
+| 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | - | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto | No |
 | 4 | - | Las previsualizaciones | 768 recortes sobre modelo vacío, para editor y tienda | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
@@ -227,9 +227,17 @@ antes `npm run db:traer`.
 
 - Migración: una columna con la huella del compuesto en `users` y en
   `saved_avatars`. Nada de imágenes en la base.
-- Los archivos van a `~/avatares/<huella>/<tam>.jpg`, fuera del
-  repositorio para que un despliegue no los toque. La ruta se configura
-  con `MR_AVATARES_DIR` para que el servidor local use la suya.
+- Los archivos van a `datos-locales/avatares-compuestos/<hu>/<huella>/`,
+  la misma ruta en el servidor y en local. `datos-locales/` ya está en
+  `.gitignore`, y git no borra lo ignorado ni con `reset --hard`, así
+  que un despliegue no los toca. Se reparten en subcarpetas por los dos
+  primeros caracteres de la huella: con una sola carpeta, decenas de
+  miles de archivos hacen lento cualquier listado.
+- **La misma ruta por defecto en los dos sitios, y sin variable de
+  entorno en producción.** `MR_AVATARES_DIR` existe solo para los tests.
+  Si el servidor web y el script de relleno pudieran discrepar sobre
+  dónde están los archivos, el fallo sería invisible hasta que alguien
+  viera un avatar roto.
 - La huella es el `sha256` de la receta: la lista ordenada de capas con
   la huella del archivo de cada prenda. Cambia exactamente cuando
   cambiaría el dibujo, ni antes ni después. Dos personas con el mismo
