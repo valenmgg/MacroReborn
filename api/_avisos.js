@@ -240,12 +240,14 @@ async function avisar(canal, evento, datos) {
 
 // ---------- NOMBRES DE CANAL ----------
 
-// Igual que el de api/_pusher.js, y publico por el mismo motivo que
-// entonces: cualquiera que adivine un nombre de usuario puede escuchar
-// que "a fulano le paso algo", pero no leer nada, porque el contenido
-// sigue pidiendose por /api/content con el usuario correcto. Se conserva
-// tal cual para no cambiar el modelo de seguridad de paso: si algun dia
-// hace falta mas privacidad, es un cambio aparte y a conciencia.
+// Igual que el de api/_pusher.js, y el nombre sigue siendo publico:
+// cualquiera que adivine un nombre de usuario puede pedir su canal. Lo
+// que ya NO es publico es todo lo que viaja por el: desde el 21/09/2026
+// api/_avisos-sse.js solo entrega nueva-notificacion y estado-bloqueo
+// por la linea que trae un pase de su dueno. El comentario que habia
+// aqui decia que por el canal no se podia "leer nada"; era verdad con
+// Pusher, que mandaba un toque sin contenido, y dejo de serlo cuando la
+// notificacion entera empezo a viajar dentro del aviso.
 function canalNotificaciones(username) {
   return "notificaciones-" + String(username).toLowerCase();
 }
