@@ -55,7 +55,7 @@ que pueden costar una cuenta de usuario o el sitio entero.
 |---|---|---|---|---|---|
 | 1 | - | Seguridad | 109 de 113 juegos se sirven desde el propio origen, sin `sandbox`. 177 referencias a ramas mutables de GitHub pueden leer el token de sesión de quien juega | `js/jugar.js:60` | 1 tarde + probar juegos |
 | 2 | 2026-09-18 | Seguridad | XSS en los reportes: `contentTexto` es texto libre y se pinta sin escapar dentro del navegador de un administrador | `js/admin.js:583` | 30 min |
-| 3 | - | Seguridad | `/api/avisos` no pide sesión: cualquiera lee en vivo las notificaciones y la presencia de cualquiera | `api/_avisos-sse.js:71` | 1 h |
+| 3 | 2026-09-21 | Seguridad | `/api/avisos` no pide sesión: cualquiera lee en vivo las notificaciones y la presencia de cualquiera | `api/_avisos-sse.js:71` | 1 h |
 | 4 | 2026-09-18 | Seguridad | XSS almacenado en la biografía: se ejecuta en todo el que abra la comunidad | `js/comunidad-ranking.js:398` | 15 min |
 | 5 | 2026-09-18 | Seguridad | XSS dirigido por notificación: cualquiera se la manda a quien quiera | `js/notificaciones.js:179` | 15 min |
 | 6 | - | Seguridad | No hay `Content-Security-Policy` en ninguna parte. Es la red que falta bajo los cuatro anteriores | nginx | 1 h |
@@ -79,6 +79,14 @@ identidad de todos los commits, obliga a resincronizar el servidor y no
 recupera lo que ya se hubiera clonado, así que se acepta que el arte
 anterior a esa fecha siga en el historial. Lo que protege de verdad ya
 está en pie: la ruta por huella y la autoría dentro de cada PNG.
+
+**Nota al 3.** Hecho el 21/09/2026, pero no pidiendo sesión para abrir la
+línea: `EventSource` no manda cabeceras, y un visitante anónimo mirando un
+perfil tiene que seguir viendo los comentarios al vuelo. Lo que se cerró es
+que el buzón y los bloqueos solo salen por la línea que trae un pase de un
+minuto de su dueño (`api/_auth.js`, "EL PASE"). La "presencia" del texto es
+el latido de última conexión, y se dejó pública porque el perfil ya la
+enseña a cualquiera: si eso cambia, es el punto 57.
 
 ---
 

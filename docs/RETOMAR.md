@@ -211,17 +211,17 @@ catorce revisiones en paralelo más una del servidor en vivo. Salieron 74
 cosas por arreglar, y están todas en **`docs/AUDITORIA.md`**, ordenadas
 por importancia y con una columna de estado para ir marcándolas.
 
-De las catorce urgentes del bloque 1, **diez están hechas** (2, 4, 5, 7,
-8, 9, 10, 11, 13 y 14): tres XSS almacenados, tres agujeros de
+De las catorce urgentes del bloque 1, **once están hechas** (2, 3, 4, 5,
+7, 8, 9, 10, 11, 13 y 14): tres XSS almacenados, tres agujeros de
 autorización, el proceso que se podía tumbar con una URL, la barra de
-más que sacaba el arte, los commits publicados en GitHub y las prendas
-fuera del árbol del repositorio.
+más que sacaba el arte, los commits publicados en GitHub, las prendas
+fuera del árbol del repositorio, y el buzón que cualquiera leía en vivo
+por `/api/avisos`.
 
-**Quedan cuatro, y este es el orden que tenía sentido:**
+**Quedan tres, y este es el orden que tenía sentido:**
 
 | # | Qué falta | Notas |
 |---|---|---|
-| 3 | Pedir sesión en `/api/avisos` | Hoy cualquiera lee en vivo las notificaciones de cualquiera |
 | 6 | Poner una `Content-Security-Policy` en nginx | Empezar en `Report-Only` para ver qué rompe |
 | 1 | `sandbox` en el iframe de los juegos | Hay que probar juego por juego; algunos perderán su guardado local |
 | 12 | Versión de sesión en el token | Decidido: **hay que cerrar todas las sesiones**. Migración nueva |
