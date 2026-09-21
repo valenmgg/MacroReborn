@@ -356,3 +356,70 @@ baja entero con una petición.
 - **Rehornear la autoría cambia el `sha256` de cada prenda**, y por tanto
   la huella de cada receta que la use. Después de un rehorneado hay que
   volver a componer. Es el mismo aviso que ya daba `docs/ARTE.md` 2.
+
+---
+
+## 8. La forma de la URL: decision abierta
+
+Planteado el 21/09/2026, sin decidir. Hoy la URL es
+`/avatares/<huella de la receta>/<tam>.jpg`, y eso tiene dos costes que
+no se ven hasta que llevas un tiempo:
+
+- **Nadie puede encontrar su propia imagen** sin consultar la base. Para
+  responder "por que el avatar de fulano se ve mal" hace falta una
+  consulta, no escribir su nombre.
+- **Los archivos viejos se quedan.** Cada vez que alguien se cambia de
+  ropa nace una imagen y la anterior queda huerfana. Son unos 45 kB por
+  cambio. Hoy da igual, con 56 GB libres, pero es una tarea de limpieza
+  que alguien tendra que escribir.
+
+### Lo que hacia macrojuegos, leido del archivo el 21/09/2026
+
+Consultado el indice CDX de la Wayback Machine sobre
+`av1.na.macrojuegos.com`, 600 URL reales:
+
+```
+/users/<id redondeado a miles>/<id>/little.jpg    540 de 600
+/users/1021000/1021181/little.jpg?r=154487401
+/users/1021000/1021181/little.jpg?r=955152952
+```
+
+| | |
+|---|---|
+| Tamanos | `little` 540, `normal` 43, `full` 17 |
+| URL con `?r=` | 39 de 600 |
+| Reparto | av0 a av9, diez hosts |
+
+**El dato que decide**: el MISMO usuario aparece con dos `?r=`
+distintos. O sea que la ruta era estable y la version viajaba en la
+cadena de consulta. No tenian una URL fija a secas: tenian una ruta fija
+mas un invalidador, porque sin el una imagen cacheada no se renueva
+nunca.
+
+Y el reparto de tamanos confirma lo medido aqui: el 90 % de lo que
+servian era la miniatura.
+
+### La sintesis que propongo, cuando se decida
+
+`/avatares/<id de usuario>/<tam>.jpg?v=<12 primeros de la huella>`
+
+- La ruta base es legible y se deriva del usuario: quien quiera mirar su
+  avatar escribe la ruta sin `?v=` y ve el actual.
+- El `?v=` conserva el cacheado de un ano con `immutable`, porque cambia
+  cuando cambia el dibujo. Es el mismo patron que el sitio ya usa en
+  `js/core.js?v=20260918`, y el que usaba macrojuegos.
+- **Se acaban los huerfanos**: el archivo se sobrescribe.
+- Se pierde la deduplicacion, que hoy ahorra 51 archivos de 215. Son 2,7
+  MB. No importa.
+
+**El id y no el nombre de usuario**, aunque el nombre seria mas legible.
+Medido sobre las 181 cuentas: 14 llevan caracteres que no caben en una
+URL sin escapar (espacios, `ñ`, unicode matematico, emoji), y hay dos
+pares que solo se distinguen por mayusculas (`yotter`/`Yotter`,
+`jader`/`Jader`), asi que una ruta insensible a mayusculas los pisaria.
+macrojuegos uso el id por lo mismo.
+
+**Lo que hay que tocar si se hace**: `api/_avatar-compuesto.js` (nombre y
+ruta), el bloque de nginx, y nada mas, porque todavia no hay ninguna
+pagina que consuma estas URL. **Hacerlo antes de la fase 3 cuesta una
+tarde; hacerlo despues cuesta tocar los diez archivos otra vez.**
