@@ -249,6 +249,38 @@ antes `npm run db:traer`.
 - Un script de relleno para los 215 que ya existen, y que se pueda
   volver a correr sin duplicar nada.
 
+
+### Lo que se hizo y se midió al cerrar la fase 2
+
+Desplegado el 21/09/2026, en este orden, que importa: **la migración va
+antes que el código**, porque el código nuevo escribe en una columna que
+hasta entonces no existe.
+
+| | |
+|---|---|
+| Avatares compuestos en el relleno | 215, cero fallos, 28 segundos |
+| Huellas distintas para esas 215 filas | 164 |
+| En disco | 8,9 MB en 328 archivos |
+| Temporales sin renombrar | 0 |
+
+Las 164 huellas para 215 filas son 51 avatares idénticos a otro, que
+comparten archivo sin que nadie lo programara. Sale del diseño de la
+huella.
+
+**Dos cosas que muerden y que costaron un susto:**
+
+- **Un respaldo de la configuración de nginx NO puede vivir dentro de
+  `sites-enabled/`.** nginx lee ese directorio entero, así que el
+  respaldo se carga como un segundo servidor en el mismo puerto y
+  `nginx -t` falla con `duplicate listen options`. Peor: la vuelta atrás
+  también falla, y el sitio se queda funcionando con la configuración
+  vieja en memoria mientras cualquier recarga futura, incluida la de la
+  renovación del certificado, reventaría. Los respaldos van a
+  `/etc/nginx/respaldos/`.
+- **`add_header` dentro de un `location` cancela todos los del
+  `server`.** Medido antes de tocar nada: la portada devolvía las cuatro
+  cabeceras de seguridad y `/prendas/`, `/imagenes/` y los `.css`/`.js`
+  devolvían cero. Arreglado de paso.
 ### Fase 3 — Las listas
 
 Aquí es donde se gana el 92 %. Los endpoints devuelven la URL del
