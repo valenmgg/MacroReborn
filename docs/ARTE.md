@@ -266,4 +266,5 @@ El análisis completo de su sistema está en la memoria del proyecto.
   21/09/2026 (636 archivos, commit `bbe813a`), pero están ahí desde el
   23/07/2026 y con `git clone` se bajan igual. Sacarlas requiere
   reescribir el historial y pedir a GitHub que purgue lo que ya sirvió
-  (`docs/AUDITORIA.md`, punto 75).
+  (`docs/AUDITORIA.md`, punto 75). Descartado el 21/09/2026: se acepta
+  que el arte anterior a esa fecha siga en el historial.

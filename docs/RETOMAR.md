@@ -217,8 +217,7 @@ autorización, el proceso que se podía tumbar con una URL, la barra de
 más que sacaba el arte, los commits publicados en GitHub y las prendas
 fuera del árbol del repositorio.
 
-**Quedan cuatro, más una decisión nueva, y este es el orden que tenía
-sentido:**
+**Quedan cuatro, y este es el orden que tenía sentido:**
 
 | # | Qué falta | Notas |
 |---|---|---|
@@ -226,7 +225,7 @@ sentido:**
 | 6 | Poner una `Content-Security-Policy` en nginx | Empezar en `Report-Only` para ver qué rompe |
 | 1 | `sandbox` en el iframe de los juegos | Hay que probar juego por juego; algunos perderán su guardado local |
 | 12 | Versión de sesión en el token | Decidido: **hay que cerrar todas las sesiones**. Migración nueva |
-| 75 | Sacar las prendas del historial de GitHub | Decisión pendiente. El árbol está limpio desde el 21/09/2026 y el repositorio sigue público a propósito |
+| 75 | Sacar las prendas del historial de GitHub | **Descartado** el 21/09/2026: se acepta que el arte anterior a esa fecha siga en el historial |
 
 ## 6. Lo que muerde si no se sabe
 
