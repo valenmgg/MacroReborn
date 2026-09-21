@@ -20,7 +20,8 @@
 // `res` de mentira que responde de una sola vez. Aqui hace falta
 // exactamente lo contrario: el `res` de verdad, y no cerrarlo.
 
-const { suscribir } = require("./_avisos");
+const { suscribir, canalNotificaciones } = require("./_avisos");
+const { verificarPase } = require("./_auth");
 
 // Techo de conexiones abiertas POR PROCESO. Antes este riesgo lo absorbia
 // Pusher; ahora lo absorbe una maquina de 950 MB. Una conexion ociosa
@@ -48,6 +49,30 @@ const LATIDO_MS = 25000;
 // esa conexion se corta: es preferible que se reconecte y vuelva a pedir
 // a que se coma la RAM del proceso.
 const TOPE_PENDIENTE = 1024 * 1024;
+
+// ==============================
+// QUIEN PUEDE OIR QUE
+// ==============================
+// Por el canal de una persona viajan siete avisos, y no todos son de la
+// misma naturaleza. Dos son suyos y de nadie mas: nueva-notificacion
+// lleva dentro el titulo y el texto de lo que le acaba de llegar al
+// buzon, y estado-bloqueo dice quien la bloqueo o desbloqueo. Los otros
+// cinco -comentarios, actividad, historial, logros y el latido de
+// "ultima conexion"- son lo que su perfil ya ensena a cualquiera que lo
+// abra, con cuenta o sin ella.
+//
+// Asi que la linea NO pide sesion para abrirse: un visitante anonimo
+// mirando un perfil sigue viendo aparecer los comentarios al vuelo, como
+// hasta ahora. Lo que cambia es que los dos avisos privados SOLO salen
+// por la linea que demostro ser de su dueno con un pase (api/_auth.js,
+// "EL PASE"). Por cualquier otra linea se callan.
+//
+// Antes salian por todas. El canal siempre fue publico a proposito, y con
+// Pusher no pasaba nada porque el aviso era un toque sin contenido; al
+// sustituirlo, la notificacion entera empezo a viajar dentro y nadie
+// volvio a mirar quien escuchaba. Cualquiera podia abrir
+// "notificaciones-fulano" y leer el buzon de fulano en vivo.
+const EVENTOS_PRIVADOS = new Set(["nueva-notificacion", "estado-bloqueo"]);
 
 let abiertas = 0;
 
@@ -78,6 +103,22 @@ function atender(req, res, url) {
   if (canales.length === 0) {
     res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
     return res.end(JSON.stringify({ success: false, error: "Falta ?canales=" }));
+  }
+
+  // De quien es esta linea. Sin pase, de nadie: anonima, y solo oye lo
+  // publico. Con un pase malo o caducado, 401 y no 403: EventSource se
+  // rinde ante cualquier codigo que no sea 200, y js/avisos.js entiende
+  // esa rendicion como "pide otro pase y vuelve", que es justo lo que
+  // hace falta cuando el pase caduco durante una reconexion.
+  const pase = url.searchParams.get("pase");
+  let canalPropio = null;
+  if (pase) {
+    const quien = verificarPase(pase);
+    if (!quien) {
+      res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ success: false, error: "Pase no valido o caducado" }));
+    }
+    canalPropio = canalNotificaciones(quien.username);
   }
 
   if (!haySitio()) {
@@ -122,6 +163,9 @@ function atender(req, res, url) {
   // en el perfil ajeno repintaria tambien el propio.
   function escribir(canal, evento, datos) {
     if (cerrado) return;
+
+    // Lo privado solo sale por la linea de su dueno. El resto, por todas.
+    if (EVENTOS_PRIVADOS.has(evento) && canal !== canalPropio) return;
 
     // El navegador dejo de leer y lo pendiente ya no cabe: se corta. Como
     // EventSource reconecta solo, esto se ve como un parpadeo, no como
@@ -172,6 +216,7 @@ module.exports = {
   cuantasAbiertas,
   haySitio,
   canalesPedidos,
+  EVENTOS_PRIVADOS,
   TOPE_CONEXIONES,
   TOPE_CANALES,
   TOPE_NOMBRE,

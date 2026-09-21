@@ -13,6 +13,8 @@
 //
 // Correr:  npm test
 
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+
 const { test, describe, beforeEach, after } = require("node:test");
 const assert = require("node:assert");
 const http = require("node:http");
@@ -179,13 +181,15 @@ describe("la conexión abierta", () => {
 describe("lo que llega por la línea", () => {
 
   test("un aviso sale como un evento con sus datos", async () => {
+    // Con un evento público de muestra: por una línea sin pase el buzón
+    // ya no sale, y eso se prueba aparte en "quién puede oír qué".
     const { res } = abrir("notificaciones-luis");
     res.escrito = "";
 
-    await avisos.avisar("notificaciones-luis", "nueva-notificacion", { titulo: "Hola" });
+    await avisos.avisar("notificaciones-luis", "nuevo-logro", { titulo: "Hola" });
 
     assert.equal(res.escrito,
-      'event: nueva-notificacion\ndata: {"canal":"notificaciones-luis","datos":{"titulo":"Hola"}}\n\n');
+      'event: nuevo-logro\ndata: {"canal":"notificaciones-luis","datos":{"titulo":"Hola"}}\n\n');
   });
 
   test("y cada aviso dice por que canal vino", async () => {
@@ -223,7 +227,7 @@ describe("lo que llega por la línea", () => {
     const { res } = abrir("notificaciones-luis");
     res.escrito = "";
 
-    await avisos.avisar("notificaciones-luis", "nueva-notificacion", {
+    await avisos.avisar("notificaciones-luis", "nuevo-comentario", {
       mensaje: "primera\nsegunda\n\ntercera"
     });
 
@@ -357,4 +361,109 @@ describe("contra un servidor de verdad", () => {
     await new Promise(seguir => setTimeout(seguir, 50));
     assert.equal(avisos.cuantosEscuchan("notificaciones-luis"), 0, "no se soltó al cerrar el cliente");
   });
+});
+
+// ---------- quién puede oír qué ----------
+
+const { crearPase, crearToken } = require("../api/_auth");
+
+// La misma conexión de abrir(), pero con un pase en la URL.
+function abrirConPase(canales, pase) {
+  const req = reqFalso("GET");
+  const res = resFalso();
+  const url = urlDe("/api/avisos?canales=" + canales + (pase ? "&pase=" + encodeURIComponent(pase) : ""));
+  const cerrar = sse.atender(req, res, url);
+  abiertas.push({ req, res, cerrar });
+  return { req, res, cerrar };
+}
+
+const luis = { sub: 7, username: "Luis" };
+
+describe("quién puede oír qué", () => {
+
+  test("sin pase, el buzón de una persona no sale por la línea", async () => {
+    // Esto es lo que estaba abierto: cualquiera, sin cuenta, abría
+    // "notificaciones-fulano" y leía las notificaciones de fulano en
+    // vivo, con su texto dentro.
+    const { res } = abrir("notificaciones-luis");
+    res.escrito = "";
+    await avisos.avisar("notificaciones-luis", "nueva-notificacion", { titulo: "Te mencionaron", mensaje: "..." });
+    assert.equal(res.escrito, "");
+  });
+
+  test("ni quién la bloqueó", async () => {
+    const { res } = abrir("notificaciones-luis");
+    res.escrito = "";
+    await avisos.avisar("notificaciones-luis", "estado-bloqueo", { bloqueado: true, por: "pepe" });
+    assert.equal(res.escrito, "");
+  });
+
+  test("pero lo que el perfil enseña a cualquiera sigue saliendo", async () => {
+    // Un visitante anónimo mirando un perfil ve aparecer los comentarios
+    // al vuelo, como hasta ahora. Los avisos públicos, uno a uno.
+    const { res } = abrir("notificaciones-luis");
+    for (const evento of ["nuevo-comentario", "comentarios-vaciados", "nueva-actividad", "nuevo-historial", "nuevo-logro", "latido"]) {
+      res.escrito = "";
+      await avisos.avisar("notificaciones-luis", evento, { x: 1 });
+      assert.ok(res.escrito.startsWith("event: " + evento + "\n"), evento + " no salió por la línea anónima");
+    }
+  });
+
+  test("con pase, el buzón propio llega entero", async () => {
+    const { res } = abrirConPase("notificaciones-luis", crearPase(luis));
+    res.escrito = "";
+    await avisos.avisar("notificaciones-luis", "nueva-notificacion", { titulo: "Hola" });
+    assert.equal(res.escrito,
+      'event: nueva-notificacion\ndata: {"canal":"notificaciones-luis","datos":{"titulo":"Hola"}}\n\n');
+  });
+
+  test("y el nombre se compara como lo compara el canal: en minúsculas", async () => {
+    // El token lleva el nombre como se registró; el canal va en
+    // minúsculas. Comparado tal cual, nadie con una mayúscula en el
+    // nombre volvería a ver una notificación en vivo.
+    const { res } = abrirConPase("notificaciones-luis", crearPase({ sub: 7, username: "LUIS" }));
+    res.escrito = "";
+    await avisos.avisar("notificaciones-luis", "nueva-notificacion", { titulo: "Hola" });
+    assert.ok(res.escrito.includes("Hola"));
+  });
+
+  test("con pase, el buzón ajeno sigue callado aunque se pida su canal", async () => {
+    // usuario.html pide dos canales por la misma línea: el propio y el
+    // del perfil que se mira. Del ajeno tienen que llegar los comentarios
+    // y no las notificaciones.
+    const { res } = abrirConPase("notificaciones-luis,notificaciones-pepe", crearPase(luis));
+    res.escrito = "";
+    await avisos.avisar("notificaciones-pepe", "nueva-notificacion", { titulo: "Secreto de pepe" });
+    assert.equal(res.escrito, "", "llegó el buzón de otra persona");
+    await avisos.avisar("notificaciones-pepe", "nuevo-comentario", { id: 3 });
+    assert.ok(res.escrito.startsWith("event: nuevo-comentario\n"), "el comentario ajeno no llegó");
+  });
+
+  test("un pase que no vale: 401, y no queda nada abierto ni apuntado", () => {
+    const { res } = abrirConPase("notificaciones-luis", "esto-no-es-un-pase");
+    assert.equal(res.codigo, 401);
+    assert.equal(sse.cuantasAbiertas(), 0);
+    assert.equal(avisos.cuantasEscuchas(), 0);
+  });
+
+  test("un pase caducado: 401", () => {
+    const { res } = abrirConPase("notificaciones-luis", crearPase(luis, -1));
+    assert.equal(res.codigo, 401);
+  });
+
+  test("la sesión de siete días en la URL no es un pase: 401", () => {
+    // Si valiera, el token de sesión acabaría en el registro de nginx,
+    // que es justo lo que el pase existe para evitar.
+    const { res } = abrirConPase("notificaciones-luis", crearToken({ id: 7, username: "Luis" }));
+    assert.equal(res.codigo, 401);
+  });
+
+  test("un pase vacío en la URL es lo mismo que no traerlo", async () => {
+    const { res } = abrirConPase("notificaciones-luis", "");
+    assert.equal(res.codigo, 200);
+    res.escrito = "";
+    await avisos.avisar("notificaciones-luis", "nuevo-logro", {});
+    assert.ok(res.escrito.startsWith("event: nuevo-logro\n"));
+  });
+
 });
