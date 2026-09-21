@@ -670,6 +670,7 @@ una librería en el servidor, que SSE no necesita.
 | `api/_avisos.js` | El reparto. `avisar(canal, evento, datos)` y el registro de quién escucha qué. No sabe nada de HTTP, que es lo que deja probarlo sin levantar un servidor. |
 | `api/_avisos-sse.js` | La cara HTTP: `/api/avisos`, donde el navegador deja la línea abierta. |
 | `js/avisos.js` | La mitad del navegador. `MRAvisos.escuchar(canal, evento, fn)`. |
+| `api/_auth.js` | El pase de un minuto con el que la línea demuestra de quién es. |
 | `js/realtime.js`, `js/perfil-realtime.js`, `js/usuario.js` | Los tres que escuchan. |
 
 `/api/avisos` **no pasa por el despacho de `/api/` de `server.js`**: ese
@@ -742,6 +743,39 @@ guarda en ningún sitio— quien vuelve de una caída tiene que volver a
 pedir. De ahí `MRAvisos.alReconectar()`, que los tres ficheros usan para
 repescar la campanita, los comentarios, la actividad y los logros.
 
+### Quién puede oír qué
+
+Por el canal de una persona viajan siete avisos, y no todos son de la
+misma naturaleza. Dos son suyos y de nadie más: `nueva-notificacion`
+lleva dentro el título y el texto de lo que acaba de llegar al buzón, y
+`estado-bloqueo` dice quién la bloqueó o desbloqueó. Los otros cinco son
+lo que su perfil ya enseña a cualquiera que lo abra, con cuenta o sin ella.
+
+Hasta el 21 de septiembre de 2026 los siete salían por cualquier línea:
+bastaba pedir `notificaciones-fulano` sin cuenta para leer el buzón de
+fulano en vivo. El nombre del canal era público a propósito desde los
+tiempos de Pusher, cuando el aviso era un toque sin contenido; al
+sustituirlo, la notificación entera empezó a viajar dentro y nadie volvió
+a mirar quién escuchaba.
+
+Ahora la línea sigue sin pedir sesión para abrirse, porque un visitante
+anónimo mirando un perfil tiene que seguir viendo los comentarios al
+vuelo. Lo que cambia es que los dos avisos privados **solo salen por la
+línea que demostró ser de su dueño**.
+
+Demostrarlo tiene truco: `EventSource` no puede mandar cabeceras, así que
+la línea no puede llevar la sesión como el resto de la API, y meter el
+token de siete días en la URL lo dejaría en el registro de nginx durante
+dos semanas. En su lugar, `js/avisos.js` pide primero un **pase de un
+minuto** por `/api/content?action=avisos-pase`, con la cabecera de
+siempre, y abre la línea con `&pase=...` en la URL. El pase lleva la
+misma firma que la sesión pero un `uso` que la sesión rechaza y el pase
+exige: ninguno vale por el otro (`api/_auth.js`, "EL PASE").
+
+Pase malo o caducado: 401. Es 401 y no 403 a propósito: `EventSource` se
+rinde ante cualquier código que no sea 200, y el reintento a mano de
+`js/avisos.js` entiende esa rendición como "pide otro pase y vuelve".
+
 ### Cómo probarlo
 
 Automático, con `npm run test:smoke`: abre la conexión como un navegador,
@@ -753,9 +787,18 @@ A mano:
 
 1. `npm run db:local` y entrar como `demo` / `demo1234`.
 2. Abrir DevTools → Network, filtrar por `avisos`. Debe aparecer **una**
-   petición a `/api/avisos?canales=notificaciones-demo` en estado
+   petición a `/api/avisos?canales=notificaciones-demo&pase=...` en estado
    pendiente, que no termina. Una sola, aunque la página cargue varios
    ficheros que escuchan.
 3. En la pestaña Response se ve llegar `: latido` cada 25 segundos.
-4. Sin haber entrado, esa petición **no** debe existir: quien no tiene
-   sesión no abre conexión.
+4. Sin haber entrado, en la portada esa petición **no** debe existir:
+   quien no tiene sesión no abre conexión allí. En un perfil sí se abre,
+   sin `pase`, para repintar comentarios y actividad al vuelo.
+5. Justo antes de la línea tiene que verse una petición a
+   `/api/content?action=avisos-pase` que devuelve el pase. Sin sesión,
+   esa petición contesta 401.
+6. Desde una terminal, `curl -N "http://localhost:3001/api/avisos?canales=notificaciones-demo"`
+   deja una línea anónima abierta sobre el canal de demo. Mandarle una
+   notificación a demo desde otra cuenta: por esa línea no debe llegar
+   nada, y en la pestaña de demo sí. Un comentario en el perfil de demo,
+   en cambio, llega por las dos.
