@@ -155,6 +155,7 @@ const {
 // Por el mismo motivo: la resolucion de la ruta estatica se comparte y
 // se prueba desde un test, en vez de vivir suelta en el handler.
 const { resolverRutaEstatica } = require("./api/_ruta-estatica");
+const avatarCompuesto = require("./api/_avatar-compuesto");
 
 async function main() {
   const server = http.createServer(async (req, res) => {
@@ -163,6 +164,28 @@ async function main() {
     // ----- La URL canónica de las prendas -----
     traducirRutaCanonica(url);
 
+    // ----- El avatar ya compuesto -----
+    // Un archivo del disco, servido tal cual. El nombre ES el
+    // contenido -la huella de la receta-, asi que se cachea un ano y
+    // no puede quedarse viejo: si el avatar cambia, cambia la URL.
+    // Mismo criterio que /prendas/<huella>.png.
+    //
+    // Va antes del despacho de /api/ porque no es una llamada de API:
+    // es un estatico que resulta que se genero en vez de subirse.
+    const compuesto = avatarCompuesto.partirRuta(url.pathname);
+    if (compuesto) {
+      const datos = avatarCompuesto.leer(compuesto.huella, compuesto.ancho, compuesto.alto);
+      if (!datos) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        return res.end("No encontrado");
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": datos.length,
+        "Cache-Control": "public, max-age=31536000, immutable"
+      });
+      return res.end(req.method === "HEAD" ? undefined : datos);
+    }
     // ----- Avisos en vivo -----
     // Va ANTES del despacho de /api/ y fuera de HANDLERS porque ese
     // despacho junta el cuerpo entero de la peticion y luego contesta de

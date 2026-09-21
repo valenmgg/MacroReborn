@@ -48,6 +48,7 @@ const { usarSqlLocal } = require("../api/_db");
 // copiadas: este servidor es OTRO, y mientras el cierre de la ruta
 // adivinable vivio dentro de server.js, aqui no se aplicaba.
 const { traducirRutaCanonica, esPrendaDeAvatar } = require("../api/_prendas-ruta");
+const avatarCompuesto = require("../api/_avatar-compuesto");
 const { resolverRutaEstatica } = require("../api/_ruta-estatica");
 const avisosSSE = require("../api/_avisos-sse");
 
@@ -125,6 +126,28 @@ async function main() {
   const servidor = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
 
+    // ----- El avatar ya compuesto -----
+    // Un archivo del disco, servido tal cual. El nombre ES el
+    // contenido -la huella de la receta-, asi que se cachea un ano y
+    // no puede quedarse viejo: si el avatar cambia, cambia la URL.
+    // Mismo criterio que /prendas/<huella>.png.
+    //
+    // Va antes del despacho de /api/ porque no es una llamada de API:
+    // es un estatico que resulta que se genero en vez de subirse.
+    const compuesto = avatarCompuesto.partirRuta(url.pathname);
+    if (compuesto) {
+      const datos = avatarCompuesto.leer(compuesto.huella, compuesto.ancho, compuesto.alto);
+      if (!datos) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        return res.end("No encontrado");
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": datos.length,
+        "Cache-Control": "public, max-age=31536000, immutable"
+      });
+      return res.end(req.method === "HEAD" ? undefined : datos);
+    }
     // ----- Avisos en vivo -----
     // Aqui SI funcionan, y sin puente: el servidor local es un solo
     // proceso, asi que el reparto dentro del proceso es el reparto entero.
