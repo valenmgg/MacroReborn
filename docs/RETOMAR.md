@@ -5,13 +5,13 @@ perdió todo rastro de cómo entrar al servidor: no había nada en local y
 hubo que reconstruirlo desde Google Drive a ciegas. Este archivo existe
 para que la segunda vez cueste quince minutos.
 
-Última actualización: 18 de septiembre de 2026.
+Última actualización: 21 de septiembre de 2026.
 
 ---
 
 ## 1. Lo que NO está en este repositorio
 
-Guardar la carpeta del proyecto **no basta**. Estas tres cosas viven
+Guardar la carpeta del proyecto **no basta**. Estas cuatro cosas viven
 fuera y hay que copiarlas aparte.
 
 | Qué | Dónde está en el PC | ¿Dónde hay copia? |
@@ -19,6 +19,7 @@ fuera y hay que copiarlas aparte.
 | **La llave SSH del servidor** | `~/.ssh/macroreborn-vps-key` | En **Bitwarden**, elemento de tipo Clave SSH. Ver §1.1 |
 | **La memoria y las conversaciones de Claude Code** | `~/.claude/projects/<carpeta>/` | Sí: copiado entero en `memoria-claude/` de esta misma carpeta (fuera de git a propósito) |
 | **El `.env` del proyecto** | Solo en el servidor, en `~/MacroReborn/.env` | No hace falta copiarlo: se lee desde allí |
+| **Los dibujos originales de las prendas** | `imagenes/<modelo>/` y `imagenes/<modelo>.png`, fuera de git desde el 21/09/2026 | Cuatro copias: la base de datos del servidor (`avatar_archivos`, que es lo que sirve el sitio) con su respaldo diario, esta misma carpeta, la copia de Drive, y el `~/respaldos/arte-originales-imagenes-2026-09-21.tar.gz` del servidor |
 
 ### 1.1 La llave SSH se ha perdido dos veces. Léelo antes de formatear
 
@@ -131,7 +132,7 @@ subir a Drive tal cual:
 | Ruta del proyecto en el servidor | `/home/azureuser/MacroReborn` |
 | Ruta del proyecto en el PC | `D:\Macroreborn` (desde el 19/09/2026; antes `C:\Users\luisd\Documents\Macroreborn`) |
 | Copia en Drive | `G:\Mi unidad\01_Proyectos_Software\Proyectos de código\Macroreborn\` (desde el 19/09/2026; antes `02_Proyectos_Software\...`) |
-| Repositorio | `github.com/valenmgg/MacroReborn` (**público**, ver `docs/AUDITORIA.md` punto 14) |
+| Repositorio | `github.com/valenmgg/MacroReborn` (**público**; las prendas ya no van en él desde el 21/09/2026, ver `docs/AUDITORIA.md` punto 75) |
 | Base de datos | PostgreSQL 16 en el propio servidor, solo escucha en `127.0.0.1` |
 | Respaldos | `~/respaldos/diarios/` en el servidor, uno cada noche a las 3:30, se guardan 14 días |
 
@@ -150,8 +151,14 @@ npm run db:traer    # baja una copia de la base de produccion
 npm run db:local    # sitio local en http://localhost:3001
 ```
 
-Y copiar la llave SSH desde Drive a `~/.ssh/`, que es lo que da acceso
-al servidor.
+Y sacar la llave SSH de Bitwarden a `~/.ssh/macroreborn-vps-key`, que es lo
+que da acceso al servidor.
+
+Un clon de GitHub viene sin las prendas: `imagenes/<modelo>/` y
+`imagenes/<modelo>.png` están fuera de git desde el 21/09/2026. El sitio
+no las echa en falta, porque las sirve desde la base y `npm run db:traer`
+trae esa base entera. Si hacen falta los originales, están en la copia
+de Drive.
 
 **Ojo con dos cosas al configurar git:**
 

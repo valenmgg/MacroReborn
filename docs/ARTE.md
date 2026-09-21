@@ -262,3 +262,8 @@ El análisis completo de su sistema está en la memoria del proyecto.
 - Un navegador que ya tuviera cacheada una `imagenes/<modelo>/<x>.png`
   la conserva hasta 30 días (`immutable`). El cierre de esa ruta aplica a
   partir de ahora, no hacia atrás.
+- El historial de GitHub. Las prendas salieron del repositorio el
+  21/09/2026 (636 archivos, commit `bbe813a`), pero están ahí desde el
+  23/07/2026 y con `git clone` se bajan igual. Sacarlas requiere
+  reescribir el historial y pedir a GitHub que purgue lo que ya sirvió
+  (`docs/AUDITORIA.md`, punto 75).

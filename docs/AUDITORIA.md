@@ -66,7 +66,13 @@ que pueden costar una cuenta de usuario o el sitio entero.
 | 11 | 2026-09-18 | Seguridad | La barra de más expone el arte: `/imagenes//tora/pelo3.png` devuelve 200. Mismo arreglo que el 10 | `server.js:249` | incluido en el 10 |
 | 12 | - | Seguridad | El token vive 7 días en `localStorage`, sin revocación. Cerrar sesión no lo invalida | `api/_auth.js:3` | 1 día |
 | 13 | - | Infraestructura | 75 commits solo existen en el PC y en el VPS. GitHub está en el 15/09 | — | 2 min |
-| 14 | - | Decisión | El repositorio es público: 630 prendas descargables con `git clone`. Anula todo lo que promete `docs/ARTE.md` | GitHub | decisión |
+| 14 | 2026-09-21 | Decisión | El repositorio es público: 630 prendas descargables con `git clone`. Anula todo lo que promete `docs/ARTE.md` | GitHub | decisión |
+| 75 | - | Decisión | Las prendas siguen en el historial de GitHub desde el 23/07/2026: con `git clone` se bajan igual aunque ya no estén en el árbol. Sacarlas exige reescribir el historial, subir a la fuerza, pedir a GitHub que purgue lo que ya sirvió y resincronizar el servidor | GitHub | 2 h + decisión |
+
+**Nota al 14.** Se decidió mantener el repositorio público y sacar las prendas
+del árbol: el 21/09/2026 salieron 636 archivos (commit `bbe813a`). El sitio
+no los echa en falta, porque desde la migración 018 sirve las prendas desde
+la base. Lo que queda, el historial, es el punto 75.
 
 ---
 
