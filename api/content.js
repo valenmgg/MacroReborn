@@ -1,6 +1,6 @@
 const { setCors, hayBloqueoEntreUsuarios } = require("./_utils");
 const { avisar, canalNotificaciones } = require("./_avisos");
-const { requerirAuth } = require("./_auth");
+const { requerirAuth, crearPase, PASE_TTL_MS } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
@@ -2484,6 +2484,26 @@ async function avatarShopBuy(req, res) {
 }
 
 
+// ==============================
+// EL PASE PARA /api/avisos
+// ==============================
+// GET ?action=avisos-pase, con sesión. Devuelve el pase de un minuto con
+// el que js/avisos.js abre la línea de avisos en vivo. Por qué existe y
+// por qué no se manda el token de sesión directamente: api/_auth.js,
+// "EL PASE".
+//
+// Va aquí y no en /api/auth porque nginx frena /api/auth con mano dura
+// contra la fuerza bruta (zona `login`, ráfaga de 5), y esto se pide en
+// cada carga de página con sesión: ahí se estrellaría contra el límite.
+async function avisosPase(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ success: false, error: "Solo GET" });
+  }
+  const auth = requerirAuth(req, res);
+  if (!auth) return;
+  return res.status(200).json({ success: true, pase: crearPase(auth), caduca_ms: PASE_TTL_MS });
+}
+
 module.exports = async function handler(req, res) {
 
   setCors(res, "GET, POST, DELETE, OPTIONS");
@@ -2528,6 +2548,7 @@ module.exports = async function handler(req, res) {
     if (action === "chat") return await chat(req, res);
     if (action === "notifications") return await notifications(req, res);
     if (action === "notifications-mark-read") return await notificationsMarkRead(req, res);
+    if (action === "avisos-pase") return await avisosPase(req, res);
     if (action === "activity") return await activity(req, res);
     if (action === "activity-friends") return await activityFriends(req, res);
     if (action === "mentions-received") return await mencionesRecibidas(req, res);
