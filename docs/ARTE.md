@@ -98,9 +98,12 @@ reguardado deliberado en un editor — y ahí está la gracia: quien la borró
 demostró que sabía lo que hacía, y eso es justo lo que hace falta para
 reclamar una retirada.
 
-El PNG se lee y se escribe a mano en `api/_png.js`, sin librerías de
-imagen: es la regla de la casa, la misma que ya obligó a sustituir el
-canvas por un falso en `tests/vestidor-horneado.test.js`. Probado contra
+El PNG se lee y se escribe a mano en `api/_png.js`. No es que las
+librerías estén prohibidas: lo que está prohibido es depender de un
+servicio de terceros que se pueda acabar (`docs/DESARROLLO.md` 5). Aquí
+no hacía falta ninguna, y por eso `tests/vestidor-horneado.test.js`
+sustituye el canvas por un falso en vez de traerse node-canvas con sus
+decenas de MB de binario nativo. Probado contra
 las 630 prendas del disco: 630 de 630 dan ida y vuelta byte a byte
 exacta.
 
@@ -132,7 +135,8 @@ node scripts/encajar-lienzo.js --aplicar    lo escribe en la base
 La política **no se inventa**: se copia la que `js/arte-vestidor.js` ya
 tiene escrita, y que dice que la base es el **pegado 1:1** y no el
 encaje, porque mover píxeles enteros es un calco y no toca el dibujo.
-El motor de píxeles está en `api/_lienzo.js`, sin librerías de imagen.
+El motor de píxeles está en `api/_lienzo.js`, escrito a mano porque no
+hacía falta más.
 
 Tres caminos, y cuál se toma lo decide el propio dibujo:
 

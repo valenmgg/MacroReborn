@@ -239,6 +239,14 @@ migraciones van antes que el código.
   autoría automáticos.
 - **Reutilizar**: la lógica compartida va en `api/_*.js`; no duplicar
   lo que ya existe.
+- **Dependencias**: una librería que se ejecuta **dentro del VPS**
+  está permitida, y se elige por lo que cuesta mantenerla: mejor sin
+  binario nativo que con él, y mejor sin dependencias propias que con
+  ellas. Lo que no se acepta es depender de un **servicio de terceros**
+  que se pueda acabar o cambiar de precio: de ahí salieron Vercel, Neon
+  y Pusher. `api/_png.js` y `api/_lienzo.js` están escritos a mano por
+  la primera regla y no por la segunda, y siguen así porque funcionan y
+  están probados, no porque traer una librería esté prohibido.
 
 ---
 

@@ -1,12 +1,12 @@
 // ==============================
 // PNG A MANO — api/_png.js
 // ==============================
-// Leer y escribir los bloques de un PNG sin instalar nada. Es la regla
-// de la casa: el proyecto tiene cuatro dependencias y ninguna es una
-// librería de imagen, y eso está probado en
-// tests/vestidor-horneado.test.js, donde se sustituye el canvas por un
-// falso antes que traerse node-canvas y sus decenas de MB de binario
-// nativo.
+// Leer y escribir los bloques de un PNG sin instalar nada. No porque las
+// librerias esten prohibidas -lo que esta prohibido es depender de un
+// servicio de terceros, ver docs/DESARROLLO.md 5- sino porque aqui no
+// hacia falta ninguna. Por eso tests/vestidor-horneado.test.js sustituye
+// el canvas por un falso en vez de traerse node-canvas con sus decenas
+// de MB de binario nativo.
 //
 // Aquí no hace falta ninguna librería porque un PNG es, por dentro, una
 // lista de bloques con nombre:
