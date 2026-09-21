@@ -30,7 +30,7 @@ const FUENTE = fs.readFileSync(path.join(__dirname, "..", "js", "avisos.js"), "u
 // mismo tick y abre UNA conexión en el siguiente.
 const unTurno = () => new Promise(seguir => setTimeout(seguir, 0));
 
-function montar(reloj) {
+function montar(reloj, extras) {
   const creadas = [];
 
   class FuenteFalsa {
@@ -69,6 +69,10 @@ function montar(reloj) {
 
   const dom = new JSDOM("<body></body>");
   dom.window.EventSource = FuenteFalsa;
+
+  // Lo que la página tendría además: la sesión (MRSession) y fetch, que
+  // jsdom no trae. Solo los tests del pase lo usan.
+  if (extras) Object.assign(dom.window, extras);
 
   const contexto = {
     window: dom.window,
@@ -412,4 +416,135 @@ describe("sin EventSource en el navegador", () => {
     await unTurno();
     assert.equal(MRAvisos.estado().conectada, false);
   });
+});
+
+// ---------- el pase ----------
+
+// La URL de una conexión bien parseada: canalesDe() parte por "canales="
+// y con un pase detrás se llevaría el pase dentro.
+function urlDe(fuente) {
+  return new URL(fuente.url, "http://localhost");
+}
+
+// Un fetch de mentira que apunta cada llamada y contesta lo que se le
+// diga. Por defecto, un pase distinto cada vez.
+function fetchFalso(contestar) {
+  const llamadas = [];
+  const fn = function (url, opciones) {
+    llamadas.push({ url, opciones: opciones || {} });
+    if (contestar) return contestar(llamadas.length);
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ success: true, pase: "PASE." + llamadas.length })
+    });
+  };
+  fn.llamadas = llamadas;
+  return fn;
+}
+
+const conSesion = () => ({ MRSession: { getToken: () => "tok" } });
+
+describe("el pase", () => {
+
+  test("sin sesión abre en el acto, sin pase y sin pedir nada", async () => {
+    const fetch = fetchFalso();
+    const { MRAvisos, creadas } = montar(null, { fetch });
+    MRAvisos.escuchar("notificaciones-luis", "nuevo-comentario", () => {});
+    await unTurno();
+
+    assert.equal(creadas.length, 1);
+    assert.equal(urlDe(creadas[0]).searchParams.get("pase"), null);
+    assert.equal(fetch.llamadas.length, 0, "pidió un pase sin tener sesión");
+  });
+
+  test("con sesión pide el pase con la cabecera de siempre y lo lleva en la URL", async () => {
+    const fetch = fetchFalso();
+    const { MRAvisos, creadas } = montar(null, Object.assign(conSesion(), { fetch }));
+    MRAvisos.escuchar("notificaciones-luis", "nueva-notificacion", () => {});
+    await unTurno();
+
+    assert.equal(fetch.llamadas.length, 1);
+    assert.equal(fetch.llamadas[0].url, "/api/content?action=avisos-pase");
+    assert.equal(fetch.llamadas[0].opciones.headers.Authorization, "Bearer tok");
+
+    assert.equal(creadas.length, 1);
+    const url = urlDe(creadas[0]);
+    assert.equal(url.pathname, "/api/avisos");
+    assert.equal(url.searchParams.get("canales"), "notificaciones-luis");
+    assert.equal(url.searchParams.get("pase"), "PASE.1");
+  });
+
+  test("si el pase no llega, abre igual, sin pase", async () => {
+    // Sesión caducada o red caída: mejor los comentarios al vuelo que
+    // una pestaña muda. Los dos fallos posibles, un 401 y una excepción.
+    for (const contestar of [
+      () => Promise.resolve({ ok: false, json: () => Promise.resolve({ success: false }) }),
+      () => Promise.reject(new Error("sin red"))
+    ]) {
+      const fetch = fetchFalso(contestar);
+      const { MRAvisos, creadas } = montar(null, Object.assign(conSesion(), { fetch }));
+      MRAvisos.escuchar("notificaciones-luis", "nueva-notificacion", () => {});
+      await unTurno();
+
+      assert.equal(creadas.length, 1, "no abrió la línea");
+      assert.equal(urlDe(creadas[0]).searchParams.get("pase"), null);
+    }
+  });
+
+  test("un pase que llega tarde no abre una línea con los canales viejos", async () => {
+    // Mientras se pedía el pase para un canal se apuntó otro. Vuelven
+    // dos pases; el primero es de una lista de canales que ya no vale.
+    const pendientes = [];
+    const fetch = fetchFalso(() => new Promise(resolver => pendientes.push(resolver)));
+    const { MRAvisos, creadas } = montar(null, Object.assign(conSesion(), { fetch }));
+
+    MRAvisos.escuchar("notificaciones-luis", "nueva-notificacion", () => {});
+    await unTurno();
+    MRAvisos.escuchar("notificaciones-pepe", "nuevo-comentario", () => {});
+    await unTurno();
+    assert.equal(pendientes.length, 2, "no pidió un pase por apertura");
+    assert.equal(creadas.length, 0, "abrió sin esperar el pase");
+
+    const contestar = n => ({ ok: true, json: () => Promise.resolve({ success: true, pase: "PASE." + n }) });
+    pendientes[0](contestar(1));
+    await unTurno();
+    assert.equal(creadas.length, 0, "abrió con el pase de la apertura vieja");
+
+    pendientes[1](contestar(2));
+    await unTurno();
+    assert.equal(creadas.length, 1);
+    const url = urlDe(creadas[0]);
+    assert.equal(url.searchParams.get("canales"), "notificaciones-luis,notificaciones-pepe");
+    assert.equal(url.searchParams.get("pase"), "PASE.2");
+  });
+
+  test("cuando el servidor rechaza el pase, el reintento pide otro nuevo", async () => {
+    // El pase caduca al minuto. Si la línea se cae más tarde, el navegador
+    // reconecta con el pase viejo, el servidor contesta 401 y EventSource
+    // se rinde (CLOSED). El reintento a mano tiene que volver a pedir uno,
+    // no reutilizar el caducado.
+    const reloj = relojFalso();
+    const fetch = fetchFalso();
+    const { MRAvisos, creadas, FuenteFalsa } = montar({
+      setTimeout: fn => reloj.poner(fn),
+      clearTimeout: id => reloj.quitar(id)
+    }, Object.assign(conSesion(), { fetch }));
+
+    MRAvisos.escuchar("notificaciones-luis", "nueva-notificacion", () => {});
+    reloj.correr();
+    await unTurno();
+    assert.equal(creadas.length, 1);
+    assert.equal(urlDe(creadas[0]).searchParams.get("pase"), "PASE.1");
+
+    creadas[0].romper(FuenteFalsa.CLOSED);
+    assert.equal(reloj.pendientes.size, 1, "no programó el reintento");
+    reloj.correr();
+    await unTurno();
+
+    assert.equal(fetch.llamadas.length, 2, "reutilizó el pase caducado");
+    assert.equal(creadas.length, 2);
+    assert.equal(creadas[0].cerrada, true);
+    assert.equal(urlDe(creadas[1]).searchParams.get("pase"), "PASE.2");
+  });
+
 });
