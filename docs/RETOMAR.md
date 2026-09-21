@@ -173,6 +173,11 @@ de Drive.
 GIT_SSH_COMMAND='ssh -i "<ruta de la llave>"' git push vps main
 ```
 
+Y para empujar a GitHub por HTTPS: la primera vez salta el inicio de
+sesión en el navegador, y el gestor de credenciales de git guarda el
+token en Windows. Tiene que ser una cuenta con permiso de escritura en
+`valenmgg/MacroReborn`.
+
 ## 4. Desplegar un cambio
 
 El servidor tiene `receive.denyCurrentBranch=updateInstead`, así que un
@@ -206,12 +211,14 @@ catorce revisiones en paralelo más una del servidor en vivo. Salieron 74
 cosas por arreglar, y están todas en **`docs/AUDITORIA.md`**, ordenadas
 por importancia y con una columna de estado para ir marcándolas.
 
-De las catorce urgentes del bloque 1, **ocho están hechas y desplegadas**
-(2, 4, 5, 7, 8, 9, 10 y 11): tres XSS almacenados, tres agujeros de
-autorización, el proceso que se podía tumbar con una URL y la barra de
-más que sacaba el arte.
+De las catorce urgentes del bloque 1, **diez están hechas** (2, 4, 5, 7,
+8, 9, 10, 11, 13 y 14): tres XSS almacenados, tres agujeros de
+autorización, el proceso que se podía tumbar con una URL, la barra de
+más que sacaba el arte, los commits publicados en GitHub y las prendas
+fuera del árbol del repositorio.
 
-**Quedan seis, y este es el orden que tenía sentido:**
+**Quedan cuatro, más una decisión nueva, y este es el orden que tenía
+sentido:**
 
 | # | Qué falta | Notas |
 |---|---|---|
@@ -219,8 +226,7 @@ más que sacaba el arte.
 | 6 | Poner una `Content-Security-Policy` en nginx | Empezar en `Report-Only` para ver qué rompe |
 | 1 | `sandbox` en el iframe de los juegos | Hay que probar juego por juego; algunos perderán su guardado local |
 | 12 | Versión de sesión en el token | Decidido: **hay que cerrar todas las sesiones**. Migración nueva |
-| 13 | Publicar los commits en GitHub | Estaban 83 commits sin publicar |
-| 14 | Sacar el arte del repositorio | Decidido: intentarlo. Ojo, borrarlo de `HEAD` no lo saca del historial |
+| 75 | Sacar las prendas del historial de GitHub | Decisión pendiente. El árbol está limpio desde el 21/09/2026 y el repositorio sigue público a propósito |
 
 ## 6. Lo que muerde si no se sabe
 
