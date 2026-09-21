@@ -57,17 +57,17 @@ Todo sobre el VPS real, un ARM de dos núcleos con 950 MB, no estimado.
 |---|---|
 | Descomprimir los PNG de las capas | 88 ms |
 | Mezclar las capas | 23 ms |
-| Comprimir a JPG | unos 40 ms en ARM |
-| **Total** | **unos 150 ms** |
+| Comprimir a JPG | 45 ms |
+| **Total** | **156 ms de media, sobre diez avatares reales** |
 
 Irrelevante, porque se compone **al guardar** y no al mirar. Rehacer los
-215 que existen hoy son 30 segundos de CPU, una vez.
+215 que existen hoy son 34 segundos de CPU, una vez.
 
-**Cuánto pesa la salida, sobre tres avatares reales**
+**Cuánto pesa la salida**, medido sobre diez avatares reales:
 
 | Tamaño | PNG | JPG calidad 80 |
 |---|---|---|
-| 327×504 | 91 kB | 56 kB |
+| 327×504 | 91 kB | 36 kB de media |
 | 62×96 | 13 kB | 4 kB |
 
 **Lo que gana la página de comunidad**, que hoy pinta 181 tarjetas:
@@ -76,15 +76,17 @@ Irrelevante, porque se compone **al guardar** y no al mirar. Rehacer los
 |---|---|
 | Hoy: 339 archivos de capa distintos | 5.562 kB |
 | 117 compuestos a 62×96 en JPG | **468 kB** |
+| 117 compuestos a 327×504 en JPG | 4.212 kB |
 
 Un 92 % menos. Y esto vale por sí solo, aunque no hubiera nada que
 proteger: hoy se mandan 5,5 MB de capas a tamaño completo para pintar
 avatares de 35 a 46 píxeles.
 
-A tamaño completo el compuesto **pierde**: 117 × 56 kB son 6.552 kB
-contra los 5.562 de hoy, porque las capas se repiten entre personas y se
-cachean una sola vez, y un compuesto es único. Por eso importa servir
-cada tamaño en su sitio.
+A tamaño completo también gana, aunque por mucho menos, y ese margen es
+frágil: las capas se repiten entre personas y se cachean una sola vez,
+mientras que un compuesto es único por avatar. Cuantas más cuentas haya,
+peor sale la comparación a tamaño completo y mejor sale la de miniatura.
+Por eso importa servir cada tamaño en su sitio.
 
 ---
 
@@ -125,8 +127,9 @@ El día que la base pase de 128 MB eso no se degrada poco a poco: se cae
 de golpe. Una consulta que tardaba microsegundos empieza a tardar
 milisegundos porque tiene que ir al disco.
 
-Los compuestos serían unos 23 MB para los usuarios de hoy. Metidos en
-Postgres, cruzan la línea. En disco no la rozan: hay 56 GB libres.
+Los compuestos de hoy son 8 MB medidos, y crecerían a unos 45 MB con
+mil cuentas. Metidos en Postgres, esa línea se cruza. En disco no se
+roza: hay 56 GB libres.
 
 Y hay una razón mejor que el tamaño. El arte **es la fuente** y vive en
 la base, que se respalda cada noche. Un compuesto es **derivado**: se
@@ -149,7 +152,7 @@ rompen nada mientras tanto.
 
 | # | Estado | Fase | Qué entra | Rompe algo |
 |---|---|---|---|---|
-| 1 | - | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
+| 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | - | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | - | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto | No |
 | 4 | - | Las previsualizaciones | 768 recortes sobre modelo vacío, para editor y tienda | No |
@@ -170,6 +173,19 @@ criterio que `api/_avisos.js`.
 - `tests/compositor.test.js`: el orden, el alfa, el aplanado, los
   tamaños, y que la misma receta dé siempre los mismos bytes.
 
+
+### Lo que se validó al cerrar la fase 1
+
+Contra el arte de verdad, en el VPS, el 21/09/2026:
+
+- Los **549 archivos** del catálogo pasan por el decodificador. Cero
+  fallos, y los 549 acaban en 327×504.
+- Diez avatares reales compuestos de punta a punta: **156 ms de media**,
+  36 kB a tamaño completo y 4 kB en miniatura.
+- **Determinista**: la misma receta da la misma huella dos veces, que es
+  de lo que depende poder cachear la URL un año.
+- Dos de esos diez salieron en PNG por no llevar fondo, que es
+  exactamente lo previsto.
 ### Fase 2 — Guardar y servir
 
 - Migración: una columna con la huella del compuesto en `users` y en
