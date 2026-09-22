@@ -82,7 +82,23 @@ function rkRutaCapa(valor) {
   return rutaCapaAvatar(valor);
 }
 
-function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho) {
+// El ultimo parametro es el usuario entero, y es opcional: sin el se
+// dibuja por capas como siempre. Con el, si el servidor ya compuso su
+// avatar, se manda UNA imagen en vez de quince. Esta pagina pinta 181
+// tarjetas, asi que aqui es donde se nota: 5.562 kB de capas sueltas
+// pasan a 468 en miniatura. Ver docs/AVATARES-SERVIDOR.md.
+function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho, usuario) {
+
+  const compuesta = typeof urlAvatarCompuesto === "function"
+    ? urlAvatarCompuesto(usuario, 62, 96)
+    : null;
+  if (compuesta) {
+    return `
+      <div class="${contenedorClase}">
+        <img data-src="${compuesta}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
+      </div>
+    `;
+  }
 
   const avatar = normalizarAvatar(avatarCrudo);
 
@@ -222,7 +238,7 @@ function rkRenderizar(filtro = "") {
 
         <div class="rk-podio-numero">${puesto}</div>
 
-        ${rkAvatarHTML(usuario.avatar, "rk-podio-avatar", "capa-rk")}
+        ${rkAvatarHTML(usuario.avatar, "rk-podio-avatar", "capa-rk", null, usuario)}
 
         <p class="rk-podio-nombre">${MRTexto.escapar(usuario.nombre)}</p>
 
@@ -246,7 +262,7 @@ function rkRenderizar(filtro = "") {
     return `
       <a href="usuario.html?usuario=${encodeURIComponent(usuario.nombre)}" class="rk-mini-card">
 
-        ${rkAvatarHTML(usuario.avatar, "rk-mini-avatar", "capa-rk-mini")}
+        ${rkAvatarHTML(usuario.avatar, "rk-mini-avatar", "capa-rk-mini", null, usuario)}
 
         <p class="rk-mini-nombre">${MRTexto.escapar(usuario.nombre)}</p>
         <p class="rk-mini-puesto">${puesto}º</p>
@@ -375,7 +391,7 @@ function comRenderUsuarios(lista) {
           ${conectado ? "🟢 En línea" : "⚪ Desconectado"}
         </span>
 
-        ${rkAvatarHTML(usuario.avatar, "avatar-tarjeta", "capa-tarjeta")}
+        ${rkAvatarHTML(usuario.avatar, "avatar-tarjeta", "capa-tarjeta", null, usuario)}
 
         <h3 class="usuario-nombre">${MRTexto.escapar(usuario.nombre)}</h3>
 
@@ -436,7 +452,17 @@ const crFeedActividad = document.getElementById("crFeedActividad");
 // de un <a> que YA trae position:relative + overflow:hidden por CSS
 // (ver .cr-grid-conectados a, .cr-avatar-chico en comunidad-ranking.css).
 
-function crAvatarCapasHTML(avatarCrudo, claseCapa) {
+function crAvatarCapasHTML(avatarCrudo, claseCapa, usuario) {
+  // Aqui no hay div contenedor: se devuelven las <img> sueltas para
+  // meterlas dentro de un <a> que ya trae position:relative por CSS.
+  // El compuesto es UNA sola, y encaja igual.
+  const compuesta = typeof urlAvatarCompuesto === "function"
+    ? urlAvatarCompuesto(usuario, 62, 96)
+    : null;
+  if (compuesta) {
+    return `<img class="${claseCapa}" data-src="${compuesta}" alt="" loading="lazy">`;
+  }
+
   const avatar = normalizarAvatar(avatarCrudo);
   if (!avatar) {
     return `<img src="imagenes/avatar.png" alt="" loading="lazy">`;
@@ -484,7 +510,7 @@ async function crCargarEstadisticas() {
       crRecienLlegados.innerHTML = llegados.length
         ? llegados.map(u => `
             <a href="usuario.html?usuario=${encodeURIComponent(u.username)}" class="cr-avatar-chico" title="${MRTexto.escapar(u.username)}">
-              ${crAvatarCapasHTML(u.avatar, "cr-capa-chica")}
+              ${crAvatarCapasHTML(u.avatar, "cr-capa-chica", u)}
             </a>
           `).join("")
         : `<p class="cr-vacio">Todavía no se registró nadie hoy.</p>`;
