@@ -6,24 +6,51 @@
 // docs/AVATARES-SERVIDOR.md.
 //
 // ---------------------------------------------------------------
-// LA HUELLA ES LA RECETA, NO EL AVATAR
+// CADA PERSONA TIENE UNA DIRECCION, Y NO CAMBIA NUNCA
 // ---------------------------------------------------------------
-// El nombre del archivo es el sha256 de la lista ordenada de
-// "capa:huella del archivo de esa prenda". No del JSON del avatar.
+//     /avatares/128/62x96.jpg              el avatar que lleva puesto
+//     /avatares/128/ranura3/62x96.jpg      su tercer diseño guardado
 //
-// La diferencia importa el día que el equipo de arte rehornee una
-// prenda: el JSON del avatar no cambia (sigue diciendo "tora_pelo3")
-// pero el dibujo sí, y con el JSON por nombre el navegador seguiría
-// mostrando un año el compuesto viejo. Con la receta, cambia la huella
-// del archivo, cambia la receta, cambia la URL. Ni antes ni después.
+// Esas direcciones son suyas para siempre. Se cambia de ropa y el
+// ARCHIVO cambia; la dirección no. Quien quiera mirar su propio avatar
+// escribe eso y ve el de hoy, sin consultar nada.
 //
-// Y sale gratis una cosa que nadie tuvo que programar: dos personas con
-// el mismo avatar comparten archivo.
+// Es lo que hacía macrojuegos: /users/<id>/full.jpg, diez años en pie.
+// Leído de su archivo el 21/09/2026, en docs/AVATARES-SERVIDOR.md 8.
+//
+// EL IDENTIFICADOR Y NO EL NOMBRE, aunque el nombre sería más legible.
+// Medido sobre las 181 cuentas: 14 llevan caracteres que no caben en
+// una URL sin escapar (espacios, ñ, unicode matemático, emoji) y hay
+// dos pares que solo se distinguen por mayúsculas (yotter/Yotter,
+// jader/Jader), así que una ruta insensible a mayúsculas los pisaría.
+// macrojuegos usó el id por lo mismo.
+//
+// ---------------------------------------------------------------
+// LA VERSION VA EN LA CONSULTA, NO EN LA RUTA
+// ---------------------------------------------------------------
+//     /avatares/128/62x96.jpg?v=401ddea45538
+//
+// Es LA MISMA DIRECCION con un sufijo. Apunta al mismo archivo: una
+// cadena de consulta no toca el disco. Sirve para una sola cosa, y es
+// la que hace que todo esto funcione:
+//
+//   - CON sufijo el navegador se queda la imagen un AÑO sin volver a
+//     preguntar. La página de comunidad, en una segunda visita, pide
+//     cero avatares.
+//   - Cuando alguien se cambia de ropa, la API devuelve una huella
+//     nueva, la página arma una dirección que ese navegador no ha visto
+//     nunca, y baja la imagen nueva. Los demás lo ven al recargar, sin
+//     esperar a que caduque nada.
+//   - SIN sufijo la dirección es la misma de siempre, así que se sirve
+//     con caché corta: es para escribirla a mano, no para las páginas.
+//
+// Antes la huella iba en la RUTA, y eso dejaba un archivo huérfano cada
+// vez que alguien se cambiaba de ropa. Ahora se sobrescribe.
 //
 // VERSION va dentro de la huella a propósito. Si algún día cambia la
 // calidad del JPG, el color de relleno o el orden de mezcla, la misma
-// receta daría bytes distintos con el mismo nombre, y las cachés de un
-// año servirían lo viejo. Subir VERSION invalida todo de una vez.
+// receta daría bytes distintos con la misma huella, y las cachés de un
+// año servirían lo viejo. Subirla invalida todo de una vez.
 //
 // ---------------------------------------------------------------
 // EN DISCO, NO EN POSTGRES
@@ -54,13 +81,52 @@ const TAMANOS_VALIDOS = new Set(TAMANOS.map(([a, l]) => a + "x" + l));
 // que mantener por el 5 % de los casos.
 const EXTENSION = "jpg";
 
-// Fuera del repositorio a propósito, para que un despliegue no los
+// Cuánto vive en el navegador cada forma de la dirección. Con versión,
+// un año: la dirección cambia cuando cambia el dibujo. Sin versión, un
+// minuto: es la misma dirección para siempre, así que no puede
+// guardarse mucho o alguien se vería con la ropa de ayer.
+const CACHE_CON_VERSION = 31536000;
+const CACHE_SIN_VERSION = 60;
+
+// Fuera del alcance de git a propósito, para que un despliegue no los
 // toque. datos-locales/ ya está en .gitignore, y git no borra lo
-// ignorado ni con reset --hard.
+// ignorado ni con reset --hard. La variable de entorno existe para los
+// tests: en producción y en local se usa la misma ruta por defecto, y
+// eso es deliberado. Si el servidor web y el script de relleno pudieran
+// discrepar sobre dónde están los archivos, el fallo sería invisible
+// hasta que alguien viera un avatar roto.
 const DIRECTORIO = process.env.MR_AVATARES_DIR ||
   path.join(__dirname, "..", "datos-locales", "avatares-compuestos");
 
-const ES_HUELLA = /^[a-f0-9]{64}$/;
+// ------------------------------------------------------------------
+// EL DESTINO
+// ------------------------------------------------------------------
+// Un destino dice DONDE va el archivo, no qué lleva dentro:
+//     { usuarioId: 128 }             el avatar puesto
+//     { usuarioId: 128, ranura: 3 }  el tercer diseño guardado
+
+function destinoValido(destino) {
+  if (!destino || !Number.isInteger(destino.usuarioId) || destino.usuarioId < 1) return false;
+  if (destino.ranura === undefined || destino.ranura === null) return true;
+  return Number.isInteger(destino.ranura) && destino.ranura >= 1 && destino.ranura <= 9999;
+}
+
+// La carpeta en disco. Se agrupa de mil en mil por el mismo motivo que
+// macrojuegos: con una sola carpeta, decenas de miles de subcarpetas
+// hacen lento cualquier listado, y esto crece con cada cuenta.
+//
+// El agrupamiento NO sale en la URL. macrojuegos lo enseñaba
+// (/users/1021000/1021181/) y no hacía falta: el servidor sabe
+// calcularlo, y así la dirección que la gente escribe es más corta.
+function carpetaDe(destino) {
+  const grupo = String(Math.floor(destino.usuarioId / 1000) * 1000);
+  const base = path.join(DIRECTORIO, grupo, String(destino.usuarioId));
+  return destino.ranura ? path.join(base, "ranura" + destino.ranura) : base;
+}
+
+function rutaDe(destino, ancho, alto) {
+  return path.join(carpetaDe(destino), ancho + "x" + alto + "." + EXTENSION);
+}
 
 // ------------------------------------------------------------------
 // LA RECETA
@@ -79,6 +145,10 @@ function capasCon(avatar) {
 // Busca el archivo de cada prenda y arma la receta. Devuelve null
 // cuando no hay nada que componer: quien no eligió ninguna prenda no
 // tiene compuesto, y eso no es un error.
+//
+// La huella sale de las prendas y NO del destino: dos personas con el
+// mismo avatar tienen la misma huella, aunque cada una guarde su propio
+// archivo. Eso deja comparar "¿cambió este avatar?" sin mirar el disco.
 async function recetaDe(sql, avatar) {
   const capas = capasCon(avatar);
   if (!capas.length) return null;
@@ -92,16 +162,15 @@ async function recetaDe(sql, avatar) {
   `;
   const porValor = new Map(filas.map(f => [f.valor, f]));
 
+  // Una prenda que no está en el catálogo se salta en vez de reventar.
+  // Pasa con un avatar viejo que lleva algo retirado, y dejar a esa
+  // persona sin imagen sería peor que dibujarla sin esa capa, que es
+  // exactamente lo que hace hoy el navegador.
   const encontradas = capas
     .map(c => ({ capa: c.capa, valor: c.valor, archivo: porValor.get(c.valor) }))
     .filter(c => c.archivo);
 
   if (!encontradas.length) return null;
-
-  // Una prenda que no está en el catálogo se salta en vez de reventar.
-  // Pasa con un avatar viejo que lleva algo retirado, y dejar a esa
-  // persona sin imagen sería peor que dibujarla sin esa capa, que es
-  // exactamente lo que hace hoy el navegador.
 
   const texto = "v" + VERSION + "\n" +
     encontradas.map(c => c.capa + ":" + c.archivo.sha256).join("\n");
@@ -110,9 +179,6 @@ async function recetaDe(sql, avatar) {
   return {
     huella,
     capas: encontradas.map(c => ({ capa: c.capa, valor: c.valor, sha256: c.archivo.sha256 })),
-    // bytea llega como Buffer con el driver de Postgres y como
-    // Uint8Array con PGlite. El compositor ya normaliza, pero se deja
-    // dicho aquí porque es donde se mira primero.
     archivos: encontradas.map(c => c.archivo.datos)
   };
 }
@@ -121,36 +187,20 @@ async function recetaDe(sql, avatar) {
 // EL DISCO
 // ------------------------------------------------------------------
 
-function carpetaDe(huella) {
-  // Dos niveles por los dos primeros caracteres. Con una sola carpeta,
-  // decenas de miles de archivos en un mismo directorio hacen lento
-  // cualquier listado, y este directorio va a crecer con cada cuenta.
-  return path.join(DIRECTORIO, huella.slice(0, 2), huella);
-}
-
-function rutaDe(huella, ancho, alto) {
-  return path.join(carpetaDe(huella), ancho + "x" + alto + "." + EXTENSION);
-}
-
-function estanTodos(huella) {
-  return TAMANOS.every(([a, l]) => fs.existsSync(rutaDe(huella, a, l)));
-}
-
 // Escribe por un nombre temporal y renombra. Sin esto, dos peticiones a
-// la vez o un corte de luz dejan un archivo a medias que se servirá
-// durante un año, porque la URL es immutable y nadie la va a volver a
-// pedir.
+// la vez o un corte de luz dejan un archivo a medias, y ahora que el
+// archivo se sobrescribe eso seria pisar uno bueno con uno roto.
 function escribirEntero(destino, datos) {
   const temporal = destino + "." + process.pid + "." + Date.now() + ".tmp";
   fs.writeFileSync(temporal, datos);
   fs.renameSync(temporal, destino);
 }
 
-function leer(huella, ancho, alto) {
-  if (!ES_HUELLA.test(String(huella || ""))) return null;
+function leer(destino, ancho, alto) {
+  if (!destinoValido(destino)) return null;
   if (!TAMANOS_VALIDOS.has(ancho + "x" + alto)) return null;
   try {
-    return fs.readFileSync(rutaDe(huella, ancho, alto));
+    return fs.readFileSync(rutaDe(destino, ancho, alto));
   } catch (_) {
     return null;
   }
@@ -160,23 +210,25 @@ function leer(huella, ancho, alto) {
 // LO QUE SE USA DESDE FUERA
 // ------------------------------------------------------------------
 
-// Devuelve la huella del compuesto de este avatar, generándolo si no
-// estaba. null si no hay nada que componer.
+// Compone el avatar de este destino y devuelve su huella. null si no
+// hay nada que componer.
 //
-// Es idempotente y barato de repetir: si los archivos ya existen no
-// compone nada. Por eso el relleno se puede volver a correr sin miedo.
-async function asegurar(sql, avatar) {
+// Se compone SIEMPRE, aunque el archivo ya exista, porque ahora el
+// nombre no depende del contenido: el archivo de ayer puede seguir ahí
+// con la ropa de ayer. Comprobar antes si hace falta costaria leer el
+// disco y comparar, que es mas caro que los 156 ms de componer.
+async function asegurar(sql, destino, avatar) {
+  if (!destinoValido(destino)) throw new TypeError("Destino de avatar inválido");
+
   const receta = await recetaDe(sql, avatar);
   if (!receta) return null;
 
-  if (estanTodos(receta.huella)) return receta.huella;
-
-  const carpeta = carpetaDe(receta.huella);
+  const carpeta = carpetaDe(destino);
   fs.mkdirSync(carpeta, { recursive: true });
 
   const salida = compositor.renderizar(receta.archivos, TAMANOS, { formato: EXTENSION });
   for (const [a, l] of TAMANOS) {
-    escribirEntero(rutaDe(receta.huella, a, l), salida.salidas[a + "x" + l]);
+    escribirEntero(rutaDe(destino, a, l), salida.salidas[a + "x" + l]);
   }
 
   return receta.huella;
@@ -185,21 +237,40 @@ async function asegurar(sql, avatar) {
 // La misma llamada, pero que no pueda tumbar lo que la llamó. Guardar
 // un avatar tiene que funcionar aunque el disco esté lleno: la persona
 // se queda sin compuesto hasta el siguiente guardado, no sin avatar.
-async function asegurarSinFallar(sql, avatar) {
+async function asegurarSinFallar(sql, destino, avatar) {
   try {
-    return await asegurar(sql, avatar);
+    return await asegurar(sql, destino, avatar);
   } catch (error) {
     console.error("avatar compuesto: no se pudo generar.", error.message);
     return null;
   }
 }
 
-// La URL pública. Un año de caché y immutable, porque el nombre ES el
-// contenido: mismo criterio que /prendas/<huella>.png.
-function urlDe(huella, ancho, alto) {
-  if (!huella) return null;
+// Borra los archivos de un destino. Para cuando alguien vacía una
+// ranura: sin esto, el dibujo de un diseño borrado seguiria sirviendose
+// en su direccion para siempre.
+function borrar(destino) {
+  if (!destinoValido(destino)) return false;
+  try {
+    fs.rmSync(carpetaDe(destino), { recursive: true, force: true });
+    return true;
+  } catch (error) {
+    console.error("avatar compuesto: no se pudo borrar.", error.message);
+    return false;
+  }
+}
+
+// La dirección pública. Sin huella devuelve la dirección desnuda, que
+// también funciona y sirve para escribirla a mano.
+function urlDe(destino, huella, ancho, alto) {
+  if (!destinoValido(destino)) return null;
   const a = ancho || 62, l = alto || 96;
-  return "/avatares/" + huella + "/" + a + "x" + l + "." + EXTENSION;
+  const base = "/avatares/" + destino.usuarioId +
+    (destino.ranura ? "/ranura" + destino.ranura : "") +
+    "/" + a + "x" + l + "." + EXTENSION;
+  // Doce caracteres bastan: es un identificador de version, no un
+  // secreto, y la huella entera haria la URL ilegible.
+  return huella ? base + "?v=" + String(huella).slice(0, 12) : base;
 }
 
 // ¿Esta ruta es la de un compuesto? Devuelve sus piezas o null. Vive
@@ -207,14 +278,22 @@ function urlDe(huella, ancho, alto) {
 // servidor: cuando el cierre de las prendas vivió dentro de server.js,
 // en local no se aplicaba y probar decía lo contrario de la verdad.
 // Misma lección que api/_prendas-ruta.js.
-const RUTA = new RegExp("^/avatares/([a-f0-9]{64})/(\\d{1,4})x(\\d{1,4})\\." + EXTENSION + "$");
+const RUTA = new RegExp(
+  "^/avatares/(\\d{1,9})(?:/ranura(\\d{1,4}))?/(\\d{1,4})x(\\d{1,4})\\." + EXTENSION + "$"
+);
 
 function partirRuta(pathname) {
   const m = RUTA.exec(String(pathname || ""));
   if (!m) return null;
-  const ancho = Number(m[2]), alto = Number(m[3]);
+
+  const ancho = Number(m[3]), alto = Number(m[4]);
   if (!TAMANOS_VALIDOS.has(ancho + "x" + alto)) return null;
-  return { huella: m[1], ancho, alto };
+
+  const destino = { usuarioId: Number(m[1]) };
+  if (m[2] !== undefined) destino.ranura = Number(m[2]);
+  if (!destinoValido(destino)) return null;
+
+  return { destino, ancho, alto };
 }
 
 module.exports = {
@@ -223,14 +302,17 @@ module.exports = {
   TAMANOS_VALIDOS,
   EXTENSION,
   DIRECTORIO,
+  CACHE_CON_VERSION,
+  CACHE_SIN_VERSION,
+  destinoValido,
   capasCon,
   recetaDe,
   carpetaDe,
   rutaDe,
-  estanTodos,
   leer,
   asegurar,
   asegurarSinFallar,
+  borrar,
   urlDe,
   partirRuta
 };
