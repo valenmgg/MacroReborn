@@ -117,7 +117,9 @@ Por eso importa servir cada tamaño en su sitio.
 | Codificador | `jpeg-js`: JavaScript puro, cero dependencias, sin binario nativo |
 | Dónde se guardan | **En disco**, no en Postgres. Ver 4 |
 | Cuándo se componen | Al guardar el avatar |
-| Nombre del archivo | La huella de la receta, así que se cachea un año |
+| Nombre del archivo | `/avatares/<id>/<tam>.jpg`, la dirección de esa persona. No cambia nunca |
+| La versión | En la consulta, `?v=<huella>`. Ver 8 |
+| Ranuras por persona | Una columna, `ranuras_avatar`. El código no pone techo. Ver 9 |
 | Avatares en ranuras | También se componen |
 | Previsualizaciones | La prenda puesta sobre un modelo vacío, recortada a su zona |
 | El taller | Sigue recibiendo las prendas sueltas, con sesión y permiso |
@@ -359,9 +361,25 @@ baja entero con una petición.
 
 ---
 
-## 8. La forma de la URL: decision abierta
+## 8. La forma de la URL (resuelto el 21/09/2026)
 
-Planteado el 21/09/2026, sin decidir. Hoy la URL es
+**Hecho el 21/09/2026.** Lo de abajo es el razonamiento, que se deja
+porque explica por qué el código está como está. El resultado:
+
+```
+/avatares/38/62x96.jpg                 la dirección de esa persona
+/avatares/38/62x96.jpg?v=401ddea4553c  la misma, con la versión
+/avatares/38/ranura2/327x504.jpg       su segundo diseño guardado
+```
+
+Las dos primeras apuntan al MISMO archivo: una cadena de consulta no
+toca el disco. La desnuda se sirve con un minuto de caché y es para
+escribirla a mano; la otra con un año e `immutable`, y es la que usan
+las páginas.
+
+---
+
+El planteamiento original, del mismo día. Antes la URL era
 `/avatares/<huella de la receta>/<tam>.jpg`, y eso tiene dos costes que
 no se ven hasta que llevas un tiempo:
 
@@ -423,3 +441,79 @@ macrojuegos uso el id por lo mismo.
 ruta), el bloque de nginx, y nada mas, porque todavia no hay ninguna
 pagina que consuma estas URL. **Hacerlo antes de la fase 3 cuesta una
 tarde; hacerlo despues cuesta tocar los diez archivos otra vez.**
+
+---
+
+## 9. El freno, y por que existe
+
+Componer cuesta **170 ms de CPU** en esta máquina, y nginx deja pasar
+**30 peticiones por segundo** por IP en `location /`, que es por donde
+entra guardar el avatar. Sin freno, una sola persona guardando en bucle
+pide cinco segundos de CPU por cada segundo de reloj, en una máquina de
+dos núcleos. Eso es tumbar el sitio desde una cuenta normal.
+
+**Lo trajo este mismo trabajo** y conviene decirlo: antes, guardar el
+avatar era validar y un `UPDATE`.
+
+Dos frenos, y el primero hace casi todo:
+
+1. **No se recompone lo que no cambió.** Si la huella que la base ya
+   tiene es la misma que la de la receta nueva y los dos archivos están,
+   el archivo YA es correcto. Guardar veinte veces el mismo avatar
+   cuesta una composición.
+2. **Doce composiciones por persona y por minuto**, para quien alterne
+   entre dos avatares a propósito. Un humano guarda dos o tres veces
+   seguidas como mucho. Agotado, se devuelve "sin compuesto" y la página
+   lo dibuja por capas; el siguiente guardado lo arregla. Nunca se
+   bloquea el guardado.
+
+El presupuesto vive en memoria y no entre procesos, así que con dos
+procesos el techo real es el doble. Da igual: no es una cuota que haya
+que cuadrar, es un tope para que nadie se lleve la máquina. Mismo
+criterio que `api/_rafaga.js`.
+
+---
+
+## 10. Vender ranuras: pendiente, y con motivo
+
+La idea, del 21/09/2026: que cada persona empiece con una ranura y
+pueda comprar más, sin techo, con el precio subiendo en cada compra.
+
+**La mitad técnica está hecha.** Desde la migración 020 el número de
+ranuras es una columna de cada persona (`ranuras_avatar`) y el código no
+pone techo: el límite es lo que diga esa columna. Subírsela a alguien es
+un `UPDATE`. Lo que falta es la tienda.
+
+**Por qué no se hizo ya**, y son dos razones medidas el mismo día:
+
+| | |
+|---|---|
+| Personas que usan 1 ranura de las 6 | 44 de 65 |
+| Personas que usan las 6 | 0 |
+| Cuentas con más de 100 millones de monedas | 4 |
+| Cuentas con menos de 10 mil | 178 |
+| Lo más caro de la tienda | 50.000 monedas |
+
+Nadie ha llegado al tope que ya tiene, así que se vendería algo que
+nadie ha gastado. Y la economía está partida en dos poblaciones: cuatro
+cuentas pueden comprar la tienda entera veinte mil veces.
+
+Peor: el **punto 18 de la auditoría** dice que las monedas se conceden
+por número de peticiones y no por tiempo verificado, o sea que se
+fabrican. **Vender consumo de disco a cambio de una moneda que se
+fabrica es dar un botón para llenar el disco.** Primero el 18.
+
+**Cuando llegue el momento**, así lo haría:
+
+- **El precio sube en cada compra, geométrico y no al cuadrado.** Al
+  cuadrado es demasiado brusco: la quinta costaría 25 veces la primera.
+  Multiplicar por 1,5 cada vez se siente mejor y es lo que usa medio
+  género: con una base de 500, las ranuras salen a 500, 750, 1.125,
+  1.688, 2.531... La décima cuesta 38 veces la primera y la vigésima
+  2.200 veces. Se limita solo, sin un tope que parezca arbitrario.
+- **Un tope duro de seguridad de todas formas**, porque un límite que no
+  depende de que la economía funcione es el único en el que se puede
+  confiar.
+- **Una ranura vacía no cuesta disco.** Lo que ocupa 45 kB es la ranura
+  LLENA. Comprar no consume nada; llenar sí. No se "asigna" espacio a
+  nadie: cada diseño guardado es un archivo y ya está.
