@@ -78,13 +78,21 @@ async function rellenar(sql, nombreTabla, filas) {
       continue;
     }
 
-    const yaEsta = fila.avatar_compuesto === receta.huella && avatarCompuesto.estanTodos(receta.huella);
+    // Con el nombre fijo ya no vale saltarse lo que existe: el archivo
+    // de ayer puede seguir ahi con la ropa de ayer. Se comprueba solo
+    // que la huella coincida Y que el archivo este, y aun asi se
+    // rehace si falta cualquiera de los dos tamanos.
+    const destino = { usuarioId: Number(fila.usuario_id) };
+    if (fila.ranura !== null && fila.ranura !== undefined) destino.ranura = Number(fila.ranura);
+
+    const yaEsta = fila.avatar_compuesto === receta.huella &&
+      avatarCompuesto.TAMANOS.every(([a, l]) => avatarCompuesto.leer(destino, a, l));
     if (yaEsta) { yaEstaban++; continue; }
 
     if (!APLICAR) { hechos++; continue; }
 
     try {
-      const huella = await avatarCompuesto.asegurar(sql, avatar);
+      const huella = await avatarCompuesto.asegurar(sql, destino, avatar);
       if (nombreTabla === "users") {
         await sql`UPDATE users SET avatar_compuesto = ${huella} WHERE id = ${fila.id};`;
       } else {
@@ -122,13 +130,13 @@ async function main() {
 
   try {
     const usuarios = await sql`
-      SELECT id, username AS quien, avatar, avatar_compuesto
+      SELECT id, id AS usuario_id, NULL::int AS ranura, username AS quien, avatar, avatar_compuesto
       FROM users
       WHERE avatar IS NOT NULL AND avatar::text <> '{}'
       ORDER BY id;`;
 
     const ranuras = await sql`
-      SELECT a.id, u.username || ' #' || a.slot AS quien, a.avatar, a.avatar_compuesto
+      SELECT a.id, a.user_id AS usuario_id, a.slot AS ranura, u.username || ' #' || a.slot AS quien, a.avatar, a.avatar_compuesto
       FROM saved_avatars a JOIN users u ON u.id = a.user_id
       ORDER BY a.id;`;
 
