@@ -10,7 +10,7 @@ código para lograrlo, y cómo operarlo.
 | | |
 |---|---|
 | IP | 172.184.203.20 |
-| Usuario SSH | `azureuser` (con la llave `macroreborn-vps-key.pem`) |
+| Usuario SSH | `azureuser` (con la llave `~/.ssh/macroreborn-vps-key`, ed25519 desde el 19/09/2026) |
 | OS | Ubuntu 24.04.4 LTS |
 | Arquitectura | **ARM64 (aarch64)** |
 | Recursos | 2 vCPU, 950 MB de RAM, 60 GB libres |
