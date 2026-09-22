@@ -517,3 +517,42 @@ fabrica es dar un botón para llenar el disco.** Primero el 18.
 - **Una ranura vacía no cuesta disco.** Lo que ocupa 45 kB es la ranura
   LLENA. Comprar no consume nada; llenar sí. No se "asigna" espacio a
   nadie: cada diseño guardado es un archivo y ya está.
+
+---
+
+## 11. Cómo probarlo en tu máquina
+
+El sitio entero, con los datos de verdad, en `localhost:3001`. Nada de
+lo que se haga ahí toca producción.
+
+```powershell
+cd D:\Macroreborn
+npm test                  # 756 pruebas, ~1 min, no tocan nada
+npm run db:traer          # baja una copia de la base de produccion
+node scripts/rellenar-avatares.js --aplicar    # compone los 215
+npm run db:real           # el sitio en http://localhost:3001
+```
+
+Ese tercer paso es el que suele olvidarse: `db:traer` baja las recetas
+pero no las imágenes, porque son derivadas y viven en el disco del
+servidor. Sin él, las direcciones de avatar dan 404 en local.
+
+Dentro del sitio local se puede entrar **como cualquier persona del
+sitio**, con la contraseña `local1234` que `db:traer` le pone a todas en
+la copia. Así se reproduce lo que le pasa a alguien concreto.
+
+Qué mirar:
+
+| Dirección | Qué debe pasar |
+|---|---|
+| `/avatares/<id>/327x504.jpg` | La imagen, con un minuto de caché |
+| `/avatares/<id>/327x504.jpg?v=loquesea` | La MISMA imagen, con un año |
+| `/avatares/<id>/ranura1/327x504.jpg` | Su primer diseño guardado |
+| `/avatares/999999/62x96.jpg` | 404 |
+
+Y la prueba que de verdad importa: **cambiarse el avatar y recargar la
+misma dirección.** Tiene que salir la ropa nueva sin que la dirección
+haya cambiado.
+
+Para mirar los compuestos a ojo, uno al lado del otro con lo que hace
+hoy el navegador, está `npm run revision:avatares`.
