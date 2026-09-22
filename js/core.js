@@ -45,6 +45,9 @@ const MRTexto = {
 
 if (typeof window !== "undefined") window.MRTexto = MRTexto;
 
+// urlAvatarCompuesto se declara mas abajo, junto al resto del avatar.
+// Se expone al final del archivo.
+
 /**
  * Envoltorio seguro de JSON.parse.
  * Si el valor guardado en localStorage está corrupto o mal formado,
@@ -674,7 +677,54 @@ if(typeof document !== "undefined"){
   }, true);
 }
 
-function avatarMiniaturaHTML(avatarCrudo){
+// ------------------------------------------------------------------
+// EL AVATAR YA COMPUESTO POR EL SERVIDOR
+// ------------------------------------------------------------------
+// Desde el 21/09/2026 el servidor compone el avatar al guardarlo y lo
+// sirve como UNA imagen. El porque entero esta en
+// docs/AVATARES-SERVIDOR.md; lo que importa aqui es el numero: la
+// pagina de comunidad mandaba 5.562 kB de capas sueltas para pintar
+// avatares de 35 pixeles, y con miniaturas compuestas manda 468.
+//
+// La direccion es de la persona y no cambia nunca:
+//     /avatares/38/62x96.jpg
+//
+// El ?v= es la version, y es lo que deja cachearla un ano: cuando
+// alguien se cambia de ropa, la API devuelve otra huella, esta funcion
+// arma otra direccion, y el navegador baja la nueva. Sin el habria que
+// preguntar por cada avatar en cada visita.
+//
+// Devuelve null cuando no hay compuesto, y entonces quien llama dibuja
+// por capas como siempre. Pasa con quien no tiene avatar, con los PNG
+// del administrador, y con quien agoto el freno del servidor. Ninguno
+// se queda en blanco.
+function urlAvatarCompuesto(usuario, ancho, alto){
+  if(!usuario || !usuario.id || !usuario.avatar_compuesto) return null;
+  const a = ancho || 62, l = alto || 96;
+  const v = String(usuario.avatar_compuesto).slice(0, 12);
+  return "/avatares/" + encodeURIComponent(usuario.id) + "/" + a + "x" + l +
+    ".jpg?v=" + encodeURIComponent(v);
+}
+
+// Una sola etiqueta con el compuesto, con el mismo data-src perezoso
+// que las capas, para que el observador de mas abajo la recoja igual.
+function imgCompuesta(url, estilo, clase){
+  return `<img data-src="${url}" alt="" loading="lazy"` +
+    (clase ? ` class="${clase}"` : "") +
+    ` style="${estilo}">`;
+}
+
+// El segundo parametro es opcional a proposito: quien solo tenga el
+// avatar a mano sigue llamando con uno solo y se dibuja por capas,
+// como antes. Quien tenga el usuario entero pasa los dos y se lleva la
+// imagen compuesta. Asi las paginas se migran de una en una.
+function avatarMiniaturaHTML(avatarCrudo, usuario){
+  const compuesta = urlAvatarCompuesto(usuario, 62, 96);
+  if(compuesta){
+    return imgCompuesta(compuesta,
+      "width:100%;height:100%;object-fit:cover;border-radius:inherit;");
+  }
+
   const avatar = normalizarAvatar(avatarCrudo);
   if(avatarEsPNG(avatar)){
     const src = avatarPNGData(avatar);
@@ -1016,4 +1066,12 @@ if (typeof window.crearNotificacion !== "function") {
             return { success: false, error: error && error.message ? error.message : "Error de red" };
         });
     };
+}
+
+// El ayudante del avatar compuesto, para los diez archivos que pintan
+// avatares. El resto de este fichero ya vive en el ambito global por
+// como se carga; este se declara explicito porque es el que se va a
+// buscar desde fuera.
+if (typeof window !== "undefined") {
+  window.urlAvatarCompuesto = urlAvatarCompuesto;
 }

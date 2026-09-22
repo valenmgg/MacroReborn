@@ -220,7 +220,7 @@ async function listarUsuarios(req, res) {
     const avatarUno = req.query.ligero ? avatarLigeroSQL : sql`u.avatar AS avatar`;
 
     const usuario = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, ${avatarUno}, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.monedas, u.status, u.bio, ${avatarUno}, u.avatar_compuesto, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
@@ -253,7 +253,7 @@ async function listarUsuarios(req, res) {
   if (q && String(q).trim() !== "") {
     const buscado = "%" + String(q).trim() + "%";
     usuarios = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.avatar_compuesto, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
@@ -273,7 +273,7 @@ async function listarUsuarios(req, res) {
     // (recién registrados, antes de que corra el cron del próximo
     // lunes) quedan al final, ordenados por nombre.
     usuarios = await sql`
-      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.created_at, u.last_login,
+      SELECT u.id, u.username, u.level, u.xp, u.status, u.bio, ${avatarLigeroSQL}, u.avatar_compuesto, u.created_at, u.last_login,
              u.suspendido, u.fecha_suspension, u.motivo_suspension,
              u.rank_actual, u.rank_anterior, u.ranking_puntuacion,
              COALESCE(ras.minutos_jugados, 0) AS minutos_semana_actual,
