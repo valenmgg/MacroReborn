@@ -2090,7 +2090,21 @@ async function gameVotes(req, res) {
 // likes/dislikes agrupando por avatar_id y resuelve "miVoto" del
 // visitante (query "viewer") si se pasa.
 
-const CASILLEROS_GALERIA = 6;
+// Cuantas ranuras tiene cada persona. Era una constante igual para
+// todo el mundo; desde la migracion 020 es una columna suya, para que
+// se pueda subir sin desplegar y para que algun dia se puedan comprar.
+//
+// EL CODIGO NO PONE TECHO: el limite es lo que diga la columna. Este
+// numero solo se usa cuando la fila no dice nada, que no deberia pasar
+// porque la columna es NOT NULL DEFAULT 6, pero una lista de ranuras
+// vacia por un NULL inesperado dejaria a alguien sin galeria.
+const CASILLEROS_POR_DEFECTO = 6;
+
+async function casillerosDe(userId) {
+  const filas = await sql`SELECT ranuras_avatar FROM users WHERE id = ${userId};`;
+  const n = filas.length ? Number(filas[0].ranuras_avatar) : NaN;
+  return Number.isInteger(n) && n >= 1 ? n : CASILLEROS_POR_DEFECTO;
+}
 
 async function avatarGallery(req, res) {
 
@@ -2136,7 +2150,8 @@ async function avatarGallery(req, res) {
     guardados.forEach(fila => { porSlot[fila.slot] = fila; });
 
     const slots = [];
-    for (let n = 1; n <= CASILLEROS_GALERIA; n++) {
+    const cuantas = await casillerosDe(userId);
+    for (let n = 1; n <= cuantas; n++) {
       const fila = porSlot[n];
 
       if (!fila) {
@@ -2161,20 +2176,31 @@ async function avatarGallery(req, res) {
       });
     }
 
-    return res.status(200).json({ success: true, slots });
+    return res.status(200).json({ success: true, slots, ranuras: cuantas });
   }
 
   if (req.method === "POST") {
     const { username, slot, avatar } = req.body || {};
     const slotNum = Number(slot);
 
-    if (!username || !Number.isInteger(slotNum) || slotNum < 1 || slotNum > CASILLEROS_GALERIA) {
+    if (!username || !Number.isInteger(slotNum) || slotNum < 1) {
       return res.status(400).json({ success: false, error: "Datos incompletos" });
     }
 
     const userId = await getUserId(username);
     if (!userId) {
       return res.status(404).json({ success: false, error: "Usuario no encontrado" });
+    }
+
+    // El tope es el suyo, no una constante. Se comprueba DESPUES de
+    // resolver el usuario porque hasta entonces no se sabe cual es.
+    const cuantasTiene = await casillerosDe(userId);
+    if (slotNum > cuantasTiene) {
+      return res.status(403).json({
+        success: false,
+        error: "Todavia no tenes esa ranura",
+        ranuras: cuantasTiene
+      });
     }
 
     // Sin avatar (null/vacío) -> vacía el casillero (borra el diseño
