@@ -2180,6 +2180,9 @@ async function avatarGallery(req, res) {
     // Sin avatar (null/vacío) -> vacía el casillero (borra el diseño
     // guardado y, en cascada, los votos que tenía).
     if (!avatar) {
+      // Y su imagen compuesta: sin esto, el dibujo de un diseno
+      // borrado seguiria sirviendose en su direccion para siempre.
+      avatarCompuesto.borrar({ usuarioId: userId, ranura: slotNum });
       await sql`DELETE FROM saved_avatars WHERE user_id = ${userId} AND slot = ${slotNum};`;
       return res.status(200).json({
         success: true,
@@ -2199,7 +2202,7 @@ async function avatarGallery(req, res) {
     // Las ranuras tambien llevan compuesto: la galeria las pinta igual
     // que un avatar puesto. Mismo criterio y mismo perdon si falla que
     // en api/users.js.
-    const huella = await avatarCompuesto.asegurarSinFallar(sql, revision.avatar);
+    const huella = await avatarCompuesto.asegurarSinFallar(sql, { usuarioId: userId, ranura: slotNum }, revision.avatar);
 
     const fila = await sql`
       INSERT INTO saved_avatars (user_id, slot, avatar, avatar_compuesto)

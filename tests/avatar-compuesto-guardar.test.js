@@ -102,6 +102,7 @@ async function filaDeAna() {
 }
 
 const ana = () => ({ id: idAna, username: "ana" });
+const DESTINO = () => ({ usuarioId: idAna });
 
 describe("guardar un avatar", () => {
 
@@ -113,7 +114,7 @@ describe("guardar un avatar", () => {
     assert.match(fila.avatar_compuesto, /^[a-f0-9]{64}$/, "no se guardo la huella");
 
     for (const [a, l] of AC.TAMANOS) {
-      assert.ok(fs.existsSync(AC.rutaDe(fila.avatar_compuesto, a, l)), a + "x" + l + " no esta en disco");
+      assert.ok(fs.existsSync(AC.rutaDe(DESTINO(), a, l)), a + "x" + l + " no esta en disco");
     }
   });
 
@@ -130,19 +131,34 @@ describe("guardar un avatar", () => {
     const despues = (await filaDeAna()).avatar_compuesto;
 
     assert.notEqual(antes, despues, "la huella no cambio con el avatar");
-    assert.ok(fs.existsSync(AC.rutaDe(despues, 62, 96)));
+    assert.ok(fs.existsSync(AC.rutaDe(DESTINO(), 62, 96)));
   });
 
-  test("y volver al de antes devuelve la huella de antes, sin componer de nuevo", async () => {
+  test("y volver al de antes devuelve la huella de antes", async () => {
+    // La huella es la version, y depende solo de la ropa. El archivo
+    // SI se reescribe, porque con nombre fijo el de ayer podria llevar
+    // la ropa de ayer.
     await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
     const primera = (await filaDeAna()).avatar_compuesto;
-    const cuando = fs.statSync(AC.rutaDe(primera, 62, 96)).mtimeMs;
 
     await guardar({ modelo: "tora", fondo: "tora_fondo9" }, ana());
     await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
 
     assert.equal((await filaDeAna()).avatar_compuesto, primera);
-    assert.equal(fs.statSync(AC.rutaDe(primera, 62, 96)).mtimeMs, cuando, "recompuso lo que ya estaba");
+  });
+
+  test("y la direccion es la misma siempre, aunque cambie la ropa", async () => {
+    // El corazon del cambio del 21/09/2026: la direccion es de la
+    // persona, el archivo se reescribe, y no queda nada huerfano.
+    await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
+    const ruta = AC.rutaDe(DESTINO(), 62, 96);
+    const antes = fs.readFileSync(ruta);
+
+    await guardar({ modelo: "tora", fondo: "tora_fondo9" }, ana());
+
+    assert.ok(!antes.equals(fs.readFileSync(ruta)), "el archivo no cambio");
+    assert.equal(fs.readdirSync(AC.carpetaDe(DESTINO())).length, 2, "quedaron archivos de mas");
+    assert.equal(AC.urlDe(DESTINO(), null, 62, 96), "/avatares/" + idAna + "/62x96.jpg");
   });
 
   test("un avatar sin ninguna prenda se guarda igual, con la huella en NULL", async () => {
