@@ -207,21 +207,94 @@ function leer(destino, ancho, alto) {
 }
 
 // ------------------------------------------------------------------
+// EL FRENO
+// ------------------------------------------------------------------
+// Componer cuesta 170 ms de CPU en esta maquina, y nginx deja pasar 30
+// peticiones por segundo por IP. O sea que, sin freno, una sola persona
+// guardando su avatar en bucle pide 5 segundos de CPU por cada segundo
+// de reloj, en una maquina de dos nucleos. Eso es tumbar el sitio desde
+// una cuenta normal, y lo trajo este mismo trabajo: antes, guardar el
+// avatar era validar y un UPDATE.
+//
+// Dos frenos, y el primero hace casi todo el trabajo:
+//
+//   1. NO SE RECOMPONE LO QUE NO CAMBIO. Si la huella guardada es la
+//      misma que la de la receta nueva y los dos archivos estan en su
+//      sitio, el archivo YA es correcto: la huella captura la receta
+//      entera. Guardar veinte veces el mismo avatar cuesta una
+//      composicion, no veinte.
+//
+//   2. UN PRESUPUESTO POR PERSONA Y POR MINUTO, para el caso de quien
+//      alterne entre dos avatares a proposito. Un humano guarda dos o
+//      tres veces seguidas como mucho; el tope de abajo ni lo roza.
+//
+// El presupuesto vive en memoria y NO entre procesos, asi que con dos
+// procesos el techo real es el doble. Da igual: no es una cuota que
+// haya que cuadrar, es un tope para que nadie se lleve la maquina. Lo
+// mismo que hace api/_rafaga.js y por el mismo motivo.
+const TOPE_POR_MINUTO = 12;
+const VENTANA_MS = 60 * 1000;
+
+const gastado = new Map();   // usuarioId -> [instantes]
+
+function hayPresupuesto(usuarioId) {
+  const ahora = Date.now();
+  const previos = (gastado.get(usuarioId) || []).filter(t => ahora - t < VENTANA_MS);
+
+  if (previos.length >= TOPE_POR_MINUTO) {
+    gastado.set(usuarioId, previos);
+    return false;
+  }
+
+  previos.push(ahora);
+  gastado.set(usuarioId, previos);
+
+  // El Map crece con cada persona que se cambia de ropa y nunca
+  // encogeria solo. Se barre de vez en cuando lo que ya caduco.
+  if (gastado.size > 500) {
+    for (const [id, marcas] of gastado) {
+      if (!marcas.some(t => ahora - t < VENTANA_MS)) gastado.delete(id);
+    }
+  }
+
+  return true;
+}
+
+// Para los tests, que no pueden esperar un minuto.
+function olvidarPresupuesto() {
+  gastado.clear();
+}
+
+// ------------------------------------------------------------------
 // LO QUE SE USA DESDE FUERA
 // ------------------------------------------------------------------
 
 // Compone el avatar de este destino y devuelve su huella. null si no
-// hay nada que componer.
+// hay nada que componer, o si esta persona agoto su presupuesto.
 //
-// Se compone SIEMPRE, aunque el archivo ya exista, porque ahora el
-// nombre no depende del contenido: el archivo de ayer puede seguir ahí
-// con la ropa de ayer. Comprobar antes si hace falta costaria leer el
-// disco y comparar, que es mas caro que los 156 ms de componer.
-async function asegurar(sql, destino, avatar) {
+// `huellaGuardada` es la que la base ya tiene para este destino. Si
+// coincide con la nueva y los archivos estan, no se recompone: ver EL
+// FRENO. Quien no la tenga a mano puede no pasarla, y entonces se
+// compone siempre, que es lo correcto pero mas caro.
+async function asegurar(sql, destino, avatar, huellaGuardada) {
   if (!destinoValido(destino)) throw new TypeError("Destino de avatar inválido");
 
   const receta = await recetaDe(sql, avatar);
   if (!receta) return null;
+
+  // Freno 1: no cambio nada.
+  if (huellaGuardada && huellaGuardada === receta.huella &&
+      TAMANOS.every(([a, l]) => fs.existsSync(rutaDe(destino, a, l)))) {
+    return receta.huella;
+  }
+
+  // Freno 2: esta persona ya gasto lo suyo este minuto. Se devuelve
+  // null, que significa "sin compuesto": la pagina la dibuja por capas
+  // como siempre, y el siguiente guardado o el relleno lo arreglan.
+  if (!hayPresupuesto(destino.usuarioId)) {
+    console.warn("avatar compuesto: presupuesto agotado para el usuario " + destino.usuarioId);
+    return null;
+  }
 
   const carpeta = carpetaDe(destino);
   fs.mkdirSync(carpeta, { recursive: true });
@@ -237,9 +310,9 @@ async function asegurar(sql, destino, avatar) {
 // La misma llamada, pero que no pueda tumbar lo que la llamó. Guardar
 // un avatar tiene que funcionar aunque el disco esté lleno: la persona
 // se queda sin compuesto hasta el siguiente guardado, no sin avatar.
-async function asegurarSinFallar(sql, destino, avatar) {
+async function asegurarSinFallar(sql, destino, avatar, huellaGuardada) {
   try {
-    return await asegurar(sql, destino, avatar);
+    return await asegurar(sql, destino, avatar, huellaGuardada);
   } catch (error) {
     console.error("avatar compuesto: no se pudo generar.", error.message);
     return null;
@@ -310,6 +383,9 @@ module.exports = {
   carpetaDe,
   rutaDe,
   leer,
+  TOPE_POR_MINUTO,
+  hayPresupuesto,
+  olvidarPresupuesto,
   asegurar,
   asegurarSinFallar,
   borrar,

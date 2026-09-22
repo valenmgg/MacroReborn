@@ -320,3 +320,74 @@ describe("la dirección pública", () => {
   });
 
 });
+
+describe("el freno", () => {
+
+  // Componer cuesta 170 ms de CPU y nginx deja pasar 30 peticiones por
+  // segundo. Sin freno, una sola persona guardando en bucle pide cinco
+  // segundos de CPU por cada segundo de reloj en una maquina de dos
+  // nucleos. Lo trajo este mismo trabajo: antes guardar era un UPDATE.
+
+  test("no recompone lo que no cambio", async () => {
+    AC.olvidarPresupuesto();
+    const huella = await AC.asegurar(sql, ANA, avatarBase);
+    const cuando = fs.statSync(AC.rutaDe(ANA, 62, 96)).mtimeMs;
+
+    // Se le pasa la huella que la base ya tiene: es la misma.
+    const otra = await AC.asegurar(sql, ANA, avatarBase, huella);
+
+    assert.equal(otra, huella);
+    assert.equal(fs.statSync(AC.rutaDe(ANA, 62, 96)).mtimeMs, cuando,
+      "recompuso un avatar que no habia cambiado");
+  });
+
+  test("pero si el archivo falta, lo rehace aunque la huella cuadre", async () => {
+    AC.olvidarPresupuesto();
+    const huella = await AC.asegurar(sql, ANA, avatarBase);
+    fs.rmSync(AC.rutaDe(ANA, 62, 96));
+
+    await AC.asegurar(sql, ANA, avatarBase, huella);
+
+    assert.ok(fs.existsSync(AC.rutaDe(ANA, 62, 96)), "no rehizo el archivo que faltaba");
+  });
+
+  test("y si cambio de ropa lo rehace, aunque le pasen una huella vieja", async () => {
+    AC.olvidarPresupuesto();
+    const vieja = await AC.asegurar(sql, ANA, avatarBase);
+    const antes = fs.readFileSync(AC.rutaDe(ANA, 62, 96));
+
+    await AC.asegurar(sql, ANA, { modelo: "tora", remera: "tora_remera2" }, vieja);
+
+    assert.ok(!antes.equals(fs.readFileSync(AC.rutaDe(ANA, 62, 96))));
+  });
+
+  test("una persona no puede componer sin fin en un minuto", async () => {
+    // El caso de quien alterna entre dos avatares a proposito, que el
+    // freno de "no cambio nada" no atrapa.
+    AC.olvidarPresupuesto();
+    const dos = [avatarBase, { modelo: "tora", remera: "tora_remera2" }];
+
+    let compuestos = 0;
+    for (let i = 0; i < AC.TOPE_POR_MINUTO + 5; i++) {
+      if (await AC.asegurar(sql, ANA, dos[i % 2])) compuestos++;
+    }
+
+    assert.equal(compuestos, AC.TOPE_POR_MINUTO,
+      "compuso " + compuestos + " veces, el tope es " + AC.TOPE_POR_MINUTO);
+  });
+
+  test("y agotarlo no le quita el presupuesto a otra persona", async () => {
+    AC.olvidarPresupuesto();
+    for (let i = 0; i < AC.TOPE_POR_MINUTO + 3; i++) await AC.asegurar(sql, ANA, avatarBase);
+
+    assert.equal(AC.hayPresupuesto(ANA.usuarioId), false);
+    assert.equal(AC.hayPresupuesto(BETO.usuarioId), true);
+  });
+
+  test("el tope deja sitio de sobra para una persona de verdad", () => {
+    // Un humano guarda dos o tres veces seguidas como mucho.
+    assert.ok(AC.TOPE_POR_MINUTO >= 10, "demasiado bajo, molestaria a la gente");
+    assert.ok(AC.TOPE_POR_MINUTO <= 30, "demasiado alto, no frena nada");
+  });
+
+});

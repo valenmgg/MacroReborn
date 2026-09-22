@@ -2202,7 +2202,14 @@ async function avatarGallery(req, res) {
     // Las ranuras tambien llevan compuesto: la galeria las pinta igual
     // que un avatar puesto. Mismo criterio y mismo perdon si falla que
     // en api/users.js.
-    const huella = await avatarCompuesto.asegurarSinFallar(sql, { usuarioId: userId, ranura: slotNum }, revision.avatar);
+    // Mismo motivo que en api/users.js: no recomponer lo que no cambio.
+    const previo = await sql`
+      SELECT avatar_compuesto FROM saved_avatars
+      WHERE user_id = ${userId} AND slot = ${slotNum};`;
+
+    const huella = await avatarCompuesto.asegurarSinFallar(
+      sql, { usuarioId: userId, ranura: slotNum }, revision.avatar,
+      previo.length ? previo[0].avatar_compuesto : null);
 
     const fila = await sql`
       INSERT INTO saved_avatars (user_id, slot, avatar, avatar_compuesto)

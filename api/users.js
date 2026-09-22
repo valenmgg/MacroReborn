@@ -318,7 +318,14 @@ async function updateAvatar(req, res) {
   // seria 500 consultas al catalogo. Si esto falla, se guarda igual con
   // la huella en NULL: quien guarda su avatar no puede quedarse sin
   // guardarlo porque el disco este lleno. Ver api/_avatar-compuesto.js.
-  const huella = await avatarCompuesto.asegurarSinFallar(sql, { usuarioId: auth.sub }, revision.avatar);
+  // La huella que ya hay, para que no se recomponga lo que no cambio:
+  // guardar veinte veces el mismo avatar tiene que costar una
+  // composicion, no veinte. Es una busqueda por clave primaria.
+  const previo = await sql`SELECT avatar_compuesto FROM users WHERE id = ${auth.sub};`;
+
+  const huella = await avatarCompuesto.asegurarSinFallar(
+    sql, { usuarioId: auth.sub }, revision.avatar,
+    previo.length ? previo[0].avatar_compuesto : null);
 
   const user = await sql`
     UPDATE users
