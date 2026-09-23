@@ -674,6 +674,13 @@ Lo que sale como **"la de verdad"** lo hace el mismo código que
 generará las 768 (`api/_previsualizacion.js`). Si difiere de la de en
 vivo, manda ella.
 
+**Junto a ella, al mismo tamaño, salen las de macrojuegos** de esa capa,
+para comparar sin tener que bajar. En las capas de las que no quedó
+ninguna sale una de cada tipo, con su nombre, para ver al menos el
+estilo; y en la capa modelo, las cabezas de sus modelos, con la del
+abierto primero. Las lee de `datos-locales/macrojuegos-referencia/`: si
+esa carpeta no está, la herramienta funciona igual y lo dice.
+
 Un cuadro solo sugerido se ve con borde amarillo discontinuo y **no se
 guarda**; uno decidido, verde y continuo. Así nunca acaba en el archivo
 algo que nadie eligió.
