@@ -121,7 +121,7 @@ Por eso importa servir cada tamaño en su sitio.
 | La versión | En la consulta, `?v=<huella>`. Ver 8 |
 | Ranuras por persona | Una columna, `ranuras_avatar`. El código no pone techo. Ver 9 |
 | Avatares en ranuras | También se componen |
-| Previsualizaciones | La prenda puesta sobre un modelo vacío, recortada a su zona |
+| Previsualizaciones | La prenda puesta sobre un modelo vacío, recortada a su zona. Afinado el 23/09: sobre un maniquí, y el cuadro lo elige una persona. Ver 12 |
 | El taller | Sigue recibiendo las prendas sueltas, con sesión y permiso |
 | La caché al cerrar | Se invalida entera. Decidido que da igual |
 
