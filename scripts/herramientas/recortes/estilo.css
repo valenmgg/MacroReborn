@@ -180,16 +180,12 @@ kbd {
 .tira button.fuera { border-color: var(--sugerido); }
 .tira button.actual.fuera { border-color: var(--malo); }
 
-.referencias { display: flex; gap: 8px; flex-wrap: wrap; }
-.referencias img {
-  width: 105px;
-  height: 105px;
-  border: 1px solid var(--borde-fuerte);
-  border-radius: 4px;
-  image-rendering: auto;
-  background: #fff;
-}
-.referencias p { color: var(--tenue); font-size: 13px; margin: 0; }
+/* Las de macrojuegos, junto a la nuestra y al mismo tamaño. Si hay
+   muchas, la tira se desliza de lado en vez de empujar lo demas abajo. */
+.muestras figure.macro { flex: 1 1 280px; min-width: 0; }
+.referencias { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.referencias figure { margin: 0; flex: none; }
+.referencias figcaption { text-align: center; font-size: 11px; margin-top: 2px; }
 
 @media (max-width: 1100px) {
   .trabajo { grid-template-columns: 1fr; }

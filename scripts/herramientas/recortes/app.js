@@ -415,24 +415,32 @@
     });
   }
 
+  // Como lo hacia macrojuegos, junto a "la de verdad" y al mismo tamaño,
+  // para comparar de un vistazo sin tener que bajar.
   function pintarReferencias() {
     const cont = $("referencias");
+    const nota = $("notaReferencias");
     cont.textContent = "";
     // El servidor ya las manda agrupadas por capa y con su URL.
     const refs = ((estado.datos.referencias || {}).porCapa || {})[estado.capa] || [];
     if (!refs.length) {
-      const p = document.createElement("p");
-      p.textContent = "No hay previsualizaciones archivadas de este tipo. De macrojuegos solo sobreviven camisas, pantalones, pelos, una barba, zapatos y pieles.";
-      cont.append(p);
+      nota.textContent = "De esta capa no quedó ninguna de macrojuegos.";
       return;
     }
-    for (const url of refs) {
-      const img = document.createElement("img");
-      img.src = url;
-      img.alt = "Previsualización archivada de macrojuegos";
-      img.title = url.split("/").pop();
-      cont.append(img);
-    }
+    nota.textContent = "Cómo la enseñaba macrojuegos (" + refs.length + ")";
+    for (const url of refs) cont.append(figuraReferencia(url));
+  }
+
+  function figuraReferencia(url) {
+    const figura = document.createElement("figure");
+    const img = document.createElement("img");
+    img.src = url;
+    img.width = 96;
+    img.height = 96;
+    img.alt = "Previsualización archivada de macrojuegos";
+    img.title = url.split("/").pop();
+    figura.append(img);
+    return figura;
   }
 
   // ------------------------------------------------------------------

@@ -85,7 +85,8 @@ function contextoFalso(canvas) {
 
 // Monta la pagina. `innerHeight` 694 deja la escala exactamente en 1: un
 // pixel de pantalla es un pixel del lienzo, y las cuentas se leen solas.
-async function montar(config) {
+// `ajustar`, si viene, retoca los datos de prueba antes de servirlos.
+async function montar(config, ajustar) {
   const guardados = [];
   const dom = new JSDOM(HTML, { runScripts: "outside-only", pretendToBeVisual: true, url: "http://127.0.0.1:3001/herramientas/recortes/" });
   const w = dom.window;
@@ -104,7 +105,9 @@ async function montar(config) {
   };
   w.fetch = async (url, opciones) => {
     if (String(url).endsWith("/api/datos")) {
-      return { ok: true, status: 200, json: async () => datosDePrueba(config) };
+      const datos = datosDePrueba(config);
+      if (ajustar) ajustar(datos);
+      return { ok: true, status: 200, json: async () => datos };
     }
     if (String(url).endsWith("/api/guardar")) {
       guardados.push(JSON.parse(opciones.body));
@@ -384,6 +387,27 @@ describe("el aviso de las que se salen", () => {
     }
     await esperar(w);
     assert.match(doc.getElementById("seSalen").textContent, /asoman fuera/);
+  });
+
+});
+
+describe("las referencias de macrojuegos, en la pagina", () => {
+
+  const srcs = doc => [...doc.querySelectorAll("#referencias img")].map(i => i.getAttribute("src"));
+  const nota = doc => doc.getElementById("notaReferencias").textContent;
+
+  test("salen junto a la nuestra y a su mismo tamaño, sin tener que bajar", async () => {
+    const { doc } = await montar(null, d => {
+      d.referencias = { porCapa: { boca: ["/r/boca1.jpg", "/r/boca2.jpg"] } };
+    });
+    assert.deepStrictEqual(srcs(doc), ["/r/boca1.jpg", "/r/boca2.jpg"]);
+    for (const img of doc.querySelectorAll("#referencias img")) {
+      assert.equal(img.getAttribute("width"), "96", "no salen al tamaño de la nuestra");
+      assert.equal(img.getAttribute("height"), "96");
+    }
+    assert.ok(doc.getElementById("vistaReal").closest("section").contains(doc.getElementById("referencias")),
+      "no estan junto a la vista previa");
+    assert.match(nota(doc), /macrojuegos \(2\)/);
   });
 
 });
