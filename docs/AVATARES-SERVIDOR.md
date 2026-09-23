@@ -567,18 +567,43 @@ no lo que salió de una cuenta. El código solo propone.
 
 ### Lo que se aprendió de macrojuegos
 
-Leído de la Wayback Machine el 23/09/2026:
+Leído de la Wayback Machine el 23/09/2026, en dos búsquedas: la primera
+encontró 19 previsualizaciones, y la segunda, más a fondo, 25 más.
 
-- **Solo quedan 19 previsualizaciones**, todas en
-  `av0.na.macrojuegos.com/items/ref/`, de 70x70. Se buscó en los diez
-  hosts `av0` a `av9`, en los demás de su CDN y en todo el dominio: no
-  hay más.
+- **Quedan 44 previsualizaciones**, todas de 70x70, en dos formatos de
+  dirección:
+
+  | Formato | Cuántas | De dónde |
+  |---|---|---|
+  | `av…/items/ref/<modelo>/<prenda>.jpg` | 23 | 19 de macrojuegos, 4 de microjogos |
+  | `avatar1.na…/items/<miles>/<id>/thumb.jpg` | 21 | 16 de macrojuegos, 5 de microjeux |
+
+- **Macrojuegos era una red de sitios** de la misma empresa, con el
+  mismo catálogo de prendas: microjeux (francés), microjogos (portugués),
+  microgiochi (italiano), microspiele (alemán), microgry (polaco),
+  macrogames.ru y macrogamers.com. La misma prenda sale con el mismo
+  número en varios, y las dos que se compararon eran idénticas byte a
+  byte.
+- **Dónde se buscó**: en macrojuegos, servidor por servidor, `av`, `av0`
+  a `av9`, `avatar` y `avatar0` a `avatar30`, con y sin `.na`, y los de
+  imágenes (`img`, `static`, `mcdn`); en los siete sitios hermanos, que
+  son pequeños, todo el dominio de una vez; los 128 rastreos de Common
+  Crawl, que no guardan ninguna imagen de prenda; y las dos wikis de fans
+  en Fandom, que solo tienen las miniaturas de los modelos. No hay más.
+- **En macrojuegos, preguntar por todo el dominio no basta.** La primera
+  búsqueda pidió `macrojuegos.com` entero filtrado por `/items/` y se dejó
+  las 16 de `avatar1.na`: en un dominio tan grande la consulta no llega
+  al final. Por eso la segunda fue servidor por servidor.
 - **Sus modelos se llaman como los nuestros**: cereza, fengchao,
-  fenglei, fiora, max y tora, más otros seis que aquí no están. O sea
-  que esas previsualizaciones son de nuestro mismo arte base.
-- **El número del archivo lleva el tipo dentro**, en los dos dígitos que
-  siguen al modelo: `05` camisas, `06` pantalones, `08` pelos, `09` una
-  barba y `12` zapatos. Se comprobó mirando las 19 una por una.
+  fenglei, fiora, max y tora, más otros seis que aquí no están, como
+  Nadia, la sirena, que parece la dueña de muchas de las prendas nuevas:
+  conchas, algas, escamas. O sea que esas previsualizaciones son de
+  nuestro mismo arte base.
+- **En el primer formato, el número lleva el tipo dentro**, en los dos
+  dígitos que siguen al modelo: `05` camisas, `06` pantalones, `08`
+  pelos, `09` una barba y `12` zapatos. Se comprobó mirando las 23 una
+  por una. En el segundo el número no dice nada, y las 21 se clasificaron
+  a ojo: 15 camisas, 3 pantalones y 3 de piel.
 - **No ponían la prenda sobre el modelo a color, sino sobre una silueta
   plana** de un solo tono gris azulado, medido de sus imágenes en
   `rgb(172,180,204)`. Por eso la prenda resaltaba tanto. Aquí es la
@@ -586,19 +611,29 @@ Leído de la Wayback Machine el 23/09/2026:
   conservando su forma. **La excepción es la única barba**, que sale
   sobre piel morena y sin nada de gris: o ese tipo se enseñaba a color,
   o la prenda traía la piel dentro. Con una sola no se puede saber.
+- **La piel se enseñaba como el torso desnudo, a color**, con el mismo
+  encuadre que las camisas. Son 3, y es la única referencia que hay para
+  nuestra capa piel.
 - **Cada tipo tenía siempre el mismo encuadre, y muy cerrado**: las
   camisas del cuello a la cintura, los pantalones de la cadera al muslo,
   los zapatos un solo pie.
 - **De sus 12 modelos queda la miniatura**, `models/<nombre>/thumb.jpg`,
   de 73x73: solo la cabeza, y a color. Es lo más parecido que hay a una
-  previsualización de la capa modelo. Se bajaron 11; la de tora, que es
-  de 2018, no.
+  previsualización de la capa modelo.
 
-Las 19 y las 11 se bajaron solo como referencia, a
-`datos-locales/macrojuegos-referencia/`, fuera de git, y `galeria.html`,
-en esa misma carpeta, las enseña todas agrupadas por tipo. **Se acordó
-borrarlas en cuanto los cuadros estén decididos**, por coherencia con el
-motivo de todo este proyecto.
+Todo se bajó solo como referencia, a
+`datos-locales/macrojuegos-referencia/`, fuera de git:
+
+| | |
+|---|---|
+| `prendas/` | Las del primer formato, con su nombre original |
+| `prendas-por-id/` | Las del segundo, con la capa delante del número |
+| `modelos/` | Las 12 miniaturas |
+| `fuentes.tsv` | De dónde salió cada archivo y cuándo se capturó |
+| `galeria.html` | Todas juntas, agrupadas por tipo |
+
+**Se acordó borrarlo todo en cuanto los cuadros estén decididos**, por
+coherencia con el motivo de todo este proyecto.
 
 ### Un cuadro por capa y por modelo
 
