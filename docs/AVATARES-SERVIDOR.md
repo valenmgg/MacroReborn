@@ -587,8 +587,9 @@ encontró 19 previsualizaciones, y la segunda, más a fondo, 25 más.
 - **Dónde se buscó**: en macrojuegos, servidor por servidor, `av`, `av0`
   a `av9`, `avatar` y `avatar0` a `avatar30`, con y sin `.na`, y los de
   imágenes (`img`, `static`, `mcdn`); en los siete sitios hermanos, que
-  son pequeños, todo el dominio de una vez; los 128 rastreos de Common
-  Crawl, que no guardan ninguna imagen de prenda; y las dos wikis de fans
+  son pequeños, todo el dominio de una vez; 127 de los 128 rastreos de
+  Common Crawl, que no guardan ninguna imagen de prenda (uno no
+  respondió); y las dos wikis de fans
   en Fandom, que solo tienen las miniaturas de los modelos. No hay más.
 - **En macrojuegos, preguntar por todo el dominio no basta.** La primera
   búsqueda pidió `macrojuegos.com` entero filtrado por `/items/` y se dejó
