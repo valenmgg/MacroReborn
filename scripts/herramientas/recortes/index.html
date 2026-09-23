@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recortes de previsualización</title>
+<link rel="stylesheet" href="/herramientas/recortes/estilo.css">
+</head>
+<body>
+
+<header class="barra">
+  <h1>Recortes de previsualización</h1>
+  <nav id="modelos" class="modelos" aria-label="Modelo"></nav>
+  <div class="maniqui" role="group" aria-label="Maniquí">
+    <span>Maniquí</span>
+    <button type="button" data-maniqui="plano" class="activo" title="Como hacía macrojuegos: la silueta de un solo tono">Plano</button>
+    <button type="button" data-maniqui="color" title="El modelo tal cual">A color</button>
+  </div>
+  <div class="guardar">
+    <span id="progreso" class="progreso"></span>
+    <span id="estadoGuardado" class="estado">Sin cambios</span>
+    <button type="button" id="botonGuardar" class="primario" disabled>Guardar</button>
+  </div>
+</header>
+
+<main class="trabajo">
+
+  <aside class="columna capas">
+    <h2>Capas</h2>
+    <ol id="listaCapas"></ol>
+  </aside>
+
+  <section class="columna lienzo">
+    <div class="cabecera-lienzo">
+      <h2 id="tituloLienzo">Elige una capa</h2>
+      <p id="avisoSugerencia" class="aviso" hidden>
+        Esto es una <b>sugerencia</b>. Mueve el cuadro o pulsa <b>Aceptar</b> para decidirlo.
+      </p>
+    </div>
+    <canvas id="lienzo" tabindex="0" aria-label="Lienzo: arrastra el cuadro para moverlo, las esquinas para cambiar su tamaño, o usa las flechas"></canvas>
+    <p class="ayuda">
+      Arrastra el cuadro para moverlo y sus esquinas para cambiarlo de tamaño.
+      Con el lienzo seleccionado: <kbd>flechas</kbd> mueven un píxel, con <kbd>Mayús</kbd> diez;
+      <kbd>+</kbd> y <kbd>-</kbd> cambian el tamaño. La rueda también.
+    </p>
+  </section>
+
+  <aside class="columna panel">
+
+    <section>
+      <h2>Así se verá</h2>
+      <div class="muestras">
+        <figure>
+          <canvas id="vistaViva" width="96" height="96"></canvas>
+          <figcaption>En vivo</figcaption>
+        </figure>
+        <figure>
+          <img id="vistaReal" width="96" height="96" alt="">
+          <figcaption>La de verdad</figcaption>
+        </figure>
+        <figure>
+          <img id="vistaReal2x" width="192" height="192" alt="" class="ampliada">
+          <figcaption>La de verdad, al doble</figcaption>
+        </figure>
+      </div>
+      <p class="nota">«La de verdad» la hace el mismo código que generará las 768. Si difiere de la de en vivo, manda ella.</p>
+    </section>
+
+    <section>
+      <h2>El cuadro</h2>
+      <div class="numeros">
+        <label>x <input id="numX" type="number" min="0" step="1"></label>
+        <label>y <input id="numY" type="number" min="0" step="1"></label>
+        <label>lado <input id="numLado" type="number" min="12" step="1"></label>
+      </div>
+      <p id="seSalen" class="se-salen"></p>
+      <div class="acciones">
+        <button type="button" id="botonAceptar" class="primario">Aceptar</button>
+        <button type="button" id="botonSugerencia">Volver a la sugerencia</button>
+        <button type="button" id="botonCopiar" title="Pone este mismo cuadro en esta capa de los demás modelos">Copiar a los demás modelos</button>
+        <button type="button" id="botonQuitar" class="discreto">Quitar decisión</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Prendas de esta capa</h2>
+      <div class="navegar">
+        <button type="button" id="botonAnterior" aria-label="Anterior">‹</button>
+        <span id="contadorPrenda"></span>
+        <button type="button" id="botonSiguiente" aria-label="Siguiente">›</button>
+        <button type="button" id="botonGrande">La más grande</button>
+        <button type="button" id="botonPequena">La más pequeña</button>
+      </div>
+      <p id="nombrePrenda" class="nombre-prenda"></p>
+      <div id="tira" class="tira"></div>
+    </section>
+
+    <section>
+      <h2>Cómo lo hacía macrojuegos</h2>
+      <div id="referencias" class="referencias"></div>
+    </section>
+
+  </aside>
+</main>
+
+<script src="/herramientas/recortes/app.js"></script>
+</body>
+</html>

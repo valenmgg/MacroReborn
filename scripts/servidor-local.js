@@ -42,13 +42,19 @@ const { abrirBaseReal } = require("./base-real");
 // alguien lleva puesta desde hace un ano, el avatar PNG de 984 kB.
 const MODO_REAL = process.argv.includes("--real") || process.env.MR_BASE === "real";
 const PGDATA = path.join(__dirname, "..", "datos-locales", "pgdata");
-const { usarSqlLocal } = require("../api/_db");
+const { usarSqlLocal, obtenerSql } = require("../api/_db");
 
 // Las mismas rutas de prenda que server.js, del mismo modulo y no
 // copiadas: este servidor es OTRO, y mientras el cierre de la ruta
 // adivinable vivio dentro de server.js, aqui no se aplicaba.
 const { traducirRutaCanonica, esPrendaDeAvatar } = require("../api/_prendas-ruta");
 const avatarCompuesto = require("../api/_avatar-compuesto");
+
+// La herramienta para elegir los cuadros de las previsualizaciones. Solo
+// aqui, en el servidor local: tiene una ruta que escribe un archivo del
+// repositorio, y server.js no la carga ni debe cargarla nunca. Ver
+// scripts/herramientas/recortes/servidor.js.
+const herramientaRecortes = require("./herramientas/recortes/servidor");
 const { resolverRutaEstatica } = require("../api/_ruta-estatica");
 const avisosSSE = require("../api/_avisos-sse");
 
@@ -125,6 +131,9 @@ async function main() {
 
   const servidor = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
+
+    // ----- La herramienta de recortes (solo en local) -----
+    if (await herramientaRecortes.atender(req, res, url, obtenerSql())) return;
 
     // ----- El avatar ya compuesto -----
     // /avatares/<id>/<tam>.jpg, la direccion de esa persona, que no
