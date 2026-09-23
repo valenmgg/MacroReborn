@@ -227,6 +227,11 @@ por `/api/avisos`.
 | 12 | Versión de sesión en el token | Decidido: **hay que cerrar todas las sesiones**. Migración nueva |
 | 75 | Sacar las prendas del historial de GitHub | **Descartado** el 21/09/2026: se acepta que el arte anterior a esa fecha siga en el historial |
 
+**Aparte de la auditoría, hay un trabajo a medias:** que el servidor
+componga los avatares y deje de repartir las prendas sueltas. Está en
+`docs/AVATARES-SERVIDOR.md`, y su tabla de fases (punto 5) dice cuáles
+están hechas y cuál toca.
+
 ## 6. Lo que muerde si no se sabe
 
 - **`fail2ban` está apagado a propósito** desde el 17/09/2026. No se
