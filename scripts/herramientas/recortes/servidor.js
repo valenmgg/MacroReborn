@@ -29,7 +29,10 @@ const { CAPAS } = require("../../../api/_avatar-catalogo");
 const RAIZ = path.join(__dirname, "..", "..", "..");
 const PREFIJO = "/herramientas/recortes";
 const CARPETA = __dirname;
-const REFERENCIAS = path.join(RAIZ, "datos-locales", "macrojuegos-referencia", "prendas");
+// Las referencias de macrojuegos, fuera de git. MR_REFERENCIAS_MACROJUEGOS
+// existe solo para las pruebas, como MR_AVATARES_DIR.
+const REFERENCIAS = process.env.MR_REFERENCIAS_MACROJUEGOS ||
+  path.join(RAIZ, "datos-locales", "macrojuegos-referencia");
 
 // Los archivos de la pagina, con nombre fijo. Nada de rutas armadas con
 // lo que venga en la URL.
@@ -51,6 +54,22 @@ const TIPOS_MACROJUEGOS = {
   "12": ["botas"]
 };
 
+// Las carpetas de referencias y el nombre que se acepta en cada una. El
+// nombre llega en la URL, asi que se valida con un patron cerrado antes de
+// tocar el disco: nada de rutas armadas con lo que venga.
+//   prendas/         las de av.../items/ref/, con el tipo dentro del numero
+//   prendas-por-id/  las de avatar1.na.../items/<id>/thumb.jpg, que no lo
+//                    llevan: la capa se la puso una persona, delante
+const CARPETAS_REFERENCIA = {
+  "prendas": /^\d+_\d+\.jpg$/,
+  "prendas-por-id": /^[a-z]+_\d+\.jpg$/
+};
+
+function patronDe(carpeta) {
+  return Object.prototype.hasOwnProperty.call(CARPETAS_REFERENCIA, carpeta)
+    ? CARPETAS_REFERENCIA[carpeta] : null;
+}
+
 function esLocal(req) {
   const ip = String((req.socket && req.socket.remoteAddress) || "");
   return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
@@ -61,23 +80,29 @@ function json(res, codigo, cuerpo) {
   res.end(JSON.stringify(cuerpo));
 }
 
-// Las referencias de macrojuegos, agrupadas por nuestra capa. Si la
-// carpeta no esta -en otro PC, o porque ya se borraron como se acordo-
-// simplemente no hay referencias.
-function referencias() {
-  const porCapa = {};
-  let archivos = [];
-  try { archivos = fs.readdirSync(REFERENCIAS).filter(f => /^\d+_\d+\.jpg$/.test(f)); }
-  catch (_) { return porCapa; }
+function listarReferencias(raiz, carpeta) {
+  try { return fs.readdirSync(path.join(raiz, carpeta)).filter(f => patronDe(carpeta).test(f)).sort(); }
+  catch (_) { return []; }
+}
 
-  for (const f of archivos.sort()) {
+// Las referencias de macrojuegos, agrupadas por nuestra capa, ya como la
+// URL con que las sirve esta misma herramienta. Si la carpeta no esta -en
+// otro PC, o porque ya se borraron como se acordo- simplemente no hay.
+function referencias(raiz = REFERENCIAS) {
+  const porCapa = {};
+  const poner = (capa, carpeta, archivo) =>
+    (porCapa[capa] = porCapa[capa] || []).push(PREFIJO + "/referencia/" + carpeta + "/" + archivo);
+
+  for (const f of listarReferencias(raiz, "prendas")) {
     const [modeloRef, nombre] = f.replace(".jpg", "").split("_");
     const tipo = nombre.slice(modeloRef.length, modeloRef.length + 2);
-    for (const capa of TIPOS_MACROJUEGOS[tipo] || []) {
-      (porCapa[capa] = porCapa[capa] || []).push(f);
-    }
+    for (const capa of TIPOS_MACROJUEGOS[tipo] || []) poner(capa, "prendas", f);
   }
-  return porCapa;
+  for (const f of listarReferencias(raiz, "prendas-por-id")) {
+    const capa = f.split("_")[0];
+    if (CAPAS.includes(capa)) poner(capa, "prendas-por-id", f);
+  }
+  return { porCapa };
 }
 
 // El catalogo con la caja de dibujo de cada prenda. Calcular las 768
@@ -138,11 +163,17 @@ async function atender(req, res, url, sql) {
   }
 
   // ----- las referencias de macrojuegos -----
-  const ref = /^\/referencia\/(\d+_\d+\.jpg)$/.exec(ruta);
+  const ref = /^\/referencia\/([a-z-]+)\/([^/]+)$/.exec(ruta);
   if (ref) {
+    const [, carpeta, archivo] = ref;
+    const patron = patronDe(carpeta);
+    if (!patron || !patron.test(archivo)) {
+      res.writeHead(404); res.end();
+      return true;
+    }
     try {
-      const datos = fs.readFileSync(path.join(REFERENCIAS, ref[1]));
-      res.writeHead(200, { "Content-Type": "image/jpeg" });
+      const datos = fs.readFileSync(path.join(REFERENCIAS, carpeta, archivo));
+      res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "no-store" });
       res.end(datos);
     } catch (_) {
       res.writeHead(404); res.end();

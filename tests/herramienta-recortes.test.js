@@ -26,8 +26,15 @@
 const { test, describe } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
+
+// Una carpeta de referencias de mentira, para no depender de lo que haya
+// en datos-locales/: esta fuera de git y se borra en cuanto se decidan
+// los cuadros. Tiene que estar puesta ANTES de cargar servidor.js.
+const REFERENCIAS_DE_PRUEBA = fs.mkdtempSync(path.join(os.tmpdir(), "mr-referencias-"));
+process.env.MR_REFERENCIAS_MACROJUEGOS = REFERENCIAS_DE_PRUEBA;
 
 const raiz = (...p) => path.join(__dirname, "..", ...p);
 const HTML = fs.readFileSync(raiz("scripts", "herramientas", "recortes", "index.html"), "utf8");
@@ -60,7 +67,7 @@ function datosDePrueba(config) {
       cereza: { boca: { x: 140, y: 90, lado: 50 } },
       tora: { boca: { x: 100, y: 100, lado: 100 }, pelo: { x: 50, y: 0, lado: 220 } }
     },
-    referencias: {}
+    referencias: { porCapa: {} }
   };
 }
 
@@ -377,6 +384,91 @@ describe("el aviso de las que se salen", () => {
     }
     await esperar(w);
     assert.match(doc.getElementById("seSalen").textContent, /asoman fuera/);
+  });
+
+});
+
+describe("las referencias de macrojuegos, en el servidor", () => {
+
+  const servidor = () => require("../scripts/herramientas/recortes/servidor");
+  const P = "/herramientas/recortes/referencia/";
+
+  function carpetaDeReferencias(archivos) {
+    const r = fs.mkdtempSync(path.join(os.tmpdir(), "mr-referencias-"));
+    for (const ruta of archivos) {
+      fs.mkdirSync(path.dirname(path.join(r, ruta)), { recursive: true });
+      fs.writeFileSync(path.join(r, ruta), "jpg");
+    }
+    return r;
+  }
+
+  // Pedirle una ruta a la herramienta, como lo haria el navegador.
+  async function pedir(ruta, ip = "127.0.0.1") {
+    const res = {
+      codigo: 0, cabeceras: {}, cuerpo: null,
+      writeHead(c, h) { this.codigo = c; this.cabeceras = h || {}; },
+      end(d) { this.cuerpo = d == null ? null : d; }
+    };
+    await servidor().atender({ method: "GET", socket: { remoteAddress: ip } }, res,
+      new URL("http://127.0.0.1:3001" + ruta), null);
+    return res;
+  }
+
+  test("se agrupan por nuestra capa, de las dos carpetas", () => {
+    const r = carpetaDeReferencias([
+      "prendas/12_120500060076.jpg",        // 05: una camisa
+      "prendas/12_120900080009.jpg",        // 09: la barba, que vale para cara y boca
+      "prendas/5_50800030297.jpg",          // 08: un pelo, de otro modelo
+      "prendas-por-id/remera_10413.jpg",    // sin tipo en el numero: la capa, delante
+      "prendas-por-id/piel_10879.jpg",
+      "prendas-por-id/inventada_1.jpg",     // una capa que no existe: fuera
+      "prendas/notas.txt"                   // no es una referencia: fuera
+    ]);
+    assert.deepStrictEqual(servidor().referencias(r).porCapa, {
+      remera: [P + "prendas/12_120500060076.jpg", P + "prendas-por-id/remera_10413.jpg"],
+      cara: [P + "prendas/12_120900080009.jpg"],
+      boca: [P + "prendas/12_120900080009.jpg"],
+      pelo: [P + "prendas/5_50800030297.jpg"],
+      piel: [P + "prendas-por-id/piel_10879.jpg"]
+    });
+  });
+
+  test("sin la carpeta no hay ninguna, y no se rompe", () => {
+    const noEsta = path.join(os.tmpdir(), "mr-no-existe-" + process.pid + "-" + Date.now());
+    assert.deepStrictEqual(servidor().referencias(noEsta).porCapa, {});
+  });
+
+  test("sirve la imagen que existe", async () => {
+    fs.mkdirSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas"), { recursive: true });
+    fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas", "12_120500060076.jpg"), "bytes-de-prueba");
+    const r = await pedir(P + "prendas/12_120500060076.jpg");
+    assert.equal(r.codigo, 200);
+    assert.equal(r.cabeceras["Content-Type"], "image/jpeg");
+    assert.equal(String(r.cuerpo), "bytes-de-prueba");
+  });
+
+  test("y nada fuera de sus carpetas ni de sus nombres", async () => {
+    // El nombre llega en la URL: cualquier cosa que no sea exactamente un
+    // nombre de referencia no llega a tocar el disco. Estos dos EXISTEN, y
+    // aun asi no se sirven: si alguien quita la comprobacion, se nota.
+    fs.mkdirSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas-por-id"), { recursive: true });
+    fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas", "secreto.jpg"), "no");
+    fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas-por-id", "REMERA_1.jpg"), "no");
+    for (const ruta of [
+      P + "prendas/secreto.jpg",
+      P + "prendas/..%2F..%2F..%2Fserver.js",
+      P + "prendas/..%5C..%5Cserver.js",
+      P + "prendas-por-id/REMERA_1.jpg",
+      P + "constructor/12_1.jpg",
+      P + "secretos/12_1.jpg",
+      P + "prendas/99_990500000000.jpg"     // bien formado, pero no existe
+    ]) {
+      assert.equal((await pedir(ruta)).codigo, 404, ruta);
+    }
+  });
+
+  test("y tampoco responde fuera de la propia maquina", async () => {
+    assert.equal((await pedir(P + "prendas/12_120500060076.jpg", "192.168.1.20")).codigo, 403);
   });
 
 });

@@ -418,18 +418,19 @@
   function pintarReferencias() {
     const cont = $("referencias");
     cont.textContent = "";
-    const refs = (estado.datos.referencias || {})[estado.capa] || [];
+    // El servidor ya las manda agrupadas por capa y con su URL.
+    const refs = ((estado.datos.referencias || {}).porCapa || {})[estado.capa] || [];
     if (!refs.length) {
       const p = document.createElement("p");
-      p.textContent = "No hay previsualizaciones archivadas de este tipo. De macrojuegos solo sobreviven camisas, pantalones, pelos, una barba y zapatos.";
+      p.textContent = "No hay previsualizaciones archivadas de este tipo. De macrojuegos solo sobreviven camisas, pantalones, pelos, una barba, zapatos y pieles.";
       cont.append(p);
       return;
     }
-    for (const f of refs) {
+    for (const url of refs) {
       const img = document.createElement("img");
-      img.src = "/herramientas/recortes/referencia/" + encodeURIComponent(f);
+      img.src = url;
       img.alt = "Previsualización archivada de macrojuegos";
-      img.title = f;
+      img.title = url.split("/").pop();
       cont.append(img);
     }
   }
