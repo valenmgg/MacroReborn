@@ -583,13 +583,20 @@ Leído de la Wayback Machine el 23/09/2026:
   plana** de un solo tono gris azulado, medido de sus imágenes en
   `rgb(172,180,204)`. Por eso la prenda resaltaba tanto. Aquí es la
   opción por defecto, y la silueta se saca del propio modelo
-  conservando su forma.
+  conservando su forma. **La excepción es la única barba**, que sale
+  sobre piel morena y sin nada de gris: o ese tipo se enseñaba a color,
+  o la prenda traía la piel dentro. Con una sola no se puede saber.
 - **Cada tipo tenía siempre el mismo encuadre, y muy cerrado**: las
   camisas del cuello a la cintura, los pantalones de la cadera al muslo,
   los zapatos un solo pie.
+- **De sus 12 modelos queda la miniatura**, `models/<nombre>/thumb.jpg`,
+  de 73x73: solo la cabeza, y a color. Es lo más parecido que hay a una
+  previsualización de la capa modelo. Se bajaron 11; la de tora, que es
+  de 2018, no.
 
-Las 19 se bajaron solo como referencia, a
-`datos-locales/macrojuegos-referencia/`, fuera de git. **Se acordó
+Las 19 y las 11 se bajaron solo como referencia, a
+`datos-locales/macrojuegos-referencia/`, fuera de git, y `galeria.html`,
+en esa misma carpeta, las enseña todas agrupadas por tipo. **Se acordó
 borrarlas en cuanto los cuadros estén decididos**, por coherencia con el
 motivo de todo este proyecto.
 
