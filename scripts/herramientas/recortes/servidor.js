@@ -65,6 +65,13 @@ const CARPETAS_REFERENCIA = {
   "prendas-por-id": /^[a-z]+_\d+\.jpg$/
 };
 
+// Un ejemplo de cada tipo, para las capas de las que no quedo ninguna: al
+// menos se ve el estilo. La barba vale por cara y por boca.
+const MUESTRAS = [
+  ["remera", "Camisa"], ["pantalon", "Pantalón"], ["pelo", "Pelo"],
+  ["cara", "Barba"], ["botas", "Zapato"], ["piel", "Piel"]
+];
+
 function patronDe(carpeta) {
   return Object.prototype.hasOwnProperty.call(CARPETAS_REFERENCIA, carpeta)
     ? CARPETAS_REFERENCIA[carpeta] : null;
@@ -102,7 +109,11 @@ function referencias(raiz = REFERENCIAS) {
     const capa = f.split("_")[0];
     if (CAPAS.includes(capa)) poner(capa, "prendas-por-id", f);
   }
-  return { porCapa };
+
+  const muestras = MUESTRAS
+    .filter(([capa]) => (porCapa[capa] || []).length)
+    .map(([capa, nombre]) => ({ capa, nombre, url: porCapa[capa][0] }));
+  return { porCapa, muestras };
 }
 
 // El catalogo con la caja de dibujo de cada prenda. Calcular las 768

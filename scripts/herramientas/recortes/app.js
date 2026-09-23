@@ -422,16 +422,25 @@
     const nota = $("notaReferencias");
     cont.textContent = "";
     // El servidor ya las manda agrupadas por capa y con su URL.
-    const refs = ((estado.datos.referencias || {}).porCapa || {})[estado.capa] || [];
-    if (!refs.length) {
-      nota.textContent = "De esta capa no quedó ninguna de macrojuegos.";
+    const todas = estado.datos.referencias || {};
+    const refs = (todas.porCapa || {})[estado.capa] || [];
+    if (refs.length) {
+      nota.textContent = "Cómo la enseñaba macrojuegos (" + refs.length + ")";
+      for (const url of refs) cont.append(figuraReferencia(url));
       return;
     }
-    nota.textContent = "Cómo la enseñaba macrojuegos (" + refs.length + ")";
-    for (const url of refs) cont.append(figuraReferencia(url));
+    // De esta capa no quedo ninguna: una de cada tipo, con su nombre, para
+    // que al menos se vea el estilo.
+    const muestras = todas.muestras || [];
+    if (!muestras.length) {
+      nota.textContent = "No hay referencias de macrojuegos en este equipo.";
+      return;
+    }
+    nota.textContent = "De esta capa no quedó ninguna. Estas son de otros tipos, para ver el estilo.";
+    for (const m of muestras) cont.append(figuraReferencia(m.url, m.nombre));
   }
 
-  function figuraReferencia(url) {
+  function figuraReferencia(url, pie) {
     const figura = document.createElement("figure");
     const img = document.createElement("img");
     img.src = url;
@@ -440,6 +449,11 @@
     img.alt = "Previsualización archivada de macrojuegos";
     img.title = url.split("/").pop();
     figura.append(img);
+    if (pie) {
+      const c = document.createElement("figcaption");
+      c.textContent = pie;
+      figura.append(c);
+    }
     return figura;
   }
 

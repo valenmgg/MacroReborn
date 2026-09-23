@@ -410,6 +410,30 @@ describe("las referencias de macrojuegos, en la pagina", () => {
     assert.match(nota(doc), /macrojuegos \(2\)/);
   });
 
+  test("en una capa sin las suyas, una de cada tipo y con su nombre", async () => {
+    const { w, doc } = await montar(null, d => {
+      d.referencias = {
+        porCapa: { boca: ["/r/boca1.jpg"] },
+        muestras: [
+          { capa: "remera", nombre: "Camisa", url: "/r/camisa.jpg" },
+          { capa: "piel", nombre: "Piel", url: "/r/piel.jpg" }
+        ]
+      };
+    });
+    await elegirModelo(w, "tora");
+    await elegirCapa(w, "pelo");                        // del pelo no hay ninguna
+    assert.deepStrictEqual(srcs(doc), ["/r/camisa.jpg", "/r/piel.jpg"]);
+    assert.deepStrictEqual([...doc.querySelectorAll("#referencias figcaption")].map(c => c.textContent),
+      ["Camisa", "Piel"], "no dice de que tipo es cada una");
+    assert.match(nota(doc), /no quedó ninguna/);
+  });
+
+  test("sin ninguna referencia en el equipo, lo dice y no se rompe", async () => {
+    const { doc } = await montar();                     // referencias vacias
+    assert.deepStrictEqual(srcs(doc), []);
+    assert.match(nota(doc), /No hay referencias/);
+  });
+
 });
 
 describe("las referencias de macrojuegos, en el servidor", () => {
@@ -448,18 +472,27 @@ describe("las referencias de macrojuegos, en el servidor", () => {
       "prendas-por-id/inventada_1.jpg",     // una capa que no existe: fuera
       "prendas/notas.txt"                   // no es una referencia: fuera
     ]);
-    assert.deepStrictEqual(servidor().referencias(r).porCapa, {
+    const { porCapa, muestras } = servidor().referencias(r);
+    assert.deepStrictEqual(porCapa, {
       remera: [P + "prendas/12_120500060076.jpg", P + "prendas-por-id/remera_10413.jpg"],
       cara: [P + "prendas/12_120900080009.jpg"],
       boca: [P + "prendas/12_120900080009.jpg"],
       pelo: [P + "prendas/5_50800030297.jpg"],
       piel: [P + "prendas-por-id/piel_10879.jpg"]
     });
+    // Una por tipo, en orden fijo, y solo de los tipos que hay: aqui no hay
+    // pantalones ni zapatos.
+    assert.deepStrictEqual(muestras, [
+      { capa: "remera", nombre: "Camisa", url: P + "prendas/12_120500060076.jpg" },
+      { capa: "pelo", nombre: "Pelo", url: P + "prendas/5_50800030297.jpg" },
+      { capa: "cara", nombre: "Barba", url: P + "prendas/12_120900080009.jpg" },
+      { capa: "piel", nombre: "Piel", url: P + "prendas-por-id/piel_10879.jpg" }
+    ]);
   });
 
   test("sin la carpeta no hay ninguna, y no se rompe", () => {
     const noEsta = path.join(os.tmpdir(), "mr-no-existe-" + process.pid + "-" + Date.now());
-    assert.deepStrictEqual(servidor().referencias(noEsta).porCapa, {});
+    assert.deepStrictEqual(servidor().referencias(noEsta), { porCapa: {}, muestras: [] });
   });
 
   test("sirve la imagen que existe", async () => {
