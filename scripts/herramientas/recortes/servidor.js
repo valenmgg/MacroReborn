@@ -60,9 +60,12 @@ const TIPOS_MACROJUEGOS = {
 //   prendas/         las de av.../items/ref/, con el tipo dentro del numero
 //   prendas-por-id/  las de avatar1.na.../items/<id>/thumb.jpg, que no lo
 //                    llevan: la capa se la puso una persona, delante
+//   modelos/         la miniatura de cada modelo, que se llaman como los
+//                    nuestros
 const CARPETAS_REFERENCIA = {
   "prendas": /^\d+_\d+\.jpg$/,
-  "prendas-por-id": /^[a-z]+_\d+\.jpg$/
+  "prendas-por-id": /^[a-z]+_\d+\.jpg$/,
+  "modelos": /^[a-z_]+\.jpg$/
 };
 
 // Un ejemplo de cada tipo, para las capas de las que no quedo ninguna: al
@@ -109,6 +112,9 @@ function referencias(raiz = REFERENCIAS) {
     const capa = f.split("_")[0];
     if (CAPAS.includes(capa)) poner(capa, "prendas-por-id", f);
   }
+  // Del modelo en si macrojuegos no hacia previsualizacion. Lo mas
+  // parecido es la miniatura de cada uno: solo la cabeza, a color.
+  for (const f of listarReferencias(raiz, "modelos")) poner("modelo", "modelos", f);
 
   const muestras = MUESTRAS
     .filter(([capa]) => (porCapa[capa] || []).length)

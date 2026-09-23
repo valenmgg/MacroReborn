@@ -424,6 +424,16 @@
     // El servidor ya las manda agrupadas por capa y con su URL.
     const todas = estado.datos.referencias || {};
     const refs = (todas.porCapa || {})[estado.capa] || [];
+    if (refs.length && estado.capa === "modelo") {
+      // Las cabezas de sus modelos, que se llaman como los nuestros: la
+      // del modelo abierto, la primera.
+      const nombre = url => url.split("/").pop().replace(".jpg", "");
+      const orden = [...refs].sort((a, b) =>
+        (nombre(b) === estado.modelo) - (nombre(a) === estado.modelo));
+      nota.textContent = "Macrojuegos no hacía previsualización del modelo. Lo más parecido: la miniatura de cada uno, solo la cabeza.";
+      for (const url of orden) cont.append(figuraReferencia(url, nombre(url)));
+      return;
+    }
     if (refs.length) {
       nota.textContent = "Cómo la enseñaba macrojuegos (" + refs.length + ")";
       for (const url of refs) cont.append(figuraReferencia(url));

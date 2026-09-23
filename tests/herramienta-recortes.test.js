@@ -428,6 +428,23 @@ describe("las referencias de macrojuegos, en la pagina", () => {
     assert.match(nota(doc), /no quedó ninguna/);
   });
 
+  test("en la capa modelo, las cabezas de sus modelos, la del abierto primero", async () => {
+    const { w, doc } = await montar(null, d => {
+      d.prendas.tora.modelo = [prenda("tora", 20, 20, 280, 480)];
+      d.referencias = {
+        porCapa: { modelo: ["/r/modelos/cereza.jpg", "/r/modelos/tora.jpg"] },
+        muestras: [{ capa: "remera", nombre: "Camisa", url: "/r/camisa.jpg" }]
+      };
+    });
+    await elegirModelo(w, "tora");
+    await elegirCapa(w, "modelo");
+    assert.deepStrictEqual(srcs(doc), ["/r/modelos/tora.jpg", "/r/modelos/cereza.jpg"],
+      "la cabeza del modelo abierto no sale la primera");
+    assert.deepStrictEqual([...doc.querySelectorAll("#referencias figcaption")].map(c => c.textContent),
+      ["tora", "cereza"]);
+    assert.match(nota(doc), /solo la cabeza/);
+  });
+
   test("sin ninguna referencia en el equipo, lo dice y no se rompe", async () => {
     const { doc } = await montar();                     // referencias vacias
     assert.deepStrictEqual(srcs(doc), []);
@@ -470,7 +487,10 @@ describe("las referencias de macrojuegos, en el servidor", () => {
       "prendas-por-id/remera_10413.jpg",    // sin tipo en el numero: la capa, delante
       "prendas-por-id/piel_10879.jpg",
       "prendas-por-id/inventada_1.jpg",     // una capa que no existe: fuera
-      "prendas/notas.txt"                   // no es una referencia: fuera
+      "prendas/notas.txt",                  // no es una referencia: fuera
+      "modelos/tora.jpg",                   // las cabezas van a la capa modelo
+      "modelos/fengchao.jpg",
+      "modelos/Tora.jpg"                    // nombre que no cumple el patron: fuera
     ]);
     const { porCapa, muestras } = servidor().referencias(r);
     assert.deepStrictEqual(porCapa, {
@@ -478,7 +498,8 @@ describe("las referencias de macrojuegos, en el servidor", () => {
       cara: [P + "prendas/12_120900080009.jpg"],
       boca: [P + "prendas/12_120900080009.jpg"],
       pelo: [P + "prendas/5_50800030297.jpg"],
-      piel: [P + "prendas-por-id/piel_10879.jpg"]
+      piel: [P + "prendas-por-id/piel_10879.jpg"],
+      modelo: [P + "modelos/fengchao.jpg", P + "modelos/tora.jpg"]
     });
     // Una por tipo, en orden fijo, y solo de los tipos que hay: aqui no hay
     // pantalones ni zapatos.
@@ -509,10 +530,13 @@ describe("las referencias de macrojuegos, en el servidor", () => {
     // nombre de referencia no llega a tocar el disco. Estos dos EXISTEN, y
     // aun asi no se sirven: si alguien quita la comprobacion, se nota.
     fs.mkdirSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas-por-id"), { recursive: true });
+    fs.mkdirSync(path.join(REFERENCIAS_DE_PRUEBA, "modelos"), { recursive: true });
     fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas", "secreto.jpg"), "no");
     fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "prendas-por-id", "REMERA_1.jpg"), "no");
+    fs.writeFileSync(path.join(REFERENCIAS_DE_PRUEBA, "modelos", "Tora.jpg"), "no");
     for (const ruta of [
       P + "prendas/secreto.jpg",
+      P + "modelos/Tora.jpg",
       P + "prendas/..%2F..%2F..%2Fserver.js",
       P + "prendas/..%5C..%5Cserver.js",
       P + "prendas-por-id/REMERA_1.jpg",
