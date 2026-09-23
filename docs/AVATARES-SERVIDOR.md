@@ -591,6 +591,18 @@ encontró 19 previsualizaciones, y la segunda, más a fondo, 25 más.
   Common Crawl, que no guardan ninguna imagen de prenda (uno no
   respondió); y las dos wikis de fans
   en Fandom, que solo tienen las miniaturas de los modelos. No hay más.
+- **No queda ni una de espalda**, ni de fondo, ojos, guantes, accesorio,
+  mascota o borde. Solo se archivaron las que alguien tenía a la vista
+  cuando se guardó su página, y la tienda cargaba las prendas por su
+  cuenta, así que el archivo casi nunca las vio. Las cuatro nuevas que
+  parecían capas o alas son piezas del pecho, puestas por delante.
+- **Fuera de los archivos quedan vídeos.** Tres vídeos de YouTube enseñan
+  el editor y la tienda por dentro. En la portada del de 2016, *Como
+  personalizar Tu avatar en macrojuegos*, de Rey Tutoriales
+  (`youtube.com/watch?v=-00Q20_WLzU`), se ve la tienda abierta en camisas
+  y un avatar con alas. Son para mirarlos, no se bajaron. Las capturas
+  de las wikis de fans son de otras cosas: verificar la cuenta, avisos de
+  moderación.
 - **En macrojuegos, preguntar por todo el dominio no basta.** La primera
   búsqueda pidió `macrojuegos.com` entero filtrado por `/items/` y se dejó
   las 16 de `avatar1.na`: en un dominio tan grande la consulta no llega
