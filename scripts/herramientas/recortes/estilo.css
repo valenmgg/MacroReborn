@@ -74,9 +74,12 @@ kbd {
 
 /* ---- zona de trabajo ---- */
 
+/* minmax(0, 1fr) y no 1fr: con 1fr la columna del panel crece hasta que
+   le cabe entera la tira de referencias de macrojuegos, y con 19 la
+   pagina se salia por la derecha. Asi la tira se desliza por dentro. */
 .trabajo {
   display: grid;
-  grid-template-columns: 190px auto 1fr;
+  grid-template-columns: 190px auto minmax(0, 1fr);
   gap: 16px;
   padding: 16px;
   align-items: start;
@@ -86,6 +89,7 @@ kbd {
   border: 1px solid var(--borde);
   border-radius: 8px;
   padding: 12px;
+  min-width: 0;
 }
 
 /* ---- capas ---- */
