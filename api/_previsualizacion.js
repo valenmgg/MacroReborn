@@ -22,6 +22,16 @@ const recortes = require("./_recortes");
 
 const INDICE_MODELO = CAPAS.indexOf("modelo");
 
+// Las capas que se enseñan solas, sin el cuerpo:
+//   modelo  es el propio cuerpo. Volverlo silueta dejaria seis manchas
+//           iguales.
+//   fondo   decidido el 23/09/2026 por quien elige los cuadros: el fondo
+//           se ve entero, sin el avatar tapandolo. Es opaco de por si, y
+//           sale igual recortado y en JPG, asi que no regala nada.
+// La herramienta de recortes recibe esta misma lista, para que su vista
+// en vivo no discrepe de la de verdad.
+const CAPAS_SOLAS = ["modelo", "fondo"];
+
 // La silueta de un modelo: su misma forma, de un solo color. Se toca el
 // color y no el alfa, asi que los bordes suaves del dibujo siguen suaves.
 function silueta(img, color) {
@@ -38,16 +48,14 @@ function silueta(img, color) {
 
 // El maniqui con la prenda puesta, a tamaño de lienzo, sin recortar.
 //
-// El orden importa y sale de CAPAS: el fondo y la espalda van DETRAS del
-// modelo, todo lo demas delante. Con el orden al reves, un fondo se
-// pintaria encima del cuerpo.
+// El orden importa y sale de CAPAS: lo que va antes del modelo, como la
+// espalda, se pinta DETRAS del cuerpo, y todo lo demas delante. Con el
+// orden al reves, unas alas se pintarian encima del cuerpo.
 function puesta(opciones) {
   const { base, prenda, capa } = opciones;
   const maniqui = opciones.maniqui || "plano";
 
-  // La capa "modelo" es el propio cuerpo: su previsualizacion es el
-  // modelo tal cual. Volverlo silueta dejaria seis manchas iguales.
-  if (capa === "modelo" || !base) {
+  if (CAPAS_SOLAS.includes(capa) || !base) {
     return compositor.componer([prenda]);
   }
 
@@ -79,6 +87,7 @@ function renderizar(opciones) {
 }
 
 module.exports = {
+  CAPAS_SOLAS,
   silueta,
   puesta,
   renderizar

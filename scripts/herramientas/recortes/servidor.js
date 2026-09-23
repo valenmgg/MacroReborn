@@ -208,6 +208,7 @@ async function atender(req, res, url, sql) {
       ladoMaximo: recortes.LADO_MAXIMO,
       ladoMinimo: recortes.LADO_MINIMO,
       colorManiqui: recortes.COLOR_MANIQUI,
+      capasSolas: previsualizacion.CAPAS_SOLAS,
       config: recortes.leer(),
       prendas: c.prendas,
       bases: c.bases,

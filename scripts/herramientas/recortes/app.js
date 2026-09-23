@@ -171,7 +171,8 @@
   }
 
   // Compone la prenda puesta sobre su maniqui, a tamaño de lienzo, en el
-  // orden de las capas: el fondo y la espalda DETRAS del cuerpo.
+  // orden de las capas: la espalda DETRAS del cuerpo. El fondo y el propio
+  // modelo van solos.
   async function componerPuesta() {
     const mia = ++peticionPuesta;
     const lista = prendas();
@@ -186,8 +187,11 @@
     try {
       const imgPrenda = await imagen(prenda.url);
       const base = estado.datos.bases[estado.modelo];
+      // Las capas que se enseñan solas, sin el cuerpo: la lista la manda
+      // el servidor, la misma que usa api/_previsualizacion.js.
+      const sola = (estado.datos.capasSolas || []).includes(estado.capa);
 
-      if (estado.capa === "modelo" || !base) {
+      if (sola || !base) {
         x.drawImage(imgPrenda, 0, 0, ANCHO, ALTO);
       } else {
         const imgBase = await imagen(base.url);

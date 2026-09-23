@@ -216,14 +216,25 @@ describe("la previsualizacion", () => {
       "la camisa quedo tapada por el maniqui");
   });
 
-  test("y el fondo va DETRAS, que es donde falla si el orden se invierte", () => {
-    const img = P.puesta({ base: modelo, prenda: fondo, capa: "fondo", maniqui: "plano" });
-    // Donde esta el cuerpo se ve el cuerpo, no el fondo.
+  test("y la espalda va DETRAS, que es donde falla si el orden se invierte", () => {
+    // Unas alas que ocupan todo el lienzo: por donde esta el cuerpo, el
+    // cuerpo tiene que taparlas.
+    const alas = png(20, 60, 140, 0, 0, 327, 504);
+    const img = P.puesta({ base: modelo, prenda: alas, capa: "espalda", maniqui: "plano" });
     assert.deepStrictEqual(pixel(img, 150, 150).slice(0, 3),
       [R.COLOR_MANIQUI.r, R.COLOR_MANIQUI.g, R.COLOR_MANIQUI.b],
-      "el fondo tapo al maniqui");
-    // Y fuera del cuerpo se ve el fondo.
+      "la espalda tapo al maniqui");
     assert.deepStrictEqual(pixel(img, 10, 10).slice(0, 3), [20, 60, 140]);
+  });
+
+  test("el fondo sale solo, sin el cuerpo delante, con cualquier maniqui", () => {
+    // Decidido el 23/09/2026: en la previsualizacion del fondo solo se ve
+    // el fondo. Donde estaria el cuerpo tiene que verse el fondo.
+    for (const maniqui of ["plano", "color"]) {
+      const img = P.puesta({ base: modelo, prenda: fondo, capa: "fondo", maniqui });
+      assert.deepStrictEqual(pixel(img, 150, 150).slice(0, 3), [20, 60, 140],
+        "el cuerpo tapa el fondo con el maniqui " + maniqui);
+    }
   });
 
   test("con el maniqui a color, el cuerpo se queda como es", () => {

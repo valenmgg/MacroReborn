@@ -54,6 +54,7 @@ function datosDePrueba(config) {
     ladoMaximo: 327,
     ladoMinimo: 12,
     colorManiqui: { r: 172, g: 180, b: 204 },
+    capasSolas: ["modelo", "fondo"],
     config: config || { ladoSalida: 96, maniqui: "plano", cuadros: {} },
     prendas: {
       cereza: { boca: [prenda("cereza_boca1", 150, 100, 30, 20)] },
@@ -369,6 +370,41 @@ describe("cambiar deprisa", () => {
       "no se ve la prenda elegida: " + JSON.stringify(pintadas));
     assert.ok(!pintadas.includes("/p/tora_boca2.png"),
       "la prenda que llego tarde piso a la elegida");
+  });
+
+});
+
+describe("lo que se pinta debajo de la prenda", () => {
+
+  // Lo que se dibujo en la ultima prenda puesta: las imagenes por su
+  // direccion, y la silueta del maniqui, que es un lienzo, como "silueta".
+  function loDibujado(doc) {
+    const principal = doc.getElementById("lienzo");
+    const puestas = (principal._llamadas || []).filter(([k, a]) => k === "drawImage" && a[0] && a[0]._llamadas);
+    const ultima = puestas[puestas.length - 1];
+    if (!ultima) return [];
+    return ultima[1][0]._llamadas
+      .filter(([k]) => k === "drawImage")
+      .map(([, a]) => a[0]._src || "silueta");
+  }
+
+  const conFondo = d => { d.prendas.cereza.fondo = [prenda("cereza_fondo1", 0, 0, 327, 504)]; };
+
+  test("el fondo se ve solo, sin el cuerpo, con cualquier maniqui", async () => {
+    // Decidido el 23/09/2026. Y tiene que coincidir con "la de verdad",
+    // que lo dibuja api/_previsualizacion.js con la misma lista.
+    const { w, doc } = await montar(null, conFondo);
+    await elegirCapa(w, "fondo");
+    assert.deepStrictEqual(loDibujado(doc), ["/p/cereza_fondo1.png"], "se dibujo el cuerpo con el fondo");
+    doc.querySelector('[data-maniqui="color"]').click();
+    await quieta(w);
+    assert.deepStrictEqual(loDibujado(doc), ["/p/cereza_fondo1.png"], "con el maniqui a color volvio el cuerpo");
+  });
+
+  test("y cualquier otra prenda, puesta sobre el maniqui", async () => {
+    const { w, doc } = await montar(null, conFondo);
+    await elegirCapa(w, "boca");
+    assert.deepStrictEqual(loDibujado(doc), ["silueta", "/p/cereza_boca1.png"]);
   });
 
 });
