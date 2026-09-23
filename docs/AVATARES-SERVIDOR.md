@@ -648,6 +648,12 @@ cuadrado que cabe es de 327: un fondo, un borde o una melena de cuerpo
 entero no caben enteros y la previsualización enseña un trozo. Se
 aceptó sabiéndolo; macrojuegos tenía la misma limitación.
 
+**El fondo va solo, sin el avatar delante.** Decidido el 23/09/2026: en
+la previsualización de un fondo no sale nadie, en los seis modelos y con
+cualquier maniquí. Las capas que van solas, hoy fondo y modelo, están en
+una lista de `api/_previsualizacion.js`, y la herramienta la recibe de
+ahí para que su vista en vivo no discrepe de la de verdad.
+
 ### La herramienta
 
 Solo existe en el sitio local, y solo responde a peticiones de la
