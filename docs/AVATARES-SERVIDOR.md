@@ -173,7 +173,7 @@ rompen nada mientras tanto.
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | - | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto | No |
-| 4 | - | Las previsualizaciones | 768 recortes sobre modelo vacío, para editor y tienda | No |
+| 4 | Empezada el 23/09 | Las previsualizaciones | 768 recortes sobre maniquí, para editor y tienda. La herramienta está; faltan los cuadros. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
 ### Fase 1 — El compositor
@@ -296,16 +296,16 @@ Son al menos diez: `core.js`, `comunidad-ranking.js`,
 
 ### Fase 4 — Las previsualizaciones
 
-768 imágenes, una por prenda, con la prenda puesta sobre su modelo
-vacío y recortada a su zona.
+768 imágenes, una por prenda, con la prenda puesta sobre su modelo y
+recortada a un cuadro.
 
-El recorte de cada capa **no se inventa a ojo**: se calcula del propio
-arte, tomando la caja que ocupa el dibujo de todas las prendas de esa
-capa y uniéndolas. Así el recorte de "pelo" sale de dónde está el pelo
-de verdad.
+**El cuadro lo elige una persona, no el código.** Primero se calculó
+del propio arte, uniendo la caja de todas las prendas de cada capa, y
+funcionaba; pero cómo se ve la tienda es una decisión, no una cuenta.
+Cómo se eligen, y con qué, en el punto 12.
 
-Esta fase arregla de paso el punto 23 de la auditoría: las 134 cajas
-vacías de la tienda dejan de estarlo. Son el mismo trabajo.
+Esta fase arregla de paso el punto 23 de la auditoría: las cajas vacías
+de la tienda dejan de estarlo. Son el mismo trabajo.
 
 ### Fase 5 — Cerrar la puerta
 
@@ -556,3 +556,88 @@ haya cambiado.
 
 Para mirar los compuestos a ojo, uno al lado del otro con lo que hace
 hoy el navegador, está `npm run revision:avatares`.
+
+---
+
+## 12. Las previsualizaciones: los cuadros los elige una persona
+
+**Decidido el 23/09/2026.** Lo que hay en
+`api/recortes-previsualizacion.json` es lo que alguien eligió mirando,
+no lo que salió de una cuenta. El código solo propone.
+
+### Lo que se aprendió de macrojuegos
+
+Leído de la Wayback Machine el 23/09/2026:
+
+- **Solo quedan 19 previsualizaciones**, todas en
+  `av0.na.macrojuegos.com/items/ref/`, de 70x70. Se buscó en los diez
+  hosts `av0` a `av9`, en los demás de su CDN y en todo el dominio: no
+  hay más.
+- **Sus modelos se llaman como los nuestros**: cereza, fengchao,
+  fenglei, fiora, max y tora, más otros seis que aquí no están. O sea
+  que esas previsualizaciones son de nuestro mismo arte base.
+- **El número del archivo lleva el tipo dentro**, en los dos dígitos que
+  siguen al modelo: `05` camisas, `06` pantalones, `08` pelos, `09` una
+  barba y `12` zapatos. Se comprobó mirando las 19 una por una.
+- **No ponían la prenda sobre el modelo a color, sino sobre una silueta
+  plana** de un solo tono gris azulado, medido de sus imágenes en
+  `rgb(172,180,204)`. Por eso la prenda resaltaba tanto. Aquí es la
+  opción por defecto, y la silueta se saca del propio modelo
+  conservando su forma.
+- **Cada tipo tenía siempre el mismo encuadre, y muy cerrado**: las
+  camisas del cuello a la cintura, los pantalones de la cadera al muslo,
+  los zapatos un solo pie.
+
+Las 19 se bajaron solo como referencia, a
+`datos-locales/macrojuegos-referencia/`, fuera de git. **Se acordó
+borrarlas en cuanto los cuadros estén decididos**, por coherencia con el
+motivo de todo este proyecto.
+
+### Un cuadro por capa y por modelo
+
+No uno por capa. Las poses de los seis modelos son muy distintas:
+fengchao está agachado, fenglei tiene un brazo arriba, y la cabeza de
+cada uno cae en otro sitio. Un solo cuadro de boca no les sirve a los
+seis. Son **78 combinaciones** de modelo y capa con prendas.
+
+**Siempre cuadrados.** El lienzo mide 327x504, así que el mayor
+cuadrado que cabe es de 327: un fondo, un borde o una melena de cuerpo
+entero no caben enteros y la previsualización enseña un trozo. Se
+aceptó sabiéndolo; macrojuegos tenía la misma limitación.
+
+### La herramienta
+
+Solo existe en el sitio local, y solo responde a peticiones de la
+propia máquina, porque tiene un botón que escribe un archivo del
+repositorio. `server.js` no la conoce, y una prueba lo vigila.
+
+```
+npm run db:real
+```
+
+Y en el navegador, `http://localhost:3001/herramientas/recortes/`.
+
+| | |
+|---|---|
+| Arrastrar el cuadro | lo mueve |
+| Arrastrar una esquina | lo agranda o lo encoge, siempre cuadrado, con la esquina opuesta quieta |
+| Flechas | un píxel; con Mayús, diez |
+| `+` y `-`, o la rueda | el tamaño, sin mover el centro |
+| Aceptar | la sugerencia pasa a ser decisión |
+| Copiar a los demás modelos | pone el mismo cuadro en esa capa de los otros; hay que revisarlos, las poses no son iguales |
+| La más grande, la más pequeña | salta a las prendas extremas, que es donde se ve si el cuadro les sirve a todas |
+
+Lo que sale como **"la de verdad"** lo hace el mismo código que
+generará las 768 (`api/_previsualizacion.js`). Si difiere de la de en
+vivo, manda ella.
+
+Un cuadro solo sugerido se ve con borde amarillo discontinuo y **no se
+guarda**; uno decidido, verde y continuo. Así nunca acaba en el archivo
+algo que nadie eligió.
+
+### Lo que queda de la fase 4
+
+1. Elegir los cuadros con la herramienta y guardar.
+2. Generar las 768 previsualizaciones con ellos.
+3. Servirlas, y que el editor y la tienda las usen.
+4. Borrar las referencias de macrojuegos.
