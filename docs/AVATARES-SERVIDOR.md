@@ -172,7 +172,7 @@ rompen nada mientras tanto.
 |---|---|---|---|---|
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
-| 3 | Empezada el 21/09 | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto. La comunidad ya: sus miniaturas bajaron de 5.562 kB a 399 kB | No |
+| 3 | Empezada el 21/09 | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto. Hecha solo la cuadrícula principal de la comunidad (5.562 kB a 399 kB). Medido el 24/09: en esa misma página la actividad, los moderadores y los conectados siguen apilando capas (64 prendas sueltas), y el perfil público también | No |
 | 4 | 2026-09-24 | Las previsualizaciones | 768 recortes automáticos sobre maniquí. Publicadas: el editor y la tienda las enseñan. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
