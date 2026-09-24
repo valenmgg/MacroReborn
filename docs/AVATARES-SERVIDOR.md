@@ -121,7 +121,7 @@ Por eso importa servir cada tamaño en su sitio.
 | La versión | En la consulta, `?v=<huella>`. Ver 8 |
 | Ranuras por persona | Una columna, `ranuras_avatar`. El código no pone techo. Ver 9 |
 | Avatares en ranuras | También se componen |
-| Previsualizaciones | La prenda puesta sobre un modelo vacío, recortada a su zona. Afinado el 23/09: sobre un maniquí, y el cuadro lo elige una persona. Ver 12 |
+| Previsualizaciones | La prenda puesta sobre un modelo vacío, recortada a su zona. Afinado el 23 y el 24/09: sobre un maniquí, con un cuadro automático por prenda. Ver 12 |
 | El taller | Sigue recibiendo las prendas sueltas, con sesión y permiso |
 | La caché al cerrar | Se invalida entera. Decidido que da igual |
 
@@ -173,7 +173,7 @@ rompen nada mientras tanto.
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | Empezada el 21/09 | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto. La comunidad ya: sus miniaturas bajaron de 5.562 kB a 399 kB | No |
-| 4 | Empezada el 23/09 | Las previsualizaciones | 768 recortes sobre maniquí, para editor y tienda. La herramienta está; faltan los cuadros. Ver el punto 12 | No |
+| 4 | Empezada el 23/09 | Las previsualizaciones | 768 recortes sobre maniquí, para editor y tienda. Automáticas desde el 24/09; falta generarlas, servirlas y usarlas. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
 ### Fase 1 — El compositor
@@ -299,10 +299,10 @@ Son al menos diez: `core.js`, `comunidad-ranking.js`,
 768 imágenes, una por prenda, con la prenda puesta sobre su modelo y
 recortada a un cuadro.
 
-**El cuadro lo elige una persona, no el código.** Primero se calculó
-del propio arte, uniendo la caja de todas las prendas de cada capa, y
-funcionaba; pero cómo se ve la tienda es una decisión, no una cuenta.
-Cómo se eligen, y con qué, en el punto 12.
+**El cuadro es automático, uno por prenda**, alrededor de su propio
+dibujo. Decidido el 24/09/2026, después de probar a que lo eligiera una
+persona para cada capa; más adelante se podrán corregir una a una.
+Cómo es la regla, en el punto 12.
 
 Esta fase arregla de paso el punto 23 de la auditoría: las cajas vacías
 de la tienda dejan de estarlo. Son el mismo trabajo.
@@ -559,11 +559,13 @@ hoy el navegador, está `npm run revision:avatares`.
 
 ---
 
-## 12. Las previsualizaciones: los cuadros los elige una persona
+## 12. Las previsualizaciones: automáticas, y corregibles una a una más adelante
 
-**Decidido el 23/09/2026.** Lo que hay en
-`api/recortes-previsualizacion.json` es lo que alguien eligió mirando,
-no lo que salió de una cuenta. El código solo propone.
+**Decidido el 24/09/2026:** todas automáticas, con un cuadro por prenda.
+Más adelante se podrá corregir una prenda sola; está al final de este
+punto. El 23/09 se había decidido que una persona eligiera 78 cuadros,
+uno por capa y modelo, con la herramienta; eso queda como la forma de
+forzar una capa entera si alguna saliera mal.
 
 ### Lo que se aprendió de macrojuegos
 
@@ -648,12 +650,35 @@ Todo se bajó solo como referencia, a
 **Se acordó borrarlo todo en cuanto los cuadros estén decididos**, por
 coherencia con el motivo de todo este proyecto.
 
-### Un cuadro por capa y por modelo
+### El cuadro automático
 
-No uno por capa. Las poses de los seis modelos son muy distintas:
-fengchao está agachado, fenglei tiene un brazo arriba, y la cabeza de
-cada uno cae en otro sitio. Un solo cuadro de boca no les sirve a los
-seis. Son **78 combinaciones** de modelo y capa con prendas.
+Es `cuadroAutomatico`, en `api/_recortes.js`:
+
+- **Uno por prenda**: el menor cuadrado que contiene su dibujo, con 10
+  píxeles de margen y centrado en él.
+- **Nunca más chico que la previsualización**, 96 píxeles. Lo diminuto,
+  un pendiente o una boca, no se amplía por encima de su tamaño real,
+  que se vería borroso. Por eso las bocas salen pequeñas en su cuadro.
+- **Si la prenda no cabe entera se ve su parte de arriba**, que es la
+  que la reconoce: de un pelo largo, la cabeza.
+- **La caja de la prenda cuenta solo lo que se ve bien**: alfa por
+  encima de 64, y sin el 0,5 % de puntos más alejados por cada lado.
+  Algunas prendas traen restos casi invisibles lejos del dibujo, y sin
+  esto salían diminutas en medio de un cuadro enorme.
+
+Por qué uno por prenda y no uno compartido por capa, medido sobre las
+768 el 24/09/2026:
+
+| | Uno por capa y modelo | Uno por prenda |
+|---|---|---|
+| Accesorios diminutos | 58 % | 0 % |
+| Pelos cortados | 93 % | 6 % |
+| Camisas cortadas | 21 % | 4 % |
+
+**Quién manda** lo decide `cuadroParaPrenda`, el único sitio que elige
+el cuadro: lo corregido para una prenda sola, cuando exista; lo forzado
+para toda su capa en su modelo con la herramienta; y si no, el
+automático.
 
 **Siempre cuadrados.** El lienzo mide 327x504, así que el mayor
 cuadrado que cabe es de 327: un fondo, un borde o una melena de cuerpo
@@ -667,6 +692,9 @@ una lista de `api/_previsualizacion.js`, y la herramienta la recibe de
 ahí para que su vista en vivo no discrepe de la de verdad.
 
 ### La herramienta
+
+Ya no hace falta usarla. Sirve para revisar el automático prenda por
+prenda y, si una capa entera saliera mal, forzarle un cuadro.
 
 Solo existe en el sitio local, y solo responde a peticiones de la
 propia máquina, porque tiene un botón que escribe un archivo del
@@ -684,7 +712,8 @@ Y en el navegador, `http://localhost:3001/herramientas/recortes/`.
 | Arrastrar una esquina | lo agranda o lo encoge, siempre cuadrado, con la esquina opuesta quieta |
 | Flechas | un píxel; con Mayús, diez |
 | `+` y `-`, o la rueda | el tamaño, sin mover el centro |
-| Aceptar | la sugerencia pasa a ser decisión |
+| Usar para toda la capa | fija el cuadro que se ve para todas las prendas de esa capa en ese modelo |
+| Volver al automático | quita lo forzado |
 | Copiar a los demás modelos | pone el mismo cuadro en esa capa de los otros; hay que revisarlos, las poses no son iguales |
 | La más grande, la más pequeña | salta a las prendas extremas, que es donde se ve si el cuadro les sirve a todas |
 
@@ -699,13 +728,47 @@ estilo; y en la capa modelo, las cabezas de sus modelos, con la del
 abierto primero. Las lee de `datos-locales/macrojuegos-referencia/`: si
 esa carpeta no está, la herramienta funciona igual y lo dice.
 
-Un cuadro solo sugerido se ve con borde amarillo discontinuo y **no se
-guarda**; uno decidido, verde y continuo. Así nunca acaba en el archivo
-algo que nadie eligió.
+El cuadro automático se ve con borde amarillo discontinuo, cambia con
+cada prenda y **no se guarda**; uno forzado, verde y continuo, vale para
+toda la capa. Lo que no está en el archivo es automático.
+
+### Revisarlas todas de una vez
+
+```
+npm run revision:previsualizaciones
+```
+
+Las dibuja todas con el mismo código que las generará para el sitio y
+las pone en `revision-previsualizaciones/index.html`, por capa y por
+modelo. La primera vez, el 24/09/2026: 768 en 10 segundos, 2 MB,
+ninguna fallida. 252 no caben enteras y se ven desde arriba; 236 de
+ellas son fondos, bordes, pieles y modelos, que ocupan el lienzo
+entero. No correrla con el servidor local abierto: las dos abren la
+misma copia de la base.
 
 ### Lo que queda de la fase 4
 
-1. Elegir los cuadros con la herramienta y guardar.
-2. Generar las 768 previsualizaciones con ellos.
-3. Servirlas, y que el editor y la tienda las usen.
-4. Borrar las referencias de macrojuegos.
+1. Generarlas en el servidor, guardarlas en disco como los avatares
+   compuestos y servirlas con caché larga.
+2. Que el editor y la tienda las usen. Esto arregla de paso las cajas
+   vacías de la tienda, que es el punto 23 de la auditoría.
+3. Borrar las referencias de macrojuegos cuando ya no hagan falta.
+
+### Más adelante: corregir una prenda sola
+
+Pedido el 24/09/2026, para cuando alguna automática no se vea bien. Dos
+formas, las dos para el equipo de arte y los administradores:
+
+1. **Con la herramienta**, moviendo el cuadro de esa prenda. Hoy la
+   herramienta solo fuerza capas enteras y solo existe en local; para
+   esto tendría que guardar por prenda y vivir en el taller, con sesión
+   y permiso.
+2. **Subiendo una imagen hecha a mano.** El servidor la recorta a
+   cuadrado, la reduce a 96 píxeles, la aplana sobre blanco y la guarda
+   en JPG de calidad 80, que es lo que cumple toda previsualización.
+
+Lo que ya está preparado: `cuadroParaPrenda` es el único sitio que
+decide el cuadro, y ahí entra lo de una prenda sola antes que lo demás.
+Lo que habrá que decidir entonces: dónde se guarda lo corregido, que
+debería ser la base para poder cambiarlo sin desplegar, y que regenerar
+las automáticas nunca pise una corregida a mano.
