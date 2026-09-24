@@ -47,61 +47,24 @@ async function cargarDatosAmigos(nombre){
 
 
 // ---------- AVATAR ----------
+// Una sola imagen por amigo: su PNG de administrador, su avatar ya
+// compuesto o la silueta, con imagenDeAvatar() de js/core.js. La lista
+// de amigos trae su id y su huella. Hasta el 24/09/2026 se dibujaba
+// prenda por prenda. Ver docs/AVATARES-SERVIDOR.md, fase 3.
 
+function htmlAvatarMini(amigo){
 
-// La lista de capas y la resolución de rutas viven en js/core.js, que se
-// carga antes que este archivo. Acá solo se les da el nombre local de
-// siempre, para no volver a copiar la lista.
-const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
-
-
-function rutaImagenCapa(valor){
-
-return rutaCapaAvatar(valor);
-
-}
-
-
-
-
-function htmlAvatarMini(avatarCrudo){
-
-const avatar = normalizarAvatar(avatarCrudo);
+const imagen = imagenDeAvatar(amigo.avatar, amigo, 62, 96) || SILUETA_AVATAR;
 
 const div=document.createElement("div");
 div.className="amigo-avatar";
 
-if(avatarEsPNG(avatar)){
-  let img=document.createElement("img");
-  img.src=avatarPNGData(avatar);
-  img.loading="lazy";
-  div.appendChild(img);
-  return div;
-}
-
-if(!avatar){
-  let img=document.createElement("img");
-  img.src="imagenes/avatar.png";
-  div.appendChild(img);
-  return div;
-}
-
-let rutasCapas = [];
-
-ORDEN_CAPAS.forEach(tipo=>{
-  const ruta=rutaImagenCapa(avatar[tipo]);
-  if(ruta){
-    let img=document.createElement("img");
-    img.src=ruta;
-    img.className="capa-amigo";
-    div.appendChild(img);
-    rutasCapas.push(ruta);
-  }
-});
-
-div.classList.add("avatar-compuesto");
-div.setAttribute("data-capas", rutasCapas.join("|"));
-div.setAttribute("data-capa-class", "capa-amigo");
+const img=document.createElement("img");
+img.src=imagen.src;
+img.alt="";
+img.loading="lazy";
+if(imagen.tipo==="png") img.className="avatar-png-personalizado";
+div.appendChild(img);
 
 return div;
 
@@ -155,7 +118,7 @@ card.className="amigo-card";
 
 
 card.appendChild(
-htmlAvatarMini(amigo.avatar)
+htmlAvatarMini(amigo)
 );
 
 
