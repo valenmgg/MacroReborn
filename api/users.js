@@ -7,6 +7,7 @@ const { MonedasService } = require("./_monedas");
 const { crearNotificacionServidor } = require("./_notifications");
 const { validarAvatar } = require("./_avatar-catalogo");
 const avatarCompuesto = require("./_avatar-compuesto");
+const vistaPrevia = require("./_vista-previa");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -463,6 +464,43 @@ async function updateAdminAvatarPng(req, res) {
   return res.status(200).json({ success: true, user: user[0] });
 }
 
+// ==============================
+// POST /api/users?action=avatar-vista-previa
+// ==============================
+// La vista previa del editor, dibujada por el servidor: ver
+// api/_vista-previa.js. Devuelve la imagen, no JSON; el editor la pide
+// con fetch, que lleva la sesión, y la pinta.
+//
+// Pide sesión y solo dibuja lo que esa persona podría ponerse: prendas
+// publicadas y en su ranura, o lo que ya lleva puesto aunque se haya
+// retirado. Así no sirve para ver lo que el equipo de arte todavía no
+// ha publicado. Las de la tienda se pueden probar sin comprarlas.
+//
+// 204 si no lleva ninguna prenda (el editor pone la silueta) y 429 si
+// gastó su tope del minuto (el editor se queda con la anterior).
+async function avatarVistaPrevia(req, res) {
+  const auth = requerirAuth(req, res);
+  if (!auth) return;
+
+  const { avatar } = req.body || {};
+  const revision = await validarAvatar(sql, auth.sub, avatar, { probar: true });
+  if (!revision.ok) {
+    return res.status(400).json({ success: false, error: revision.error });
+  }
+
+  const r = await vistaPrevia.dibujar(sql, auth.sub, revision.avatar);
+  if (r.freno) {
+    return res.status(429).json({ success: false, error: "Demasiadas vistas previas seguidas: esperá un momento" });
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+  if (r.vacio) return res.status(204).end();
+
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Content-Length", r.jpg.length);
+  return res.status(200).end(r.jpg);
+}
+
 async function updateBio(req, res) {
   const auth = requerirAuth(req, res);
   if (!auth) return;
@@ -705,6 +743,7 @@ module.exports = async function handler(req, res) {
     if (req.method === "POST") {
       if (action === "update-avatar") return await updateAvatar(req, res);
       if (action === "update-admin-avatar-png") return await updateAdminAvatarPng(req, res);
+      if (action === "avatar-vista-previa") return await avatarVistaPrevia(req, res);
       if (action === "update-bio") return await updateBio(req, res);
       if (action === "heartbeat") return await heartbeat(req, res);
       if (action === "xp") return await sumarXp(req, res);

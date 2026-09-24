@@ -189,7 +189,15 @@ async function valoresYaEnUso(sql, userId) {
 // El avatar que sale NO es el que entró: se reconstruye capa por capa
 // desde el catálogo. Así, cualquier clave de más que venga en el cuerpo
 // del request se descarta en vez de terminar guardada en la base.
-async function validarAvatar(sql, userId, avatar) {
+// Con { probar: true } no se exige haber comprado las prendas de la
+// tienda: es para la vista previa del editor, que dibuja ropa sin
+// guardarla (ver api/_vista-previa.js). Probarse algo antes de pagarlo
+// no regala nada, y la tienda ya enseña cada prenda en público. Lo
+// demás se comprueba igual: solo prendas publicadas y en su ranura, o
+// lo que esa persona ya lleva puesto.
+async function validarAvatar(sql, userId, avatar, opciones) {
+  const probar = !!(opciones && opciones.probar);
+
 
   if (avatar === null || avatar === undefined) {
     return { ok: true, avatar: null };
@@ -223,8 +231,8 @@ async function validarAvatar(sql, userId, avatar) {
     return { ok: true, avatar };
   }
 
-  const premium = await prendasPremium(sql);
-  const compradas = await comprasDe(sql, userId);
+  const premium = probar ? new Map() : await prendasPremium(sql);
+  const compradas = probar ? new Set() : await comprasDe(sql, userId);
   const yaEnUso = await valoresYaEnUso(sql, userId);
 
   const limpio = {};
