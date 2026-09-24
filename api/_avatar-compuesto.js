@@ -369,6 +369,117 @@ function partirRuta(pathname) {
   return { destino, ancho, alto };
 }
 
+// ------------------------------------------------------------------
+// SI FALTA, SE COMPONE AL PEDIRLO
+// ------------------------------------------------------------------
+// Decidido el 24/09/2026, para la fase 3: todas las paginas piden el
+// avatar compuesto, y el servidor ya lo tiene porque lo compone al
+// guardar. Si aun asi falta -fallo al guardarse, o la cuenta nunca paso
+// por el relleno-, se compone en ese momento, se guarda y se sirve. SOLO
+// entonces: lo que esta en el disco se sirve tal cual, sin recalcular
+// nada.
+//
+// Y si no se puede -no tiene avatar de prendas, se agoto su freno o
+// fallo el dibujo- se sirve la silueta generica del sitio, con cache
+// corta para que se vuelva a intentar. Nunca una prenda suelta.
+
+const SILUETA = path.join(__dirname, "..", "imagenes", "avatar.png");
+let _silueta = null;
+
+function silueta() {
+  if (!_silueta) _silueta = fs.readFileSync(SILUETA);
+  return _silueta;
+}
+
+// Componer cuesta unos 170 ms de CPU. Como mucho estas a la vez por
+// proceso: si una pagina pide cien que faltan, las demas reciben la
+// silueta y se componen en la siguiente visita, en vez de llevarse la
+// maquina.
+const A_LA_VEZ = 2;
+let enCurso = 0;
+
+async function leerOComponer(sql, destino, ancho, alto) {
+  const listo = leer(destino, ancho, alto);
+  if (listo) return { datos: listo, compuesto: true };
+
+  const sinAvatar = { datos: silueta(), compuesto: false };
+  if (!destinoValido(destino) || !TAMANOS_VALIDOS.has(ancho + "x" + alto)) return sinAvatar;
+  if (enCurso >= A_LA_VEZ) return sinAvatar;
+
+  enCurso++;
+  try {
+    const filas = destino.ranura
+      ? await sql`SELECT avatar, avatar_compuesto FROM saved_avatars
+                  WHERE user_id = ${destino.usuarioId} AND slot = ${destino.ranura};`
+      : await sql`SELECT avatar, avatar_compuesto FROM users WHERE id = ${destino.usuarioId};`;
+    if (!filas.length || !filas[0].avatar) return sinAvatar;
+
+    let avatar = filas[0].avatar;
+    if (typeof avatar === "string") {
+      try { avatar = JSON.parse(avatar); } catch (_) { return sinAvatar; }
+    }
+
+    // Sin huella guardada a proposito: el archivo falta, asi que hay que
+    // hacerlo aunque la base diga que ya estaba.
+    const huella = await asegurarSinFallar(sql, destino, avatar, null);
+    if (!huella) return sinAvatar;
+
+    if (huella !== filas[0].avatar_compuesto) {
+      if (destino.ranura) {
+        await sql`UPDATE saved_avatars SET avatar_compuesto = ${huella}
+                  WHERE user_id = ${destino.usuarioId} AND slot = ${destino.ranura};`;
+      } else {
+        await sql`UPDATE users SET avatar_compuesto = ${huella} WHERE id = ${destino.usuarioId};`;
+      }
+    }
+
+    const hecho = leer(destino, ancho, alto);
+    return hecho ? { datos: hecho, compuesto: true } : sinAvatar;
+  } catch (error) {
+    console.error("avatar compuesto: no se pudo componer al pedirlo.", error.message);
+    return sinAvatar;
+  } finally {
+    enCurso--;
+  }
+}
+
+// Sirve /avatares/<id>/<tam>.jpg y las ranuras. Devuelve true si la ruta
+// era suya. Vive aqui y no en server.js para que el servidor de
+// desarrollo haga exactamente lo mismo: misma leccion que
+// api/_prendas-ruta.js.
+async function atender(req, res, url, sql) {
+  const ruta = partirRuta(url.pathname);
+  if (!ruta) return false;
+
+  const r = await leerOComponer(sql, ruta.destino, ruta.ancho, ruta.alto);
+
+  // La silueta, con cache corta aunque la direccion traiga version: no
+  // es el avatar de esa persona, y en cuanto se pueda componer tiene que
+  // dejar de verse.
+  if (!r.compuesto) {
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": r.datos.length,
+      "Cache-Control": "public, max-age=" + CACHE_SIN_VERSION
+    });
+    res.end(req.method === "HEAD" ? undefined : r.datos);
+    return true;
+  }
+
+  // CON version, un año: esa direccion exacta solo existe mientras el
+  // avatar sea ese. SIN version, un minuto: la direccion desnuda es la
+  // misma para siempre, y guardarsela mucho seria enseñar la ropa de ayer.
+  const conVersion = !!url.searchParams.get("v");
+  const segundos = conVersion ? CACHE_CON_VERSION : CACHE_SIN_VERSION;
+  res.writeHead(200, {
+    "Content-Type": "image/jpeg",
+    "Content-Length": r.datos.length,
+    "Cache-Control": "public, max-age=" + segundos + (conVersion ? ", immutable" : "")
+  });
+  res.end(req.method === "HEAD" ? undefined : r.datos);
+  return true;
+}
+
 module.exports = {
   VERSION,
   TAMANOS,
@@ -390,5 +501,7 @@ module.exports = {
   asegurarSinFallar,
   borrar,
   urlDe,
-  partirRuta
+  partirRuta,
+  leerOComponer,
+  atender
 };

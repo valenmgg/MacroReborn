@@ -391,3 +391,106 @@ describe("el freno", () => {
   });
 
 });
+
+describe("si falta, se compone al pedirlo", () => {
+
+  // Fase 3: todas las paginas piden el avatar compuesto. Si falta, el
+  // servidor lo compone en ese momento; si no puede, la silueta generica.
+  // Y lo que ya esta en el disco se sirve sin recalcular nada.
+
+  const SILUETA = fs.readFileSync(path.join(__dirname, "..", "imagenes", "avatar.png"));
+  const CARLA = { usuarioId: 500 };
+
+  async function crearCuenta(id, nombre, avatar) {
+    await db.query(
+      `INSERT INTO users (id, username, password_hash, level, xp, status, created_at, last_login, avatar)
+       VALUES ($1, $2, 'hash', 1, 0, 'active', now(), now(), $3)`,
+      [id, nombre, avatar ? JSON.stringify(avatar) : null]
+    );
+  }
+
+  const huellaDe = async id =>
+    (await db.query("SELECT avatar_compuesto FROM users WHERE id = $1", [id])).rows[0].avatar_compuesto;
+
+  before(async () => {
+    await crearCuenta(500, "carla", avatarBase);
+    await crearCuenta(501, "dani_sin_avatar", null);
+    await crearCuenta(502, "eva_frenada", avatarBase);
+  });
+
+  test("lo que ya esta en el disco se sirve sin tocar la base", async () => {
+    AC.olvidarPresupuesto();
+    await AC.asegurar(sql, ANA, avatarBase);
+    const sinBase = () => { throw new Error("no deberia consultar la base"); };
+    const r = await AC.leerOComponer(sinBase, ANA, 62, 96);
+    assert.equal(r.compuesto, true);
+    assert.ok(r.datos.equals(fs.readFileSync(AC.rutaDe(ANA, 62, 96))));
+  });
+
+  test("si falta, lo compone, lo guarda y apunta su huella", async () => {
+    AC.olvidarPresupuesto();
+    assert.equal(fs.existsSync(AC.rutaDe(CARLA, 62, 96)), false);
+    const r = await AC.leerOComponer(sql, CARLA, 62, 96);
+    assert.equal(r.compuesto, true);
+    assert.deepStrictEqual([r.datos[0], r.datos[1]], [0xFF, 0xD8]);
+    assert.ok(fs.existsSync(AC.rutaDe(CARLA, 327, 504)), "no guardo los dos tamaños");
+    assert.match(await huellaDe(500) || "", /^[a-f0-9]{64}$/, "no apunto la huella en la base");
+  });
+
+  test("y la segunda vez ya no compone nada", async () => {
+    const antes = fs.statSync(AC.rutaDe(CARLA, 62, 96)).mtimeMs;
+    await AC.leerOComponer(sql, CARLA, 62, 96);
+    assert.equal(fs.statSync(AC.rutaDe(CARLA, 62, 96)).mtimeMs, antes, "recompuso uno que ya estaba");
+  });
+
+  test("una ranura que falta, igual", async () => {
+    AC.olvidarPresupuesto();
+    await db.query("INSERT INTO saved_avatars (user_id, slot, avatar) VALUES (500, 2, $1)",
+      [JSON.stringify({ modelo: "tora", remera: "tora_remera2" })]);
+    const r = await AC.leerOComponer(sql, { usuarioId: 500, ranura: 2 }, 62, 96);
+    assert.equal(r.compuesto, true);
+    const fila = await db.query("SELECT avatar_compuesto FROM saved_avatars WHERE user_id = 500 AND slot = 2");
+    assert.match(fila.rows[0].avatar_compuesto || "", /^[a-f0-9]{64}$/);
+  });
+
+  test("sin avatar, o sin cuenta, la silueta generica y nunca una prenda", async () => {
+    for (const destino of [{ usuarioId: 501 }, { usuarioId: 999999 }, { usuarioId: 500, ranura: 9 }]) {
+      const r = await AC.leerOComponer(sql, destino, 62, 96);
+      assert.equal(r.compuesto, false, JSON.stringify(destino));
+      assert.ok(r.datos.equals(SILUETA), "no es la silueta: " + JSON.stringify(destino));
+    }
+  });
+
+  test("con su freno agotado, la silueta en vez de componer", async () => {
+    AC.olvidarPresupuesto();
+    for (let i = 0; i < AC.TOPE_POR_MINUTO; i++) AC.hayPresupuesto(502);
+    const r = await AC.leerOComponer(sql, { usuarioId: 502 }, 62, 96);
+    assert.equal(r.compuesto, false);
+    assert.equal(fs.existsSync(AC.rutaDe({ usuarioId: 502 }, 62, 96)), false);
+  });
+
+  function pedir(ruta) {
+    const res = {
+      codigo: 0, cabeceras: {}, cuerpo: null,
+      writeHead(c, h) { this.codigo = c; this.cabeceras = h || {}; },
+      end(d) { this.cuerpo = d === undefined ? null : d; }
+    };
+    return AC.atender({ method: "GET" }, res, new URL("http://x" + ruta), sql).then(atendida => ({ atendida, ...res }));
+  }
+
+  test("la ruta sirve el compuesto con su cache, y la silueta siempre con cache corta", async () => {
+    const con = await pedir("/avatares/500/62x96.jpg?v=abc");
+    assert.equal(con.cabeceras["Content-Type"], "image/jpeg");
+    assert.equal(con.cabeceras["Cache-Control"], "public, max-age=31536000, immutable");
+
+    // Aunque la direccion traiga version: la silueta no es su avatar, y
+    // en cuanto se pueda componer tiene que dejar de verse.
+    const sil = await pedir("/avatares/501/62x96.jpg?v=abc");
+    assert.equal(sil.codigo, 200);
+    assert.equal(sil.cabeceras["Content-Type"], "image/png");
+    assert.equal(sil.cabeceras["Cache-Control"], "public, max-age=60");
+
+    assert.equal((await pedir("/previsualizaciones/1.jpg")).atendida, false);
+  });
+
+});
