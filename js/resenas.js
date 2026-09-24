@@ -36,39 +36,26 @@
 
   if (!listaResenas) return;
 
-  // ---------- AVATAR (mismo criterio que comunidad.js / usuario.js) ----------
-
-  // Ambas vienen de js/core.js, que se carga antes que este archivo.
-  const ORDEN_CAPAS_RESENA = ORDEN_CAPAS_AVATAR;
-
-  function rutaImagenCapaResena(valor) {
-    return rutaCapaAvatar(valor);
-  }
+  // ---------- AVATAR ----------
+  // Una sola imagen por persona: su PNG de administrador, su avatar ya
+  // compuesto o la silueta, con imagenDeAvatar() de js/core.js. La
+  // persona sale de la memoria de avatares, que se llena antes de pintar
+  // (renderResenas). Hasta el 24/09/2026 se dibujaba prenda por prenda.
+  // Ver docs/AVATARES-SERVIDOR.md, fase 3.
 
   function avatarHTMLResena(nombre) {
-    const avatar = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
+    const imagen = imagenDeAvatar(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96) ||
+      SILUETA_AVATAR;
 
-    if (!avatar) {
-      return `<img src="imagenes/avatar.png" class="resena-avatar-simple" alt="${escaparHTML(nombre)}" loading="lazy">`;
+    if (imagen.tipo === "silueta") {
+      return `<img src="${imagen.src}" class="resena-avatar-simple" alt="${escaparHTML(nombre)}" loading="lazy">`;
     }
 
-    if(avatarEsPNG(avatar)){
-      return `<img data-src="${avatarPNGData(avatar)}" class="resena-avatar-simple avatar-png-personalizado" alt="${escaparHTML(nombre)}" loading="lazy">`;
+    if (imagen.tipo === "png") {
+      return `<img data-src="${imagen.src}" class="resena-avatar-simple avatar-png-personalizado" alt="${escaparHTML(nombre)}" loading="lazy">`;
     }
 
-    let capas = "";
-    let rutasCapas = [];
-    ORDEN_CAPAS_RESENA.forEach((tipo) => {
-      const ruta = rutaImagenCapaResena(avatar[tipo]);
-      if (ruta) {
-        capas += `<img data-src="${ruta}" class="capa-resena" alt="" loading="lazy">`;
-        rutasCapas.push(ruta);
-      }
-    });
-
-    return capas
-      ? `<div class="resena-avatar avatar-compuesto" data-capas="${rutasCapas.join("|")}" data-capa-class="capa-resena">${capas}</div>`
-      : `<img src="imagenes/avatar.png" class="resena-avatar-simple" alt="${escaparHTML(nombre)}" loading="lazy">`;
+    return `<div class="resena-avatar"><img data-src="${imagen.src}" class="capa-resena" alt="" loading="lazy"></div>`;
   }
 
   // ---------- HELPERS ----------
