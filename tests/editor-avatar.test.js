@@ -161,6 +161,24 @@ describe("construir las opciones desde el catálogo", () => {
     assert.match(item.textContent, /Botas de combate/);
   });
 
+  test("con previsualizacion, la miniatura es la previsualizacion", async () => {
+    // La prenda puesta en su maniqui, un JPG cuadrado. Sin ella, el dibujo
+    // suelto, como en la prueba de arriba.
+    const catalogo = catalogoDePrueba();
+    catalogo.prendas[0].previsualizacion = "/previsualizaciones/12.jpg?v=abcdef012345";
+    const { doc, api } = montar(respuestaOk(catalogo));
+
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    const img = doc.querySelector('.opcion-item[data-valor="tora_botas1"] img');
+    assert.equal(img.dataset.src, "/previsualizaciones/12.jpg?v=abcdef012345");
+    assert.ok(img.classList.contains("previsualizacion"), "sin la clase se veria estirada en la caja alta");
+    const sin = doc.querySelector('.opcion-item[data-valor="tora_botas2"] img');
+    assert.equal(sin.dataset.src, "/prendas/ddd.png");
+    assert.ok(!sin.classList.contains("previsualizacion"));
+  });
+
   test("el selector de personaje NO lleva data-modelo", async () => {
     // filtrarOpcionesPorModelo() oculta lo que tenga un data-modelo
     // distinto al elegido. Los personajes tienen que verse siempre, así

@@ -497,7 +497,16 @@ function construirOpcionesDelEditor(){
       img.setAttribute("alt", "");
 
       // La URL se guarda, NO se asigna. Ver mostrarImagenesVisibles().
-      img.dataset.src = item.url;
+      //
+      // La miniatura es la previsualizacion: la prenda puesta en su
+      // maniqui, un JPG pequeño y cuadrado. Si todavia no se genero, el
+      // dibujo suelto, como antes. Fase 4 de docs/AVATARES-SERVIDOR.md.
+      if(item.previsualizacion){
+        img.dataset.src = item.previsualizacion;
+        img.classList.add("previsualizacion");
+      } else {
+        img.dataset.src = item.url;
+      }
 
       div.appendChild(img);
       div.appendChild(document.createTextNode(item.nombre));

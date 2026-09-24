@@ -1130,6 +1130,14 @@ a.actividad-cita:hover {
   margin: 0 auto 6px;
 }
 
+/* La previsualizacion ya es cuadrada y trae su fondo blanco: se enseña
+   cuadrada, no metida en la caja alta pensada para el dibujo suelto. */
+.opcion-item img.previsualizacion {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+}
+
 .opcion-item:hover {
   border-color: var(--clasico-borde);
   transform: translateY(-3px);
