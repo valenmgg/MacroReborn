@@ -142,7 +142,7 @@ async function catalogo(sql) {
     datos.set(f.valor, { binario, modelo: f.modelo, capa: f.capa });
 
     let caja = null;
-    try { caja = compositor.cajaDibujada(compositor.componer([binario])); } catch (_) {}
+    try { caja = recortes.cajaParaCuadro(compositor.componer([binario])); } catch (_) {}
 
     // `auto` es el cuadro con que se dibujara si nadie fuerza otro. Lo
     // calcula el servidor, el mismo codigo que generara las 768, para que

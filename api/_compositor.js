@@ -191,20 +191,38 @@ function recortar(img, x, y, ancho, alto) {
 }
 
 // La caja que ocupa el dibujo, ignorando lo transparente. Sirve para
-// calcular el recorte de cada capa a partir del arte de verdad, en vez
-// de escribir quince rectángulos a ojo. Devuelve null si está vacía.
-function cajaDibujada(img) {
-  let x0 = img.ancho, y0 = img.alto, x1 = -1, y1 = -1;
+// calcular el cuadro de cada previsualización a partir del arte de
+// verdad, en vez de escribir rectángulos a ojo. Devuelve null si está
+// vacía.
+//
+// Por defecto cuenta cualquier pixel que no sea transparente del todo.
+// Con `opciones`:
+//   alfaMinimo  solo cuentan los pixeles con alfa POR ENCIMA de esto.
+//   recorte     fraccion de esos pixeles que se ignora por cada extremo,
+//               en horizontal y en vertical: quita puntos sueltos lejos
+//               del dibujo sin comerse el dibujo.
+function cajaDibujada(img, opciones) {
+  const alfaMinimo = (opciones && opciones.alfaMinimo) || 0;
+  const recorte = (opciones && opciones.recorte) || 0;
+
+  // Cuantos pixeles hay en cada columna y en cada fila: con eso salen los
+  // bordes, y con el recorte, los bordes sin los puntos sueltos.
+  const columnas = new Uint32Array(img.ancho), filas = new Uint32Array(img.alto);
+  let total = 0;
   for (let y = 0; y < img.alto; y++) {
     for (let x = 0; x < img.ancho; x++) {
-      if (img.rgba[(y * img.ancho + x) * 4 + 3] === 0) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
+      if (img.rgba[(y * img.ancho + x) * 4 + 3] <= alfaMinimo) continue;
+      columnas[x]++;
+      filas[y]++;
+      total++;
     }
   }
-  if (x1 < 0) return null;
+  if (!total) return null;
+
+  const sobran = Math.floor(total * recorte);
+  const desde = h => { let s = 0; for (let i = 0; i < h.length; i++) { s += h[i]; if (s > sobran) return i; } return 0; };
+  const hasta = h => { let s = 0; for (let i = h.length - 1; i >= 0; i--) { s += h[i]; if (s > sobran) return i; } return h.length - 1; };
+  const x0 = desde(columnas), x1 = hasta(columnas), y0 = desde(filas), y1 = hasta(filas);
   return { x: x0, y: y0, ancho: x1 - x0 + 1, alto: y1 - y0 + 1 };
 }
 

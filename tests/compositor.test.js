@@ -253,4 +253,29 @@ describe("recortar, para las previsualizaciones", () => {
     assert.equal(C.cajaDibujada(C.componer([])), null);
   });
 
+  // Un lienzo a mano: un rectangulo opaco, y lo que se le añada.
+  function lienzoCon(puntos) {
+    const img = { rgba: Buffer.alloc(327 * 504 * 4), ancho: 327, alto: 504 };
+    const poner = (x, y, a) => { img.rgba[(y * 327 + x) * 4 + 3] = a; };
+    for (let y = 100; y < 160; y++) for (let x = 120; x < 200; x++) poner(x, y, 255);
+    for (const [x, y, a] of puntos) poner(x, y, a);
+    return img;
+  }
+
+  test("con alfaMinimo, los restos casi invisibles no cuentan", () => {
+    // Dos pelos del catalogo traian restos de alfa baja por todo el lienzo,
+    // y su caja era el lienzo entero.
+    const img = lienzoCon([[5, 5, 10], [320, 500, 10]]);
+    assert.deepStrictEqual(C.cajaDibujada(img), { x: 5, y: 5, ancho: 316, alto: 496 });
+    assert.deepStrictEqual(C.cajaDibujada(img, { alfaMinimo: 64 }), { x: 120, y: 100, ancho: 80, alto: 60 });
+  });
+
+  test("con recorte, un punto suelto lejos del dibujo tampoco", () => {
+    const img = lienzoCon([[10, 490, 255]]);
+    assert.deepStrictEqual(C.cajaDibujada(img, { recorte: 0.005 }), { x: 120, y: 100, ancho: 80, alto: 60 });
+    // Y el recorte no se come el dibujo: 4800 pixeles, se ignoran 24 por
+    // extremo, menos que una fila o una columna del rectangulo.
+    assert.deepStrictEqual(C.cajaDibujada(lienzoCon([]), { recorte: 0.005 }), { x: 120, y: 100, ancho: 80, alto: 60 });
+  });
+
 });

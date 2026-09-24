@@ -28,6 +28,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { CAPAS } = require("./_avatar-catalogo");
+const compositor = require("./_compositor");
 
 const LIENZO_ANCHO = 327;
 const LIENZO_ALTO = 504;
@@ -161,6 +162,21 @@ function cuadroDe(config, modelo, capa) {
 // ------------------------------------------------------------------
 // EL CUADRO AUTOMATICO
 // ------------------------------------------------------------------
+
+// La caja de una prenda con la que se calcula su cuadro: solo lo que se
+// ve bien, y sin puntos sueltos. El arte trae a veces restos casi
+// invisibles o algun punto lejos del dibujo -dos pelos de Naruto los
+// tenian por todo el lienzo- y con ellos la prenda salia diminuta en
+// medio de un cuadro enorme. Medido sobre las 768 el 24/09/2026: cambian
+// 24, todas a mejor. Si no queda nada que se vea bien, cuenta todo.
+const ALFA_VISIBLE = 64;
+const PUNTOS_SUELTOS = 0.005;
+
+function cajaParaCuadro(img) {
+  return compositor.cajaDibujada(img, { alfaMinimo: ALFA_VISIBLE, recorte: PUNTOS_SUELTOS }) ||
+    compositor.cajaDibujada(img);
+}
+
 // El de UNA prenda: el menor cuadrado que contiene su dibujo, con margen,
 // centrado en el y empujado dentro del lienzo si se sale.
 //
@@ -193,7 +209,7 @@ function cuadroAutomatico(caja, margen) {
 //      antes que nada.
 //   2. el que se fijo para toda su capa en su modelo, con la herramienta.
 //   3. el automatico, alrededor de su propio dibujo.
-// `prenda` es { modelo, capa, caja }, con la caja de api/_compositor.js.
+// `prenda` es { modelo, capa, caja }, con la caja de cajaParaCuadro.
 function cuadroParaPrenda(config, prenda) {
   return cuadroDe(config, prenda.modelo, prenda.capa) || cuadroAutomatico(prenda.caja);
 }
@@ -223,6 +239,7 @@ module.exports = {
   leer,
   escribir,
   cuadroDe,
+  cajaParaCuadro,
   cuadroAutomatico,
   cuadroParaPrenda,
   cuantasSeSalen

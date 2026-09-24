@@ -151,6 +151,31 @@ describe("el archivo", () => {
 
 });
 
+describe("la caja con la que se calcula", () => {
+
+  // Un lienzo a mano, con los pixeles de alfa que se pidan.
+  function lienzoCon(rectangulos) {
+    const img = { rgba: Buffer.alloc(327 * 504 * 4), ancho: 327, alto: 504 };
+    for (const [x0, y0, an, al, a] of rectangulos) {
+      for (let y = y0; y < y0 + al; y++) for (let x = x0; x < x0 + an; x++) img.rgba[(y * 327 + x) * 4 + 3] = a;
+    }
+    return img;
+  }
+
+  test("ignora los restos casi invisibles lejos del dibujo", () => {
+    // Asi venian dos pelos de Naruto: el pelo, y restos de alfa baja por
+    // todo el lienzo. Con ellos, el pelo salia diminuto.
+    const img = lienzoCon([[100, 30, 110, 110, 255], [0, 0, 327, 2, 12], [0, 500, 327, 4, 12]]);
+    assert.deepStrictEqual(R.cajaParaCuadro(img), { x: 100, y: 30, ancho: 110, alto: 110 });
+  });
+
+  test("si todo es casi invisible, cuenta todo en vez de quedarse sin caja", () => {
+    const img = lienzoCon([[50, 60, 40, 30, 20]]);
+    assert.deepStrictEqual(R.cajaParaCuadro(img), { x: 50, y: 60, ancho: 40, alto: 30 });
+  });
+
+});
+
 describe("el cuadro automatico", () => {
 
   test("contiene la prenda, con margen, y es cuadrado", () => {
