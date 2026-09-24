@@ -713,11 +713,15 @@ if(typeof document !== "undefined"){
 // manda la silueta. Se cachea un minuto en vez de un ano. Pasa con quien
 // agoto el freno del servidor o con un guardado que fallo.
 //
+// Un diseño guardado va con su ranura, { id, ranura, avatar_compuesto },
+// y vive en su propia carpeta: /avatares/38/ranura2/62x96.jpg.
+//
 // Devuelve null solo si no se sabe de quien es.
 function urlAvatarCompuesto(usuario, ancho, alto){
   if(!usuario || !usuario.id) return null;
   const a = ancho || 62, l = alto || 96;
-  const ruta = "/avatares/" + encodeURIComponent(usuario.id) + "/" + a + "x" + l + ".jpg";
+  const ranura = usuario.ranura ? "/ranura" + encodeURIComponent(usuario.ranura) : "";
+  const ruta = "/avatares/" + encodeURIComponent(usuario.id) + ranura + "/" + a + "x" + l + ".jpg";
   if(!usuario.avatar_compuesto) return ruta;
   const v = String(usuario.avatar_compuesto).slice(0, 12);
   return ruta + "?v=" + encodeURIComponent(v);

@@ -174,6 +174,21 @@ describe("la dirección que arma el navegador", () => {
     assert.equal(url({}), null);
   });
 
+  test("un diseño guardado va a su ranura, y el servidor la entiende", () => {
+    const { url } = montarAyudante();
+    const ranura = { id: 38, ranura: 2, avatar_compuesto: "abcdef1234567890" };
+    assert.equal(url(ranura, 327, 504), "/avatares/38/ranura2/327x504.jpg?v=abcdef123456");
+
+    const partida = AC.partirRuta(url(ranura, 327, 504).split("?")[0]);
+    assert.ok(partida, "el servidor no entiende la dirección de la ranura");
+    assert.deepStrictEqual(partida.destino, { usuarioId: 38, ranura: 2 });
+
+    // Una ranura rara sale escapada, y el servidor la rechaza.
+    const sucia = url({ id: 38, ranura: "2/../../otro" });
+    assert.ok(!sucia.includes("../"), "la ranura salió sin escapar: " + sucia);
+    assert.equal(AC.partirRuta(sucia), null);
+  });
+
   test("un id raro no se cuela sin escapar en la dirección", () => {
     const { url } = montarAyudante();
     const sucio = url({ id: "38/../../otro", avatar_compuesto: "abcdef123456" });
