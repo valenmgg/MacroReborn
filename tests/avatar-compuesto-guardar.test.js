@@ -194,3 +194,59 @@ describe("guardar un avatar", () => {
   });
 
 });
+
+describe("ponerse un PNG de administrador", () => {
+
+  // Un PNG real de 1x1: el endpoint comprueba la firma.
+  const PNG_1PX = "data:image/png;base64," +
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  function ponerPNG(sesion) {
+    return new Promise((resolve) => {
+      const req = {
+        method: "POST",
+        query: { action: "update-admin-avatar-png" },
+        body: { username: sesion.username, avatarPng: PNG_1PX },
+        headers: { authorization: "Bearer " + crearToken(sesion) }
+      };
+      const res = {
+        statusCode: 200,
+        status(c) { this.statusCode = c; return this; },
+        setHeader() {},
+        json(obj) { resolve({ codigo: this.statusCode, cuerpo: obj }); },
+        end(cuerpo) { resolve({ codigo: this.statusCode, cuerpo }); }
+      };
+      usersHandler(req, res);
+    });
+  }
+
+  test("se lleva la huella y el JPG de la ropa de antes", async () => {
+    // Con la huella puesta, las listas seguirian pidiendo el compuesto
+    // de lo que llevaba antes en vez de su PNG.
+    await db.query(
+      `INSERT INTO badges (user_id, badge_id) VALUES ($1, 'administrador')
+       ON CONFLICT (user_id, badge_id) DO NOTHING`, [idAna]);
+    AC.olvidarPresupuesto();
+    await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
+    assert.ok((await filaDeAna()).avatar_compuesto);
+    assert.ok(AC.leer(DESTINO(), 62, 96));
+
+    const r = await ponerPNG(ana());
+    assert.equal(r.codigo, 200, JSON.stringify(r.cuerpo));
+
+    assert.equal((await filaDeAna()).avatar_compuesto, null, "se quedo la huella de la ropa");
+    assert.equal(r.cuerpo.user.avatar_compuesto, null);
+    for (const [a, l] of AC.TAMANOS) {
+      assert.equal(AC.leer(DESTINO(), a, l), null, a + "x" + l + " se quedo en el disco");
+    }
+  });
+
+  test("y volver a las prendas lo compone otra vez", async () => {
+    AC.olvidarPresupuesto();
+    const r = await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
+    assert.equal(r.codigo, 200, JSON.stringify(r.cuerpo));
+    assert.match((await filaDeAna()).avatar_compuesto, /^[a-f0-9]{64}$/);
+    assert.ok(AC.leer(DESTINO(), 62, 96));
+  });
+
+});

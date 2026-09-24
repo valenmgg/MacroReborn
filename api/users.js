@@ -443,16 +443,22 @@ async function updateAdminAvatarPng(req, res) {
       : null
   };
 
+  // La huella del compuesto se va con la ropa: el PNG no es un avatar de
+  // prendas, y con la huella puesta las listas seguirian pidiendo el JPG
+  // de lo que llevaba antes. Por lo mismo se borra ese JPG del disco.
   const user = await sql`
     UPDATE users
-    SET avatar = ${JSON.stringify(avatar)}
+    SET avatar = ${JSON.stringify(avatar)},
+        avatar_compuesto = NULL
     WHERE username = ${username}
-    RETURNING id, username, avatar;
+    RETURNING id, username, avatar, avatar_compuesto;
   `;
 
   if (user.length === 0) {
     return res.status(404).json({ success: false, error: "Usuario no encontrado" });
   }
+
+  avatarCompuesto.borrar({ usuarioId: Number(user[0].id) });
 
   return res.status(200).json({ success: true, user: user[0] });
 }
