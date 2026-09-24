@@ -174,7 +174,7 @@ rompen nada mientras tanto.
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | 2026-09-24 | Las listas | Página por página, cada una pasa a una sola imagen por persona. Todas hechas: medido en producción, cero prendas sueltas fuera del editor. El editor es la fase 5 | No |
 | 4 | 2026-09-24 | Las previsualizaciones | 768 recortes automáticos sobre maniquí. Publicadas: el editor y la tienda las enseñan. Ver el punto 12 | No |
-| 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
+| 5 | 2026-09-24 | Cerrar la puerta | `/prendas/` solo contesta con una firma que reparte el panel de arte. El editor pide su vista previa al servidor; fuera el índice público | Sí, a propósito |
 
 ### Fase 1 — El compositor
 
@@ -340,16 +340,17 @@ páginas con sesión se comprobaron con pruebas y en local.
 
 - El editor de `perfil.js` (la vista previa y las miniaturas sin
   previsualización): enseña ropa que todavía no se ha guardado, y eso
-  no tiene compuesto. Es la fase 5.
-- `js/ranking.js`: su código de dibujo no se ejecuta nunca, porque
-  sus contenedores no existen en ningún HTML. Se carga en tres páginas
-  por otras dos funciones. Se puede borrar.
-- El taller y el panel de arte, que son del equipo de arte.
+  no tiene compuesto. Resuelto en la fase 5: la vista previa la dibuja
+  el servidor.
+- `js/ranking.js`: su código de dibujo no se ejecutaba nunca, porque
+  sus contenedores no existen en ningún HTML. Quitado en la fase 5.
+- El taller y el panel de arte, que son del equipo de arte, y siguen
+  así: con direcciones firmadas desde la fase 5.
 
-Ya no queda ninguna fuera del editor, así que sobra lo que dibuja por
-capas en `js/core.js`: la rama de capas de `avatarMiniaturaHTML` y
-`componerAvatarPNG`, que vuelve a bajar las capas en un canvas. Se
-quita en la fase 5, junto al índice público.
+Ya no quedaba ninguna fuera del editor, así que sobraba lo que dibujaba
+por capas en `js/core.js`: la rama de capas de `avatarMiniaturaHTML` y
+`componerAvatarPNG`, que volvía a bajar las capas en un canvas. Se
+quitó en la fase 5, junto al índice público.
 
 **Lo que hay que arreglar por el camino**, visto en el inventario del
 24/09/2026:
@@ -388,10 +389,67 @@ de la tienda dejan de estarlo. Son el mismo trabajo.
 
 ### Fase 5 — Cerrar la puerta
 
-`/prendas/<huella>.png` deja de responder salvo con sesión y con
-insignia de administrador o de equipo de arte, que es lo que el taller
-necesita. Se invalidan los 12 MB de caché de nginx y las copias de cada
-navegador. Decidido que no importa.
+Hecha el 24/09/2026. `/prendas/<huella>.png`, el dibujo suelto de una
+prenda, solo lo ven el equipo de arte y los administradores. El resto
+del sitio enseña avatares compuestos y previsualizaciones.
+
+**Lo que se hizo, en orden, y cada paso sin romper el siguiente:**
+
+1. **La vista previa del editor la dibuja el servidor**
+   (`POST /api/users?action=avatar-vista-previa`, `api/_vista-previa.js`).
+   Era lo último que apilaba prendas sueltas. Pide sesión y solo dibuja
+   lo que esa persona podría ponerse: prendas publicadas en su ranura, o
+   lo retirado que ya lleva; las de la tienda se pueden probar sin
+   comprarlas. Lo ya dibujado se guarda en memoria por la huella de la
+   receta, y hay un tope de 60 dibujos nuevos por minuto y persona. El
+   editor espera 250 ms entre clics, no vuelve a pedir lo ya visto y
+   descarta las respuestas que llegan tarde.
+2. **Las miniaturas del editor** son siempre la previsualización. Si
+   faltara, la caja se queda con su nombre, sin imagen.
+3. **`js/core.js` dejó de pedir el índice público** al abrir cualquier
+   página, y perdió `rutaCapaAvatar`, la rama de capas de
+   `avatarMiniaturaHTML` y el compositor en canvas. De paso se quitó el
+   dibujo muerto de `js/ranking.js`.
+4. **En el servidor, fuera el índice público** (`avatar-catalogo`). El
+   catálogo del editor ya no manda la dirección de ninguna prenda, ni la
+   lista de retiradas, que llevaba la dirección de todas las prendas sin
+   publicar, borradores incluidos, a cualquiera con sesión.
+5. **El equipo de arte recibe direcciones firmadas**
+   (`api/_prendas-firma.js`). Sus herramientas pintan con `<img src>`,
+   y una etiqueta `<img>` no manda la sesión; así que la sesión y el
+   rol se comprueban al pedir `avatar-panel`, que devuelve
+   `/prendas/<huella>.png?hasta=…&firma=…`. La firma es un HMAC de la
+   huella y la caducidad, con una clave sacada del secreto de las
+   sesiones. Caduca entre seis y siete horas después, redondeada a la
+   hora: todo lo firmado en la misma hora sale con la misma dirección y
+   el navegador la reutiliza.
+6. **El cierre.** `/prendas/` contesta 403 sin firma válida, antes de
+   mirar la base. nginx dejó de cachear `/prendas/` (`proxy_cache off`:
+   su caché guardaba un año con la dirección sin firma como clave, y la
+   habría servido a cualquiera), y se vaciaron sus 581 entradas de
+   `/var/cache/nginx/prendas`, sin tocar las 184 de `/avatares/` ni las
+   356 de `/previsualizaciones/`, que comparten la zona. Copia de la
+   configuración anterior en
+   `/etc/nginx/respaldos/macroreborn.antes-cerrar-prendas-2026-09-24`.
+
+**Medido en producción al cerrar:** una prenda que estaba en la caché,
+pedida sin firma, 403; con una firma inventada, 403; la ruta vieja
+`imagenes/tora/pelo3.png`, 404; una dirección firmada por el servidor,
+200 con caché privada de unas siete horas. Los avatares compuestos y
+las previsualizaciones, 200. La comunidad: cero prendas sueltas, cero
+índice público.
+
+Para vaciar otra vez solo las prendas de la caché de nginx, si hiciera
+falta:
+
+```sh
+sudo grep -r -a -l -Z "^KEY: /prendas/" /var/cache/nginx/prendas | sudo xargs -0 rm -f
+```
+
+**Lo que no se pudo invalidar** son las copias que ya tenía cada
+navegador: se servían con un año de caché e `immutable`. Decidido que
+no importa. Y el repositorio: las prendas siguen en el historial de
+GitHub (punto 75 de la auditoría, descartado).
 
 ---
 
@@ -406,6 +464,11 @@ imposible: es recuperable con esfuerzo y con calidad peor.
 **El alcance del ataque es lo que de verdad lo limita.** Solo se puede
 componer lo que uno posee. Para sacar el catálogo entero por esta vía
 habría que comprar las 768 prendas.
+
+La vista previa del editor (fase 5) no abre otra vía: dibuja solo lo
+que esa persona podría guardar, con la misma validación. Se probó a
+dejar probarse las de la tienda sin comprarlas, y se quitó el mismo
+día por esto: daba la prenda de pago entera sin pagarla.
 
 **Salvo por las previsualizaciones**, que enseñan prendas que no tienes.
 Ahí la defensa es el recorte: una previsualización es un trozo pequeño
@@ -422,10 +485,12 @@ baja entero con una petición.
 
 ## 7. Lo que muerde si no se sabe
 
-- **El taller es la excepción a propósito.** `taller.html` seguirá
-  recibiendo prendas sueltas, con sesión y permiso. Es el único agujero
-  que queda abierto, y queda abierto porque el equipo de arte no puede
-  trabajar de otra forma.
+- **El taller es la excepción a propósito.** `taller.html`, el panel y
+  el vestidor siguen recibiendo prendas sueltas, con sesión y el rol de
+  artista o administrador, en direcciones firmadas que caducan (fase 5).
+  Es el único agujero que queda abierto, y queda abierto porque el
+  equipo de arte no puede trabajar de otra forma. Una dirección firmada
+  sirve a quien se la pasen mientras no caduque, unas seis horas.
 - **JPG no tiene alfa.** Los 6 avatares sin capa de fondo salen en PNG.
   Si algún día se decide que todos lleven fondo, eso desaparece.
 - **El orden de las capas tiene que salir de un solo sitio.** Está
