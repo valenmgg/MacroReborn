@@ -199,6 +199,28 @@ describe("generar y guardar", () => {
     assert.equal(await AC.asegurar(sql, ANA, { pelo: "ninguno" }), null);
   });
 
+  test("y quitarse todo se lleva el compuesto de la ropa de antes", async () => {
+    // Lo del disco se sirve sin mirar la base: si se quedara, la
+    // direccion desnuda seguiria enseñando lo que ya no lleva puesto.
+    AC.olvidarPresupuesto();
+    await AC.asegurar(sql, ANA, avatarBase);
+    assert.ok(AC.leer(ANA, 62, 96));
+
+    assert.equal(await AC.asegurar(sql, ANA, { pelo: "ninguno" }), null);
+    for (const [a, l] of AC.TAMANOS) {
+      assert.equal(AC.leer(ANA, a, l), null, a + "x" + l + " se quedo en el disco");
+    }
+  });
+
+  test("y ponerse un PNG de administrador, igual", async () => {
+    AC.olvidarPresupuesto();
+    await AC.asegurar(sql, ANA, avatarBase);
+
+    const png = { tipo: "png", url: "/api/users?action=avatar-png&username=ana&v=abc", restaurar: avatarBase };
+    assert.equal(await AC.asegurar(sql, ANA, png), null);
+    assert.equal(AC.leer(ANA, 62, 96), null, "el PNG dejo el compuesto de antes");
+  });
+
   test("no deja archivos a medias con nombre definitivo", async () => {
     await AC.asegurar(sql, ANA, avatarBase);
     const sueltos = fs.readdirSync(AC.carpetaDe(ANA)).filter(f => f.endsWith(".tmp"));
@@ -395,6 +417,18 @@ describe("el freno", () => {
 
     assert.equal(AC.hayPresupuesto(ANA.usuarioId), false);
     assert.equal(AC.hayPresupuesto(BETO.usuarioId), true);
+  });
+
+  test("y al agotarlo no se queda en el disco la ropa de antes", async () => {
+    // Sin presupuesto no se compone el avatar nuevo. Si el viejo se
+    // quedara, la direccion desnuda lo seguiria sirviendo hasta el
+    // siguiente guardado. Sin archivo, se compone al pedirlo.
+    AC.olvidarPresupuesto();
+    await AC.asegurar(sql, ANA, avatarBase);
+    while (AC.hayPresupuesto(ANA.usuarioId)) { /* gastarlo entero */ }
+
+    assert.equal(await AC.asegurar(sql, ANA, { modelo: "tora", remera: "tora_remera2" }), null);
+    assert.equal(AC.leer(ANA, 62, 96), null, "se quedo el compuesto de la ropa anterior");
   });
 
   test("el tope deja sitio de sobra para una persona de verdad", () => {

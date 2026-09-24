@@ -167,6 +167,17 @@ describe("guardar un avatar", () => {
     assert.equal((await filaDeAna()).avatar_compuesto, null);
   });
 
+  test("y sin dejar en el disco el compuesto de la ropa de antes", async () => {
+    // La direccion desnuda sirve lo que haya en el disco: si se quedara,
+    // seguiria enseñando lo que esta persona ya no lleva puesto.
+    AC.olvidarPresupuesto();
+    await guardar({ modelo: "tora", pelo: "tora_pelo3" }, ana());
+    assert.ok(AC.leer(DESTINO(), 62, 96));
+
+    await guardar({ modelo: "ninguno", pelo: "ninguno" }, ana());
+    assert.equal(AC.leer(DESTINO(), 62, 96), null, "se quedo el compuesto de antes");
+  });
+
   test("sin sesion no se guarda nada, como antes", async () => {
     const r = await new Promise((resolve) => {
       const req = { method: "POST", query: { action: "update-avatar" }, body: { username: "ana", avatar: {} }, headers: {} };

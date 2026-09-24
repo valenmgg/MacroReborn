@@ -279,8 +279,15 @@ function olvidarPresupuesto() {
 async function asegurar(sql, destino, avatar, huellaGuardada) {
   if (!destinoValido(destino)) throw new TypeError("Destino de avatar inválido");
 
+  // Sin prendas no hay compuesto, y tampoco puede quedarse el de la ropa
+  // de antes: lo que esta en el disco se sirve sin preguntar a la base
+  // (ver SI FALTA, SE COMPONE AL PEDIRLO), asi que se seguiria viendo.
+  // Pasa al quitarse todo y al ponerse un PNG de administrador.
   const receta = await recetaDe(sql, avatar);
-  if (!receta) return null;
+  if (!receta) {
+    borrar(destino);
+    return null;
+  }
 
   // Freno 1: no cambio nada.
   if (huellaGuardada && huellaGuardada === receta.huella &&
@@ -293,6 +300,9 @@ async function asegurar(sql, destino, avatar, huellaGuardada) {
   // como siempre, y el siguiente guardado o el relleno lo arreglan.
   if (!hayPresupuesto(destino.usuarioId)) {
     console.warn("avatar compuesto: presupuesto agotado para el usuario " + destino.usuarioId);
+    // Lo del disco es la ropa de antes. Fuera, por lo mismo que arriba:
+    // sin archivo, se compone al pedirlo cuando vuelva a haber presupuesto.
+    borrar(destino);
     return null;
   }
 
