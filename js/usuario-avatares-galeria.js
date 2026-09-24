@@ -29,29 +29,22 @@
       ? leerJSON(localStorage.getItem("usuarioActivo") || "null")
       : JSON.parse(localStorage.getItem("usuarioActivo") || "null"));
 
-  // ---------- ORDEN DE CAPAS / RUTAS DE IMAGEN ----------
-  // Ambas vienen de js/core.js, que se carga antes que este archivo.
+  // ---------- LA IMAGEN DE CADA RANURA ----------
+  // Cada diseño guardado tiene su compuesto, en /avatares/<id>/ranura<N>/,
+  // que el servidor hace al guardarlo. Se pide el grande: el visor mide
+  // 100x154 y el pequeño se vería borroso. Hasta el 24/09/2026 se
+  // dibujaba prenda por prenda. Ver docs/AVATARES-SERVIDOR.md, fase 3.
 
-  const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
+  // El id del dueño de la galería: lo manda la API junto a las ranuras.
+  let idDelDueno = null;
 
-  function rutaImagenCapa(valor) {
-    return rutaCapaAvatar(valor);
-  }
-
-  function marcadoAvatarCompuesto(avatar) {
-    let html = "";
-    const rutas = [];
-    ORDEN_CAPAS.forEach(tipo => {
-      const ruta = rutaImagenCapa(avatar[tipo]);
-      if (ruta) {
-        html += `<img class="capa-tarjeta" data-src="${ruta}" alt="" loading="lazy">`;
-        rutas.push(ruta);
-      }
-    });
-    if (!html) {
-      return { html: '<img src="imagenes/avatar.png" class="capa-tarjeta" alt="" loading="lazy">', rutas: [] };
+  function marcadoAvatar(fila) {
+    const ranura = { id: idDelDueno, ranura: fila.slot, avatar_compuesto: fila.avatar_compuesto };
+    const imagen = imagenDeAvatar(fila.avatar, ranura, 327, 504) || SILUETA_AVATAR;
+    if (imagen.tipo === "silueta") {
+      return `<img src="${imagen.src}" class="capa-tarjeta" alt="" loading="lazy">`;
     }
-    return { html, rutas };
+    return `<img class="capa-tarjeta" data-src="${imagen.src}" alt="" loading="lazy">`;
   }
 
   // ---------- API ----------
@@ -64,7 +57,10 @@
 
       const resp = await fetch("/api/content?" + params.toString());
       const datos = await resp.json();
-      if (datos && datos.success) return datos.slots;
+      if (datos && datos.success) {
+        idDelDueno = datos.usuario_id || null;
+        return datos.slots;
+      }
     } catch (error) {
       console.warn("MacroReborn: no se pudo cargar la galería de avatares.", error);
     }
@@ -102,7 +98,7 @@
   // ---------- RENDER ----------
 
   function tarjetaOcupada(fila) {
-    const { html: avatarHTML, rutas } = marcadoAvatarCompuesto(fila.avatar);
+    const avatarHTML = marcadoAvatar(fila);
 
     const div = document.createElement("div");
     div.className = "tarjeta-avatar-galeria";
@@ -110,7 +106,7 @@
     div.innerHTML = `
       <span class="numero-casillero">${fila.slot}</span>
 
-      <div class="avatar-galeria-visor avatar-compuesto" data-capas="${rutas.join("|")}" data-capa-class="capa-tarjeta">
+      <div class="avatar-galeria-visor">
         ${avatarHTML}
       </div>
 

@@ -23,7 +23,8 @@ const leer = (...p) => fs.readFileSync(path.join(__dirname, "..", ...p), "utf8")
 const MIGRADOS = {
   "js/comunidad-ranking.js": "2026-09-24",
   "js/usuario.js": "2026-09-24",
-  "js/usuario-actividad.js": "2026-09-24"
+  "js/usuario-actividad.js": "2026-09-24",
+  "js/usuario-avatares-galeria.js": "2026-09-24"
 };
 
 // Lo que delata que se está dibujando prenda por prenda. La ruta de
@@ -64,6 +65,13 @@ describe("el perfil público", () => {
     const usuario = leer("js", "usuario.js");
     assert.match(usuario, /imagenAvatarPerfil\(usuario\.avatar, usuario, 327, 504\)/);
     assert.match(usuario, /imagenAvatarPerfil\(amigo\.avatar, amigo, 62, 96\)/);
+  });
+
+  test("la galería pide el compuesto de cada ranura, con el id del dueño", () => {
+    const galeria = leer("js", "usuario-avatares-galeria.js");
+    assert.match(galeria, /\{ id: idDelDueno, ranura: fila\.slot, avatar_compuesto: fila\.avatar_compuesto \}/);
+    assert.match(galeria, /idDelDueno = datos\.usuario_id/);
+    assert.match(galeria, /imagenDeAvatar\(fila\.avatar, ranura, 327, 504\)/);
   });
 
   test("y usuario.js se carga antes que la actividad, que usa su ayudante", () => {
