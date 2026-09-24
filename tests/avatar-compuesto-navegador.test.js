@@ -280,3 +280,20 @@ describe("el servidor manda la huella en las listas", () => {
   });
 
 });
+
+describe("la tienda de la comunidad", () => {
+
+  test("sin previsualización no cae al dibujo suelto de la prenda", () => {
+    // Ese dibujo es justo lo que no tiene que salir del equipo de arte.
+    // Toda prenda tiene previsualización desde que se sube; si alguna
+    // faltara, la caja se queda vacía.
+    const i = COMUNIDAD.indexOf("async function crCargarTienda");
+    assert.ok(i !== -1, "no está crCargarTienda");
+    const cuerpo = COMUNIDAD.slice(i, COMUNIDAD.indexOf("\nasync function", i + 10));
+    assert.match(cuerpo, /item\.previsualizacion/);
+    for (const prohibido of ["rkRutaCapa", "rutaCapaAvatar", "valorCapa)", "/prendas/"]) {
+      assert.ok(!cuerpo.includes(prohibido), "la tienda todavía usa " + prohibido);
+    }
+  });
+
+});

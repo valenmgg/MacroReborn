@@ -641,11 +641,12 @@ async function crCargarTienda() {
 
       const yaLaTiene = comprados.has(item.id);
       // La previsualizacion: la prenda puesta en su maniqui, un JPG
-      // cuadrado que existe para todas. Sin ella, el dibujo suelto como
-      // antes, que solo se encuentra si alguien la lleva puesta; por eso
-      // habia cajas vacias con precio. Fase 4 de docs/AVATARES-SERVIDOR.md.
+      // cuadrado que existe para todas. Fase 4 de docs/AVATARES-SERVIDOR.md.
+      //
+      // Sin ella la caja se queda vacia, y ya no se cae al dibujo suelto
+      // de la prenda: ese es justo el archivo que no tiene que salir del
+      // equipo de arte. Toda prenda la tiene desde que se sube.
       const previa = item.previsualizacion || null;
-      const ruta = previa || rkRutaCapa(item.valorCapa);
 
       let boton;
       if (!activoComRk) {
@@ -659,7 +660,7 @@ async function crCargarTienda() {
       return `
         <div class="cr-item-tienda">
           <div class="cr-item-tienda-imagen">
-            ${ruta ? `<img data-src="${MRTexto.escapar(ruta)}"${previa ? ' class="cr-previsualizacion"' : ""} alt="${MRTexto.escapar(item.nombre)}" loading="lazy">` : ""}
+            ${previa ? `<img data-src="${MRTexto.escapar(previa)}" class="cr-previsualizacion" alt="${MRTexto.escapar(item.nombre)}" loading="lazy">` : ""}
           </div>
           <p class="cr-item-tienda-nombre">${MRTexto.escapar(item.nombre)}</p>
           <p class="cr-item-tienda-precio">🪙 ${item.precio}</p>
