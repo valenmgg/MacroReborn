@@ -68,6 +68,7 @@ que pueden costar una cuenta de usuario o el sitio entero.
 | 13 | 2026-09-21 | Infraestructura | 75 commits solo existen en el PC y en el VPS. GitHub está en el 15/09 | — | 2 min |
 | 14 | 2026-09-21 | Decisión | El repositorio es público: 630 prendas descargables con `git clone`. Anula todo lo que promete `docs/ARTE.md` | GitHub | decisión |
 | 75 | descartado | Decisión | Las prendas siguen en el historial de GitHub desde el 23/07/2026: con `git clone` se bajan igual aunque ya no estén en el árbol. Sacarlas exige reescribir el historial, subir a la fuerza, pedir a GitHub que purgue lo que ya sirvió y resincronizar el servidor | GitHub | 2 h + decisión |
+| 77 | 2026-09-24 | Seguridad | XSS almacenado en el nombre de usuario: el registro acepta cualquier texto y la página de amigos lo pinta sin escapar. Basta con mandar una solicitud de amistad para que se ejecute en quien la recibe, administradores incluidos | `js/amigos.js:212` | 1 h |
 
 **Nota al 14.** Se decidió mantener el repositorio público y sacar las prendas
 del árbol: el 21/09/2026 salieron 636 archivos (commit `bbe813a`). El sitio
@@ -87,6 +88,34 @@ que el buzón y los bloqueos solo salen por la línea que trae un pase de un
 minuto de su dueño (`api/_auth.js`, "EL PASE"). La "presencia" del texto es
 el latido de última conexión, y se dejó pública porque el perfil ya la
 enseña a cualquiera: si eso cambia, es el punto 57.
+
+**Nota al 77.** Visto el 24/09/2026, durante la fase 3 de
+`docs/AVATARES-SERVIDOR.md`, y arreglado el mismo día. El registro
+(`api/auth.js`) solo comprobaba que el nombre no estuviera vacío: ni
+caracteres ni largo. Y `js/amigos.js` metía el nombre en el HTML sin
+escapar en tres sitios: la tarjeta de cada amigo, la solicitud recibida
+(`${sol.de}`) y la enviada. La recibida era la grave: un nombre como
+`<img src=x onerror=...>` se ejecutaba en quien recibiera la solicitud
+nada más abrir la página, sin aceptarla, y con el token en
+`localStorage` eso es la cuenta entera. Al buscar el resto salió otro
+del mismo tipo en el navegador de un administrador: el panel de
+estadísticas (`js/admin.js`, `_filaTop`) pintaba en crudo los nombres de
+los tops de nivel y de XP, y el id tal cual de la base de un logro, una
+insignia o un juego cuando no tenía definición.
+
+Arreglado por las dos puntas. Al pintar, esos sitios pasan por
+`MRTexto.escapar`, y por prevención también el nombre propio en la barra
+(`js/navbar.js`) y en el aviso de menciones (`js/perfil-actividad.js`).
+Al registrarse, `api/_nombre-usuario.js`: nada de `` < > " ' ` & / \ ``,
+nada invisible (controles, marcas de dirección, espacios de ancho cero),
+sin espacios en los bordes y entre 3 y 25 caracteres. Se revisaron uno a
+uno los 186 nombres de producción: ninguno llevaba nada peligroso, y
+todos cumplen la regla nueva, incluidos los que usan letras decorativas,
+runas, ♡ o espacios por dentro. El resto de interpolaciones de `js/` en
+marcado se revisó con un barrido y estaba escapado o eran datos fijos.
+Lo sujeta `tests/nombres-de-usuario.test.js`, que ejecuta
+`js/amigos.js` entero sobre `amigos.html` con nombres maliciosos. La red
+que falta debajo de todo esto sigue siendo el punto 6.
 
 ---
 
