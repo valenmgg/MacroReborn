@@ -647,8 +647,11 @@ Todo se bajó solo como referencia, a
 | `fuentes.tsv` | De dónde salió cada archivo y cuándo se capturó |
 | `galeria.html` | Todas juntas, agrupadas por tipo |
 
-**Se acordó borrarlo todo en cuanto los cuadros estén decididos**, por
-coherencia con el motivo de todo este proyecto.
+**Se borró todo el 24/09/2026**, en cuanto los cuadros quedaron
+decididos, como se había acordado: por coherencia con el motivo de todo
+este proyecto, y con ello las copias que se hicieron al buscarlas. Si
+algún día hicieran falta otra vez, siguen en la Wayback Machine: la
+tabla de arriba dice en qué servidores y con qué forma de dirección.
 
 ### El cuadro automático
 
@@ -752,7 +755,7 @@ misma copia de la base.
    compuestos y servirlas con caché larga.
 2. Que el editor y la tienda las usen. Esto arregla de paso las cajas
    vacías de la tienda, que es el punto 23 de la auditoría.
-3. Borrar las referencias de macrojuegos cuando ya no hagan falta.
+3. ~~Borrar las referencias de macrojuegos.~~ Hecho el 24/09/2026.
 
 ### Más adelante: corregir una prenda sola
 
