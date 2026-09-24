@@ -45,23 +45,6 @@ async function obtenerMensajes(){
 }
 
 
-// ---------- AVATAR ----------
-
-// La lista de capas y la resolución de rutas viven en js/core.js, que se
-// carga antes que este archivo. Acá solo se les da el nombre local de
-// siempre, para no volver a copiar la lista.
-const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
-
-// El avatar guardado por perfil.js usa valores como "tora_piel1" para el
-// guardarropa (viven en imagenes/tora/piel1.png) y "tora" para el modelo
-// (vive en imagenes/tora.png). La ruta se deriva del propio valor
-// guardado, por lo que cualquier imagen nueva agregada a
-// imagenes/<modelo>/ funciona sin tocar este archivo.
-function rutaImagenCapa(valor){
-    return rutaCapaAvatar(valor);
-}
-
-
 // ---------- AVATAR HTML ----------
 
 // Escapa texto no confiable antes de insertarlo en HTML.
@@ -80,30 +63,23 @@ function obtenerAvatarHTML(nombre){
     // en el de quien está mirando el chat). Se lee de la caché en
     // memoria de js/core.js, precargada por renderChat() antes de
     // pintar los mensajes.
-    const avatar = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
+    //
+    // Una sola imagen por persona: su PNG de administrador, su avatar ya
+    // compuesto o la silueta, con imagenDeAvatar(). La memoria guarda su
+    // id y su huella. Hasta el 24/09/2026 se dibujaba prenda por prenda.
+    // Ver docs/AVATARES-SERVIDOR.md, fase 3.
+    const imagen = imagenDeAvatar(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96) ||
+        SILUETA_AVATAR;
 
-    if(!avatar){
-        return `<img src="imagenes/avatar.png" class="avatar-chat" alt="" loading="lazy">`;
+    if(imagen.tipo === "silueta"){
+        return `<img src="${imagen.src}" class="avatar-chat" alt="" loading="lazy">`;
     }
 
-    if(avatarEsPNG(avatar)){
-        return `<img data-src="${avatarPNGData(avatar)}" class="avatar-chat avatar-png-personalizado" alt="" loading="lazy">`;
+    if(imagen.tipo === "png"){
+        return `<img data-src="${imagen.src}" class="avatar-chat avatar-png-personalizado" alt="" loading="lazy">`;
     }
 
-    let capas = "";
-    let rutasCapas = [];
-
-    ORDEN_CAPAS.forEach(tipo=>{
-        const ruta = rutaImagenCapa(avatar[tipo]);
-
-        if(ruta){
-            capas += `<img class="capa-chat" data-src="${ruta}" alt="" loading="lazy">`;
-            rutasCapas.push(ruta);
-        }
-    });
-
-    return `<div class="avatar-chat-personalizado avatar-compuesto" ` +
-        `data-capas="${rutasCapas.join("|")}" data-capa-class="capa-chat">${capas}</div>`;
+    return `<div class="avatar-chat-personalizado"><img class="capa-chat" data-src="${imagen.src}" alt="" loading="lazy"></div>`;
 }
 
 
