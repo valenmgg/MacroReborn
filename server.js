@@ -156,6 +156,7 @@ const {
 // se prueba desde un test, en vez de vivir suelta en el handler.
 const { resolverRutaEstatica } = require("./api/_ruta-estatica");
 const avatarCompuesto = require("./api/_avatar-compuesto");
+const previsualizaciones = require("./api/_previsualizaciones");
 
 async function main() {
   const server = http.createServer(async (req, res) => {
@@ -197,6 +198,13 @@ async function main() {
       });
       return res.end(req.method === "HEAD" ? undefined : datos);
     }
+
+    // ----- La previsualizacion de una prenda -----
+    // /previsualizaciones/<id>.jpg. El mismo trato que el compuesto: un
+    // archivo del disco, generado en vez de subido. La ruta la sirve el
+    // propio modulo, para que los dos servidores hagan exactamente lo
+    // mismo.
+    if (previsualizaciones.atender(req, res, url)) return;
     // ----- Avisos en vivo -----
     // Va ANTES del despacho de /api/ y fuera de HANDLERS porque ese
     // despacho junta el cuerpo entero de la peticion y luego contesta de

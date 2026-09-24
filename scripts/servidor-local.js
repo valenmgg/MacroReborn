@@ -49,8 +49,9 @@ const { usarSqlLocal, obtenerSql } = require("../api/_db");
 // adivinable vivio dentro de server.js, aqui no se aplicaba.
 const { traducirRutaCanonica, esPrendaDeAvatar } = require("../api/_prendas-ruta");
 const avatarCompuesto = require("../api/_avatar-compuesto");
+const previsualizaciones = require("../api/_previsualizaciones");
 
-// La herramienta para elegir los cuadros de las previsualizaciones. Solo
+// La herramienta para revisar los cuadros de las previsualizaciones. Solo
 // aqui, en el servidor local: tiene una ruta que escribe un archivo del
 // repositorio, y server.js no la carga ni debe cargarla nunca. Ver
 // scripts/herramientas/recortes/servidor.js.
@@ -168,6 +169,13 @@ async function main() {
       });
       return res.end(req.method === "HEAD" ? undefined : datos);
     }
+
+    // ----- La previsualizacion de una prenda -----
+    // /previsualizaciones/<id>.jpg. El mismo trato que el compuesto: un
+    // archivo del disco, generado en vez de subido. La ruta la sirve el
+    // propio modulo, para que los dos servidores hagan exactamente lo
+    // mismo.
+    if (previsualizaciones.atender(req, res, url)) return;
     // ----- Avisos en vivo -----
     // Aqui SI funcionan, y sin puente: el servidor local es un solo
     // proceso, asi que el reparto dentro del proceso es el reparto entero.
