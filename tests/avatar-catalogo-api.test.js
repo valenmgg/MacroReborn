@@ -1,22 +1,19 @@
 // ==============================
 // TESTS DEL ENDPOINT DE CATÁLOGO — tests/avatar-catalogo-api.test.js
 // ==============================
-// El catálogo de prendas se sirve desde la base, y desde este cambio se
-// sirve PARTIDO EN DOS, porque son dos trabajos distintos con dos
-// públicos distintos:
+// El catálogo de prendas se sirve desde la base, en una sola acción:
 //
-//   avatar-catalogo            público, sin sesión. Solo valor -> URL, y
-//                              solo de las prendas que alguien LLEVA
-//                              PUESTAS. Es lo justo para DIBUJAR.
-//
-//   avatar-catalogo-completo   pide sesión. Nombres, ranuras, precios,
-//                              retiradas: el catálogo entero. Es lo que
-//                              necesita el editor para VESTIR.
+//   avatar-catalogo-completo   pide sesión. Nombres, ranuras, precios y
+//                              previsualizaciones: lo que necesita el
+//                              editor para VESTIR.
 //
 // Antes esto era una sola acción pública que entregaba las 630 prendas
 // con su URL a quien preguntara. Una petición daba el mapa completo y
-// 630 descargas daban el arte: 6,6 MB. Esa es la razón de ser de este
-// archivo.
+// 630 descargas daban el arte: 6,6 MB. Luego se partió en dos, con un
+// índice público (avatar-catalogo) de lo que alguien lleva puesto para
+// DIBUJAR por capas. Desde la fase 5 de docs/AVATARES-SERVIDOR.md nada
+// se dibuja por capas: el índice se fue, y el catálogo ya no lleva la
+// dirección del dibujo suelto de ninguna prenda.
 //
 // (No confundir con tests/avatar-catalogo.test.js, que prueba el módulo
 // api/_avatar-catalogo.js, el que valida avatares.)
@@ -150,108 +147,22 @@ function llamar(accion, query, headers) {
   });
 }
 
-// El índice público vive un minuto en memoria. En un test eso significa
-// que un cambio hecho a mitad no se vería, así que se tira la caché
-// antes de cada llamada. Ver invalidarIndicePublico() en api/content.js.
-const publico = (query, headers) => {
-  contentHandler.invalidarIndicePublico();
-  return llamar("avatar-catalogo", query, headers);
-};
-
 const conSesion = (query, headers) =>
   llamar("avatar-catalogo-completo", query,
     Object.assign({ authorization: "Bearer " + sesion }, headers || {}));
 
 
 // ==============================
-// EL ÍNDICE PÚBLICO
+// EL ÍNDICE PÚBLICO YA NO EXISTE
 // ==============================
 
-test("el índice público no pide sesión", async () => {
-  const r = await publico();
-
-  assert.equal(r.codigo, 200);
-  assert.equal(r.cuerpo.success, true);
-  assert.ok(r.cuerpo.rutas, "debería traer el mapa de rutas");
-});
-
-test("trae lo que alguien lleva puesto, con su URL con huella", async () => {
-  const r = await publico();
-
-  assert.equal(r.cuerpo.rutas["prueba_botas1"], "/prendas/" + shaBotas + ".png");
-});
-
-test("NO trae una prenda publicada que no lleva nadie", async () => {
-  const r = await publico();
-
-  assert.ok(
-    !("prueba_guantes1" in r.cuerpo.rutas),
-    "el índice público no debe enumerar el catálogo: solo lo que está puesto"
-  );
-});
-
-test("sí trae una retirada, si alguien la lleva puesta", async () => {
-  const r = await publico();
-
-  // Retirar una prenda la saca del editor, no del avatar de quien ya la
-  // llevaba. Si no saliera acá, esa persona se vería sin pelo.
-  assert.equal(r.cuerpo.rutas["prueba_pelo9"], "/prendas/" + shaRetirada + ".png");
-});
-
-test("también mira la galería, no solo el avatar puesto", async () => {
-  const r = await publico();
-
-  assert.equal(
-    typeof r.cuerpo.rutas["prueba_remera1"], "string",
-    "una prenda guardada en saved_avatars también hay que poder dibujarla"
-  );
-});
-
-test("no se cuela 'ninguno' ni las claves de un avatar PNG", async () => {
-  const r = await publico();
-
-  assert.ok(!("ninguno" in r.cuerpo.rutas));
-  assert.ok(!("tipo" in r.cuerpo.rutas), "un avatar PNG no aporta prendas");
-  assert.ok(!("src" in r.cuerpo.rutas));
-});
-
-test("el índice público NO lleva nombres, precios ni ranuras", async () => {
-  const r = await publico();
-  const texto = JSON.stringify(r.cuerpo);
-
-  assert.ok(!("prendas" in r.cuerpo), "eso es del catálogo completo");
-  assert.ok(!("modelos" in r.cuerpo));
-  assert.ok(!("capas" in r.cuerpo));
-  assert.ok(!texto.includes("Botas de combate"), "ni un nombre de prenda");
-  assert.ok(!texto.includes("140"), "ni un precio");
-});
-
-test("el índice público contesta 304 con el mismo ETag", async () => {
-  const primera = await publico();
-  const etag = primera.cabeceras["ETag"];
-
-  assert.ok(etag, "debería mandar ETag");
-
-  const segunda = await publico({}, { "if-none-match": etag });
-  assert.equal(segunda.codigo, 304);
-  assert.ok(!segunda.cuerpo, "un 304 no lleva cuerpo");
-});
-
-test("si alguien se pone una prenda nueva, el índice se entera", async () => {
-  const antes = await publico();
-  assert.ok(!("prueba_guantes1" in antes.cuerpo.rutas));
-
-  await db.query(
-    `UPDATE users SET avatar = $1 WHERE username = 'vestida'`,
-    [JSON.stringify({ modelo: "prueba", botas: "prueba_botas1", guantes: "prueba_guantes1" })]
-  );
-
-  const despues = await publico();
-  assert.ok(
-    "prueba_guantes1" in despues.cuerpo.rutas,
-    "al vestirla, la prenda tiene que poder dibujarse"
-  );
-  assert.notEqual(despues.cabeceras["ETag"], antes.cabeceras["ETag"]);
+test("el índice público ya no contesta", async () => {
+  // Era un mapa, sin sesión, de cada prenda puesta a la dirección de su
+  // dibujo suelto. Ninguna página lo necesita desde la fase 5.
+  const r = await llamar("avatar-catalogo");
+  assert.notEqual(r.codigo, 200);
+  assert.ok(!r.cuerpo || !r.cuerpo.rutas, "sigue mandando el mapa de prendas");
+  assert.equal(contentHandler.invalidarIndicePublico, undefined);
 });
 
 
@@ -294,15 +205,28 @@ test("el precio viene de la tienda, y null es gratis", async () => {
   assert.equal(remera.precio, null, "sin fila en la tienda = gratis");
 });
 
-test("cada prenda trae la URL con la huella de su dibujo", async () => {
+test("ninguna prenda trae la dirección de su dibujo suelto", async () => {
+  // Fase 5: el editor ya no apila capas. Esa dirección es justo lo que
+  // no tiene que salir del equipo de arte.
   const r = await conSesion();
-  const botas = r.cuerpo.prendas.find(p => p.valor === "prueba_botas1");
+  const texto = JSON.stringify(r.cuerpo);
 
-  assert.equal(botas.url, "/prendas/" + shaBotas + ".png");
+  assert.ok(!texto.includes("/prendas/"), "el catálogo lleva direcciones de prendas sueltas");
+  assert.ok(!texto.includes(shaBotas), "el catálogo lleva la huella de un dibujo");
+  assert.ok([...r.cuerpo.modelos, ...r.cuerpo.prendas].every(p => !("url" in p)));
+});
+
+test("ni la lista de retiradas, que traía también lo que no se ha publicado", async () => {
+  const r = await conSesion();
+  assert.equal(r.cuerpo.retiradas, undefined);
+
+  const texto = JSON.stringify(r.cuerpo);
+  assert.ok(!texto.includes("prueba_boca9"), "se cuela un borrador sin publicar");
+  assert.ok(!texto.includes(shaRetirada), "se cuela el dibujo de una retirada");
 });
 
 test("y la de su previsualización cuando la tiene, o null si todavía no", async () => {
-  // Es la miniatura del editor. Sin ella, el editor usa el dibujo suelto.
+  // Es la miniatura del editor. Sin ella, la caja queda sin imagen.
   await db.query("UPDATE avatar_prendas SET previsualizacion = $1 WHERE valor = 'prueba_botas1'", ["f".repeat(64)]);
   await db.query("UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1");
   const id = (await db.query("SELECT id FROM avatar_prendas WHERE valor = 'prueba_botas1'")).rows[0].id;

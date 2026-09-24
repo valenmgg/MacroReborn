@@ -60,7 +60,7 @@ async function rolesDeArte(req, res) {
 
 // Cada publicación o retirada mueve este contador, y es lo que hace que
 // los dos procesos del cluster se enteren del cambio. Ver la migración
-// 018 y avatarCatalogo().
+// 018 y avatarCatalogoCompleto().
 async function subirVersionCatalogo() {
   await sql`UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1;`;
 }
@@ -455,7 +455,13 @@ async function avatarEstadoPrenda(req, res) {
 // ==============================
 // Todo lo que el editor de avatares necesita para construirse solo:
 // qué modelos hay, qué prendas se ofrecen, cómo se llama cada una, de
-// qué ranura es y cuánto cuesta.
+// qué ranura es, cuánto cuesta y su previsualización.
+//
+// Lo que ya no trae, desde la fase 5 de docs/AVATARES-SERVIDOR.md, es
+// dónde está el dibujo suelto de cada prenda: el editor no apila capas
+// (la vista previa la dibuja el servidor, avatar-vista-previa en
+// api/users.js), y esa dirección es justo lo que no tiene que salir del
+// equipo de arte. Sus herramientas tienen su propia ruta, avatar-panel.
 //
 // Antes esto estaba escrito a mano en perfil.html —622 divs— y también
 // en CAPAS_IMG de js/perfil.js. Añadir una prenda obligaba a tocar los
@@ -486,7 +492,7 @@ async function construirCatalogo(version) {
   // pago": la tienda sigue viviendo en avatar_shop_items, que no se
   // tocó, y se enlaza por el mismo texto del valor de capa.
   const filas = await sql`
-    SELECT p.id, p.valor, p.modelo, p.capa, p.nombre, p.previsualizacion, a.sha256, s.precio
+    SELECT p.id, p.valor, p.modelo, p.capa, p.nombre, p.previsualizacion, s.precio
     FROM avatar_prendas p
     JOIN avatar_archivos a ON a.id = p.archivo_id
     LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
@@ -503,11 +509,9 @@ async function construirCatalogo(version) {
       modelo: f.modelo,
       capa: f.capa,
       nombre: f.nombre,
-      url: "/prendas/" + f.sha256 + ".png",
       // La miniatura del editor: la prenda puesta en su maniqui, un JPG
-      // pequeño. null si todavia no se genero, y entonces el editor usa
-      // el dibujo suelto como hasta ahora. Fase 4 de
-      // docs/AVATARES-SERVIDOR.md.
+      // pequeño. null si todavia no se genero, y entonces la caja queda
+      // con su nombre y sin imagen. Fase 4 de docs/AVATARES-SERVIDOR.md.
       previsualizacion: f.previsualizacion
         ? previsualizaciones.urlDe(Number(f.id), f.previsualizacion)
         : null,
@@ -519,191 +523,35 @@ async function construirCatalogo(version) {
     else prendas.push(item);
   }
 
-  // Y las RETIRADAS, solo con lo justo para dibujarlas: valor y dónde
-  // está el archivo. Sin nombre ni precio, porque no se pueden elegir.
-  //
-  // El editor no las toca: se arma con "modelos" y "prendas". Esto es
-  // para las otras 24 páginas, que tienen que poder dibujar el avatar
-  // de quien ya llevaba puesta una prenda antes de que se retirara.
-  // Retirar una prenda la saca del editor, no de la gente.
-  //
-  // Sin esto caían a la ruta de siempre (imagenes/<modelo>/<x>.png), y
-  // ahí hay un problema que no se puede arreglar desde el servidor: los
-  // navegadores que pidieron esa imagen mientras nginx marcaba los 404
-  // como immutable tienen guardado ese 404 durante 30 días. No vuelven a
-  // preguntar. Pasó de verdad: una persona veía su propio avatar sin
-  // fondo y sin piel, y en una ventana de incógnito se veía bien.
-  //
-  // Dándoles su URL con huella, esos navegadores piden una dirección que
-  // nunca habían pedido y el 404 guardado deja de importar.
-  const retiradas = (await sql`
-    SELECT p.valor, a.sha256
-    FROM avatar_prendas p
-    JOIN avatar_archivos a ON a.id = p.archivo_id
-    WHERE NOT p.publicada
-    ORDER BY p.id;
-  `).map(f => ({ valor: f.valor, url: "/prendas/" + f.sha256 + ".png" }));
-
+  // Aquí iban también las RETIRADAS con la dirección de su dibujo, para
+  // que las páginas pudieran pintar por capas a quien las llevaba. Se
+  // quitaron en la fase 5: esos avatares los dibuja el servidor, y la
+  // lista traía además lo que el equipo de arte aún no había publicado.
   return {
     success: true,
     version,
     capas: CAPAS_AVATAR,
     modelos,
-    prendas,
-    retiradas
+    prendas
   };
 }
 
 // ==============================
-// EL ÍNDICE PÚBLICO: SOLO LO QUE HAY PUESTO
+// YA NO HAY ÍNDICE PÚBLICO
 // ==============================
-// Hasta ahora esta acción entregaba el catálogo ENTERO —las 630 prendas
-// con su nombre, su ranura, su precio y su URL— a cualquiera que la
-// pidiera, sin sesión. Una petición daba el mapa completo y 630
-// descargas daban el arte: 6,6 MB. Es la forma más cómoda que existe de
-// copiar el trabajo del equipo de dibujo, y no hacía falta saber nada.
-//
-// El reparto ahora es otro, porque son dos trabajos distintos:
-//
-//   DIBUJAR  lo hacen las 24 páginas que muestran avatares, y lo necesita
-//            cualquiera, con cuenta o sin ella. Para eso alcanza con
-//            saber dónde está el dibujo de lo que la gente LLEVA PUESTO.
-//
-//   VESTIR   lo hace el editor, y ése sí necesita el catálogo entero con
-//            nombres y precios. Pero el editor es de quien tiene cuenta,
-//            así que puede pedirlo con su sesión.
-//
-// Esta función es la primera mitad. Devuelve un objeto plano
-// valor -> URL y nada más: sin nombres, sin precios, sin ranuras, sin
-// saber qué existe y no está puesto. Quien no tenga cuenta ya no puede
-// enumerar el catálogo, solo ver lo que alguien eligió enseñar.
-//
-// Se incluyen las retiradas que sigan puestas, por el mismo motivo de
-// siempre: retirar una prenda la saca del editor, no del avatar de quien
-// ya la llevaba.
-//
-// LO QUE ESTO NO ARREGLA SOLO: mientras /imagenes/<modelo>/<prenda>.png
-// siguiera sirviendo el dibujo, cerrar el índice no serviría de nada,
-// porque ese nombre se adivina ("tora_pelo3" -> /imagenes/tora/pelo3.png)
-// y se enumera sin necesidad de índice ninguno. Esa puerta se cierra en
-// server.js, en el mismo cambio que ésta.
-async function construirIndicePublico() {
-  // Las dos tablas donde vive un avatar: el que la persona lleva puesto
-  // y los que tiene guardados en su galería. Son dos consultas y no un
-  // UNION a propósito: la columna avatar no tiene el mismo tipo en las
-  // dos según el motor (jsonb en Postgres, text en la maqueta local de
-  // los tests) y unirlas falla con "UNION types text and jsonb cannot be
-  // matched". Es la misma razón que ya está escrita en
-  // valoresYaEnUso() de api/_avatar-catalogo.js.
-  const [puestos, guardados] = await Promise.all([
-    sql`SELECT avatar FROM users WHERE avatar IS NOT NULL;`,
-    sql`SELECT avatar FROM saved_avatars;`
-  ]);
-
-  const enUso = new Set();
-
-  for (const fila of [...puestos, ...guardados]) {
-    let avatar = fila.avatar;
-    if (typeof avatar === "string") {
-      try { avatar = JSON.parse(avatar); } catch (_) { continue; }
-    }
-    if (!avatar || typeof avatar !== "object" || Array.isArray(avatar)) continue;
-
-    // Un avatar PNG subido a mano no tiene capas: no aporta prendas.
-    if (avatar.tipo === "png") continue;
-
-    for (const [capa, valor] of Object.entries(avatar)) {
-      if (!CAPAS_AVATAR.includes(capa)) continue;
-      if (typeof valor === "string" && valor && valor !== "ninguno") enUso.add(valor);
-    }
-  }
-
-  if (!enUso.size) return {};
-
-  // Una sola consulta con el conjunto entero. Publicadas y retiradas por
-  // igual: acá lo que manda es que esté puesta, no que se pueda elegir.
-  const filas = await sql`
-    SELECT p.valor, a.sha256
-    FROM avatar_prendas p
-    JOIN avatar_archivos a ON a.id = p.archivo_id
-    WHERE p.valor = ANY(${Array.from(enUso)});
-  `;
-
-  const rutas = {};
-  for (const f of filas) rutas[f.valor] = "/prendas/" + f.sha256 + ".png";
-  return rutas;
-}
-
-
-// El índice público se cachea aparte del catálogo y por tiempo, no por
-// versión, porque cambia por un motivo distinto: no cuando el equipo de
-// arte publica una prenda, sino cuando CUALQUIERA se cambia de ropa. No
-// existe un entero en la base que cuente eso, y añadir uno significaría
-// escribir en una fila compartida en cada guardado de avatar.
-//
-// Sesenta segundos es el mismo tiempo que ya decía la cabecera
-// Cache-Control de esta acción, así que no empeora nada que no
-// estuviera ya aceptado.
-//
-// QUÉ PASA EN ESA VENTANA, dicho claro: si alguien se pone una prenda
-// que nadie llevaba, durante hasta un minuto esa capa no le aparece a
-// quien mire desde otra pantalla —rutaCapaAvatar() en js/core.js
-// devuelve null y la capa se omite, que es lo que hace desde que se
-// arregló lo de "tora_piel7"—. No se ve una imagen rota, se ve el avatar
-// sin esa prenda. Quien se la puso la ve bien enseguida, porque el
-// editor trabaja con el catálogo completo.
-const INDICE_PUBLICO_TTL_MS = 60 * 1000;
-let _indicePublicoEnMemoria = null;   // { hasta, firma, cuerpo }
-
-// Para los tests, y solo para eso. En producción no hace falta llamarla:
-// el minuto de vida del índice ya lo renueva solo. Misma idea que
-// invalidarCache() en api/_avatar-catalogo.js, que existe por lo mismo.
-// Sin esto, un test que viste a alguien y vuelve a preguntar recibe la
-// respuesta cacheada y parece que el índice no se entera de nada.
-function invalidarIndicePublico() {
-  _indicePublicoEnMemoria = null;
-}
-
-async function avatarCatalogo(req, res) {
-  const ahora = Date.now();
-
-  if (!_indicePublicoEnMemoria || _indicePublicoEnMemoria.hasta <= ahora) {
-    const rutas = await construirIndicePublico();
-
-    // La firma es la identidad del índice: si nadie se cambió de ropa,
-    // sale la misma y el navegador se ahorra la descarga con un 304.
-    // Va sobre las claves ordenadas para que no dependa del orden en
-    // que la base devuelva las filas.
-    const firma = crypto
-      .createHash("sha256")
-      .update(Object.keys(rutas).sort().join("|"))
-      .digest("hex")
-      .slice(0, 16);
-
-    _indicePublicoEnMemoria = {
-      hasta: ahora + INDICE_PUBLICO_TTL_MS,
-      firma,
-      cuerpo: { success: true, rutas }
-    };
-  }
-
-  const etag = 'W/"indice-' + _indicePublicoEnMemoria.firma + '"';
-  res.setHeader("ETag", etag);
-  res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
-
-  if (req.headers && req.headers["if-none-match"] === etag) {
-    return res.status(304).end();
-  }
-
-  return res.status(200).json(_indicePublicoEnMemoria.cuerpo);
-}
+// Aquí vivía la acción avatar-catalogo: un mapa, sin sesión, de cada
+// prenda que alguien llevaba puesta a la dirección de su dibujo suelto,
+// para que las páginas apilaran las capas de cada avatar. Desde la fase
+// 5 de docs/AVATARES-SERVIDOR.md ninguna página dibuja prenda por
+// prenda, y ese mapa era la lista de lo que no tiene que salir del
+// equipo de arte. Se quitó el 24/09/2026.
 
 
 // ==============================
 // GET /api/content?action=avatar-catalogo-completo   (pide sesión)
 // ==============================
-// La otra mitad: el catálogo entero, que es lo que el editor necesita
-// para construirse. Esto es lo que antes se entregaba a cualquiera.
+// El catálogo entero, que es lo que el editor necesita para
+// construirse. Antes se entregaba a cualquiera, sin sesión.
 //
 // El guard de arriba de este archivo solo cubre POST y DELETE, así que
 // la sesión se exige acá a mano. No hace falta comprobar quién es: basta
@@ -2647,7 +2495,6 @@ module.exports = async function handler(req, res) {
     if (action === "avatar-shop") return await avatarShop(req, res);
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
     if (action === "avatar-prenda") return await avatarPrenda(req, res);
-    if (action === "avatar-catalogo") return await avatarCatalogo(req, res);
     if (action === "avatar-catalogo-completo") return await avatarCatalogoCompleto(req, res);
     if (action === "avatar-panel") return await avatarPanel(req, res);
     if (action === "avatar-subir-prendas") return await avatarSubirPrendas(req, res);
@@ -2663,4 +2510,3 @@ module.exports = async function handler(req, res) {
 
 // El handler es lo que exporta este archivo, así que la puerta para los
 // tests viaja colgada de él.
-module.exports.invalidarIndicePublico = invalidarIndicePublico;
