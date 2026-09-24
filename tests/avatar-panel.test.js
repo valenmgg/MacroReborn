@@ -189,6 +189,23 @@ describe("quién entra al panel", () => {
     assert.equal(r.cuerpo.esAdmin, true);
   });
 
+  test("las direcciones de los dibujos van firmadas, y la firma vale", async () => {
+    // Fase 5: /prendas/ solo contesta con firma, y este es el único sitio
+    // que la reparte. Ver api/_prendas-firma.js.
+    const firmas = require("../api/_prendas-firma");
+    const r = await panel(ARTISTA());
+    const todas = [...r.cuerpo.modelos, ...r.cuerpo.prendas];
+    assert.ok(todas.length > 0);
+
+    for (const p of todas) {
+      const url = new URL(p.url, "https://macroreborn.com");
+      const huella = (url.pathname.match(/^\/prendas\/([a-f0-9]{64})\.png$/) || [])[1];
+      assert.ok(huella, "dirección rara: " + p.url);
+      assert.ok(firmas.valida(huella, url.searchParams.get("hasta"), url.searchParams.get("firma")),
+        "firma que no vale: " + p.url);
+    }
+  });
+
   test("el panel no ofrece 'modelo' como ranura para subir", async () => {
     // Por ahora solo se añaden prendas a personajes que ya existen.
     const r = await panel(ARTISTA());

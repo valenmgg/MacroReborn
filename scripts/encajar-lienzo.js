@@ -34,6 +34,12 @@ const crypto = require("crypto");
 
 const lienzo = require("../api/_lienzo");
 
+// La revision pide las prendas al servidor local, y desde la fase 5
+// /prendas/ solo contesta con firma (ver api/_prendas-firma.js). Se
+// firman con el mismo secreto por defecto que scripts/servidor-local.js.
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || "local-development-session-secret";
+const firmas = require("../api/_prendas-firma");
+
 // ./base-real y ./pglite NO se piden aqui arriba a proposito: los dos
 // acaban cargando PGlite, que es una dependencia de DESARROLLO. En el
 // VPS se instala con `npm install --omit=dev`, asi que no esta, y pedirla
@@ -214,7 +220,7 @@ async function main() {
     SELECT p.valor, a.sha256 FROM avatar_prendas p
     JOIN avatar_archivos a ON a.id = p.archivo_id
     WHERE p.capa = 'modelo';
-  `) modelos.set(m.valor, "/prendas/" + m.sha256 + ".png");
+  `) modelos.set(m.valor, firmas.firmar(m.sha256));
 
   const cambios = [];
   const rotos = [];
@@ -283,7 +289,7 @@ async function main() {
 
     for (const c of cambios) {
       const variantes = [{
-        src: "/prendas/" + c.shaViejo + ".png",
+        src: firmas.firmar(c.shaViejo),
         titulo: "ANTES",
         pie: c.desde + " · " + kb(c.original.length)
       }];

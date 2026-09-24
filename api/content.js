@@ -11,6 +11,7 @@ const previsualizaciones = require("./_previsualizaciones");
 // del catálogo para que el editor no tenga que llevar su propia copia.
 const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
 const { fragmentoAvatarLigero, aligerarAvatarPNG } = require("./_avatar-ligero");
+const firmas = require("./_prendas-firma");
 const crypto = require("crypto");
 const png = require("./_png");
 const rafaga = require("./_rafaga");
@@ -68,8 +69,13 @@ async function subirVersionCatalogo() {
 // ==============================
 // GET /api/content?action=avatar-panel
 // ==============================
-// Como el catálogo público, pero incluyendo lo apagado y con el autor de
-// cada prenda. Es lo que el panel necesita para revisar y retirar.
+// El catálogo entero, incluyendo lo apagado y con el autor de cada
+// prenda. Es lo que el panel, el taller y el vestidor necesitan para
+// revisar, retirar y probarse la ropa.
+//
+// Es el único sitio que da la dirección del dibujo suelto de una prenda,
+// y la da firmada: ver api/_prendas-firma.js. Esta ruta ya exige el rol
+// de arte, así que la firma solo llega a quien puede verlo.
 async function avatarPanel(req, res) {
   const permiso = await rolesDeArte(req, res);
   if (!permiso) return;
@@ -97,7 +103,7 @@ async function avatarPanel(req, res) {
       nombre: f.nombre,
       publicada: f.publicada === true || f.publicada === "t",
       autor: f.autor || null,
-      url: "/prendas/" + f.sha256 + ".png",
+      url: firmas.firmar(f.sha256),
       medidas: f.ancho + "x" + f.alto,
       peso: Number(f.peso),
       precio: f.precio === null || f.precio === undefined ? null : Number(f.precio)
@@ -369,7 +375,7 @@ async function avatarSubirPrendas(req, res) {
         ok: true,
         id: Number(guardada.id),
         valor: guardada.valor,
-        url: "/prendas/" + sha + ".png",
+        url: firmas.firmar(sha),
         medidas: png.ancho + "x" + png.alto,
         precio
       });
@@ -600,19 +606,20 @@ async function avatarCatalogoCompleto(req, res) {
 // y el navegador se la descarga una sola vez para las dos. Si fuera por
 // id de prenda, se bajaría dos veces el mismo dibujo.
 //
-// Público, como lo era el archivo en imagenes/: son las prendas que ya
-// se ven en el editor y en cada avatar del sitio. No hay nada que
-// proteger que no estuviera visible antes.
+// SOLO CON FIRMA, desde la fase 5 de docs/AVATARES-SERVIDOR.md. Hasta
+// entonces era pública, porque las páginas dibujaban los avatares
+// apilando estas prendas. Ya no: cada avatar llega compuesto y cada
+// prenda de la tienda tiene su previsualización, así que el dibujo
+// suelto solo le hace falta al equipo de arte. Sus herramientas reciben
+// las direcciones firmadas de avatar-panel, que exige el rol. Ver
+// api/_prendas-firma.js.
 //
-// Caché de un año e immutable porque la URL ES el contenido: si el
-// dibujo cambia, cambia la huella y cambia la URL. Nunca puede quedarse
-// mostrando una versión vieja. Mismo criterio que el avatar PNG del
-// administrador en api/users.js.
+// La firma se comprueba ANTES de mirar la base: sin ella no se puede ni
+// sondear qué huellas existen.
 //
-// OJO: hasta que nginx tenga proxy_cache delante de esta ruta, cada
-// imagen que no esté en la caché del navegador llega hasta Node y
-// Postgres. Una página de comunidad con 20 avatares son cientos de
-// peticiones, y esta máquina tiene 950 MB y dos núcleos.
+// Caché privada y solo mientras dure la firma: no puede quedarse en una
+// caché compartida, donde la alcanzaría cualquiera, ni en el navegador
+// después de caducar.
 async function avatarPrenda(req, res) {
   const huella = String(req.query.v || "");
 
@@ -620,6 +627,10 @@ async function avatarPrenda(req, res) {
   // vía para sondear la base con texto arbitrario.
   if (!/^[a-f0-9]{64}$/.test(huella)) {
     return res.status(400).json({ success: false, error: "Falta la prenda" });
+  }
+
+  if (!firmas.valida(huella, req.query.hasta, req.query.firma)) {
+    return res.status(403).json({ success: false, error: "Las prendas sueltas son del equipo de arte" });
   }
 
   const filas = await sql`
@@ -649,7 +660,7 @@ async function avatarPrenda(req, res) {
 
   res.setHeader("Content-Type", "image/png");
   res.setHeader("Content-Length", binario.length);
-  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.setHeader("Cache-Control", "private, max-age=" + firmas.segundosRestantes(req.query.hasta));
   return res.status(200).end(binario);
 }
 
