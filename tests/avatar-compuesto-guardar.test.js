@@ -18,6 +18,8 @@
 
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
 
+require("./_aislar-datos");   // antes de api/: ver ese archivo
+
 const { test, before, after, describe } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");

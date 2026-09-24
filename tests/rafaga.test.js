@@ -29,6 +29,8 @@ process.env.MR_RAFAGA_UMBRAL = "5";
 process.env.MR_RAFAGA_VENTANA_MS = "1000";
 process.env.MR_RAFAGA_ESPERA_MS = "60000";
 
+require("./_aislar-datos");   // antes de api/: ver ese archivo
+
 const { test, before, beforeEach, describe } = require("node:test");
 const assert = require("node:assert");
 

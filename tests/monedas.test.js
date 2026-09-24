@@ -27,6 +27,8 @@
 // Este secreto solo vive en el proceso de pruebas y nunca se usa en producción.
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
 
+require("./_aislar-datos");   // antes de api/: ver ese archivo
+
 const { test, before } = require("node:test");
 const assert = require("node:assert");
 

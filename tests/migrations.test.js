@@ -5,6 +5,8 @@
 // que la migración 015 se pueda aplicar más de una vez sin tocar el
 // saldo existente de users.monedas.
 
+require("./_aislar-datos");   // antes de api/: ver ese archivo
+
 const { test, before } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
