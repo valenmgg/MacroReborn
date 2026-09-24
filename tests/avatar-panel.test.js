@@ -21,9 +21,19 @@
 
 process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
 
-const { test, before, describe } = require("node:test");
+const { test, before, after, describe } = require("node:test");
 const assert = require("node:assert");
 const crypto = require("crypto");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+// Subir una prenda genera su previsualizacion en disco. Va a una carpeta
+// temporal, fijada ANTES de cargar content.js, para no escribir en
+// datos-locales/ del proyecto.
+const PREVISUALIZACIONES = fs.mkdtempSync(path.join(os.tmpdir(), "mr-panel-previsualizaciones-"));
+process.env.MR_PREVISUALIZACIONES_DIR = PREVISUALIZACIONES;
+after(() => fs.rmSync(PREVISUALIZACIONES, { recursive: true, force: true }));
 
 const { crearBaseLocal, crearSqlPGlite } = require("../scripts/pglite");
 const { usarSqlLocal } = require("../api/_db");
@@ -213,6 +223,17 @@ describe("subir prendas", () => {
     assert.equal(fila.rows[0].publicada, true);
 
     assert.ok(await version() > antes, "subir debe mover la versión del catálogo");
+  });
+
+  test("y trae su previsualizacion hecha, en disco y en la base", async () => {
+    // Asi la tienda y el editor la pueden enseñar en cuanto se sube, sin
+    // esperar a ningun relleno.
+    const PV = require("../api/_previsualizaciones");
+    const fila = await db.query("SELECT id, previsualizacion FROM avatar_prendas WHERE valor = 'tora_remera1'");
+    assert.match(fila.rows[0].previsualizacion || "", /^[0-9a-f]{64}$/, "no apunto la huella");
+    const jpg = fs.readFileSync(PV.rutaDe(Number(fila.rows[0].id)));
+    assert.deepStrictEqual([jpg[0], jpg[1]], [0xFF, 0xD8]);
+    assert.ok(PV.rutaDe(1).startsWith(PREVISUALIZACIONES), "escribiria fuera de la carpeta temporal");
   });
 
   test("la siguiente prenda de la misma ranura toma el número libre", async () => {

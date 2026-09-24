@@ -5,6 +5,7 @@ const { crearNotificacionServidor, notificarMencionesServidor } = require("./_no
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
 const avatarCompuesto = require("./_avatar-compuesto");
+const previsualizaciones = require("./_previsualizaciones");
 // CAPAS es la lista de las 15 capas en su orden de dibujo. Es la del
 // servidor, gemela de ORDEN_CAPAS_AVATAR en js/core.js. Se manda dentro
 // del catálogo para que el editor no tenga que llevar su propia copia.
@@ -377,7 +378,13 @@ async function avatarSubirPrendas(req, res) {
     }
   }
 
-  if (entraronAlgunas) await subirVersionCatalogo();
+  if (entraronAlgunas) {
+    // Su previsualizacion, en el acto, y ANTES de subir la version del
+    // catalogo: asi el catalogo que se rehaga ya la trae. Si falla, la
+    // prenda entra igual y la trae el siguiente relleno.
+    await previsualizaciones.asegurarSinFallar(sql, resultados.filter(r => r.ok).map(r => r.id));
+    await subirVersionCatalogo();
+  }
 
   return res.status(200).json({
     success: true,
