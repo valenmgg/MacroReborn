@@ -68,6 +68,9 @@ async function sembrar(valor, capa, binario, sha) {
 const huellaDe = async valor =>
   (await db.query("SELECT previsualizacion FROM avatar_prendas WHERE valor = $1", [valor])).rows[0].previsualizacion;
 
+const versionCatalogo = async () =>
+  Number((await db.query("SELECT version FROM avatar_catalogo_version WHERE id = 1")).rows[0].version);
+
 before(async () => {
   db = await crearBaseLocal();
   sql = crearSqlPGlite(db);
@@ -101,12 +104,22 @@ describe("generar y guardar", () => {
     }
   });
 
-  test("lo que no cambio no se rehace", async () => {
+  test("lo que no cambio no se rehace, ni mueve la version del catalogo", async () => {
     const antes = fs.statSync(PV.rutaDe(ids.tora_pelo1)).mtimeMs;
+    const version = await versionCatalogo();
     const r = await PV.asegurar(sql, { config: R.vacio() });
     assert.equal(r.hechas, 0);
     assert.equal(r.iguales, 3);
     assert.equal(fs.statSync(PV.rutaDe(ids.tora_pelo1)).mtimeMs, antes, "reescribio una que no cambio");
+    assert.equal(await versionCatalogo(), version, "subio la version sin cambiar nada");
+  });
+
+  test("si cambia alguna direccion, sube la version del catalogo", async () => {
+    // El catalogo del editor vive en memoria y solo se rehace al subirla.
+    const version = await versionCatalogo();
+    await db.query("UPDATE avatar_prendas SET previsualizacion = NULL WHERE valor = 'tora_fondo1'");
+    await PV.asegurar(sql, { config: R.vacio() });
+    assert.ok(await versionCatalogo() > version, "el editor seguiria mandando la direccion vieja");
   });
 
   test("si falta el archivo se vuelve a hacer, aunque la huella coincida", async () => {

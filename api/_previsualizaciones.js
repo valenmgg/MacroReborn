@@ -194,7 +194,7 @@ async function asegurar(sql, opciones) {
   const escribir = op.escribir !== false;
   const lista = await filasDe(sql, op.ids || null);
 
-  const resumen = { total: lista.length, hechas: 0, iguales: 0, bytes: 0, fallos: [] };
+  const resumen = { total: lista.length, hechas: 0, iguales: 0, cambiadas: 0, bytes: 0, fallos: [] };
   for (const fila of lista) {
     const id = Number(fila.id);
     try {
@@ -209,10 +209,18 @@ async function asegurar(sql, opciones) {
       if (r.hecha) { resumen.hechas++; resumen.bytes += r.bytes; } else resumen.iguales++;
       if (r.huella !== fila.previsualizacion) {
         await sql`UPDATE avatar_prendas SET previsualizacion = ${r.huella} WHERE id = ${id};`;
+        resumen.cambiadas++;
       }
     } catch (error) {
       resumen.fallos.push({ id, valor: fila.valor, error: error.message });
     }
+  }
+
+  // El catalogo del editor vive en memoria y solo se rehace cuando sube
+  // su version (ver construirCatalogo en api/content.js). Si cambio
+  // alguna direccion, se sube, o el editor seguiria mandando la vieja.
+  if (escribir && resumen.cambiadas) {
+    await sql`UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1;`;
   }
   return resumen;
 }

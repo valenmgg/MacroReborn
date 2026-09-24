@@ -75,6 +75,7 @@ async function main() {
   console.log("  " + (APLICAR ? "hechas  " : "por hacer") + " " + r.hechas +
     (APLICAR && r.hechas ? " (" + (r.bytes / 1024).toFixed(0) + " kB)" : ""));
   console.log("  ya estaban " + r.iguales);
+  if (APLICAR) console.log("  direcciones nuevas " + r.cambiadas + (r.cambiadas ? " (se subio la version del catalogo)" : ""));
   console.log("  fallos     " + r.fallos.length);
   for (const f of r.fallos) console.log("    " + f.id + " " + f.valor + ": " + f.error);
 
