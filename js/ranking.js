@@ -15,9 +15,12 @@
 // que devuelve /api/users.
 
 
-const podioRanking = document.getElementById("podioRanking");
-const contenedorRanking = document.getElementById("listaRanking");
-const buscador = document.getElementById("buscarJugador");
+// Aquí se pintaban también el podio y la lista de ranking.html, prenda
+// por prenda. Ese código no se ejecutaba nunca: ranking.html es una
+// redirección y sus contenedores (#podioRanking, #listaRanking) no
+// existen en ningún HTML. Se quitó el 24/09/2026, en la fase 5 de
+// docs/AVATARES-SERVIDOR.md. Lo que queda es lo que usan otras páginas:
+// obtenerListaRanking(), obtenerPosicionRanking() y los logros del top.
 
 // Usuario con sesión iniciada en este navegador — se usa únicamente
 // para resaltar visualmente su propia fila/tarjeta en el ranking.
@@ -34,101 +37,11 @@ if (window.MRSession && typeof MRSession.subscribe === "function") {
 
 
 // ==============================
-// OBTENER AVATAR
-// ==============================
-// Ahora el avatar viaja embebido en cada usuario (users.avatar), así
-// que se recibe directo en vez de ir a buscarlo a una clave aparte.
-
-function obtenerAvatar(nombre, avatarCrudo){
-
-
-    const avatar = normalizarAvatar(avatarCrudo);
-
-
-    if(!avatar){
-
-        return `
-        <div class="avatar-mini-ranking">
-            <img src="imagenes/avatar.png" alt="" loading="lazy">
-        </div>
-        `;
-
-    }
-
-    if(avatarEsPNG(avatar)){
-        return `
-        <div class="avatar-mini-ranking">
-            <img data-src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">
-        </div>
-        `;
-    }
-
-
-    // El orden de capas y la resolución de rutas vienen de js/core.js,
-    // que se carga antes que este archivo.
-    //
-    // Hasta ahora esta copia tenía "pantalon" antes que "botas", al revés
-    // que el resto del sitio. Como el orden es el orden de dibujo, el
-    // mismo avatar se veía con las botas encima del pantalón acá y debajo
-    // en cualquier otra página. Al pasar a la lista compartida, las botas
-    // vuelven a quedar bajo el pantalón, como en el editor donde la gente
-    // arma su avatar.
-    const capas = ORDEN_CAPAS_AVATAR;
-
-
-
-    let html = "";
-    let rutasCapas = [];
-
-
-
-    capas.forEach(tipo=>{
-
-
-        const ruta = rutaCapaAvatar(avatar[tipo]);
-
-
-        if(ruta){
-
-
-            html += `
-            <img 
-            class="capa-ranking"
-            data-src="${ruta}" alt="" loading="lazy">
-            `;
-
-            rutasCapas.push(ruta);
-
-        }
-
-
-    });
-
-
-
-    return `
-
-    <div class="avatar-mini-ranking avatar-compuesto" data-capas="${rutasCapas.join("|")}" data-capa-class="capa-ranking">
-
-        ${html}
-
-    </div>
-
-    `;
-
-
-}
-
-
-
-// ==============================
 // LISTA DE RANKING (ordenada)
 // ==============================
 // Calcula la lista completa de usuarios ordenada por posición
 // (rank_actual, calculado por el servidor una vez por semana). La
-// usan cargarRanking() acá abajo y también obtenerPosicionRanking(),
-// para que el podio, la lista y la posición individual salgan siempre
-// de los mismos datos.
+// usa obtenerPosicionRanking(), y el panel de administración.
 //
 // Se cachea en memoria (_cacheUsuariosRanking): la primera vez que se
 // pide, trae la lista de usuarios y precarga sus logros/insignias en
@@ -316,178 +229,6 @@ async function revisarLogrosRanking(){
 
 
 
-// ==============================
-// CARGAR RANKING
-// ==============================
-
-async function cargarRanking(filtro=""){
-
-    // Esta función pinta el podio y la lista de ranking.html. Si el
-    // script se incluye en otra página solo para reutilizar
-    // obtenerListaRanking()/obtenerPosicionRanking(), esos contenedores
-    // no existen y no hay nada que dibujar acá.
-    if(!podioRanking || !contenedorRanking) return;
-
-    let ranking = await obtenerListaRanking();
-
-    if(filtro){
-
-        ranking =
-        ranking.filter(u=>
-
-            u.nombre
-            .toLowerCase()
-            .includes(
-                filtro.toLowerCase()
-            )
-
-        );
-
-    }
-
-    const top3 = ranking.slice(0,3);
-    const resto = ranking.slice(3,50);
-
-    // ==========================
-    // PODIO
-    // ==========================
-
-    podioRanking.innerHTML = "";
-
-    const posiciones = [
-        top3[1],
-        top3[0],
-        top3[2]
-    ];
-
-    const clases = [
-        "segundo",
-        "primero",
-        "tercero"
-    ];
-
-    posiciones.forEach((usuario,i)=>{
-
-        if(!usuario) return;
-
-        podioRanking.innerHTML += `
-
-        <div class="podio-card ${clases[i]} ${activoRanking && activoRanking.nombre === usuario.nombre ? "es-actual" : ""}">
-
-            ${clases[i]=="primero"
-            ? "<div class='corona'>👑</div>"
-            : ""}
-
-            ${obtenerAvatar(usuario.nombre, usuario.avatar)}
-
-            <h2>${usuario.nombre}</h2>
-
-            ${typeof insigniasBloqueHTML === "function" ? insigniasBloqueHTML(usuario.nombre, true) : ""}
-
-            <p>⏱️ ${usuario.minutos_semana_actual || 0} min esta semana</p>
-
-            <p>📅 ${usuario.dias_activos_semana_actual || 0} días activos</p>
-
-            <p>🏅 ${usuario.puntosLogros} puntos</p>
-
-            <a
-            href="usuario.html?usuario=${encodeURIComponent(usuario.nombre)}"
-            class="boton-ranking">
-
-            👤 Ver perfil
-
-            </a>
-
-        </div>
-
-        `;
-
-    });
-
-    // ==========================
-    // RESTO DEL RANKING
-    // ==========================
-
-    contenedorRanking.innerHTML="";
-
-    resto.forEach((usuario,index)=>{
-
-        let puesto = index + 4;
-
-        // El "puesto" ahora se pinta como número simple + clase de
-        // color según el rango (antes se armaba con el emoji de
-        // teclado combinado "N️⃣", que solo funciona bien con un
-        // dígito: a partir del puesto 10 el emoji se rompía y se veía
-        // distinto al resto).
-        let claseRango =
-        puesto <= 10 ? "puesto-top10" : "puesto-normal";
-
-        contenedorRanking.innerHTML += `
-
-        <div class="jugador ${activoRanking && activoRanking.nombre === usuario.nombre ? "es-actual" : ""}">
-
-            <div class="puesto ${claseRango}">
-
-            ${puesto}
-
-            </div>
-
-            ${obtenerAvatar(usuario.nombre, usuario.avatar)}
-
-            <div class="datos-ranking">
-
-                <h3>${usuario.nombre}</h3>
-
-                ${typeof insigniasBloqueHTML === "function" ? insigniasBloqueHTML(usuario.nombre, true) : ""}
-
-                <p>⏱️ ${usuario.minutos_semana_actual || 0} min esta semana</p>
-
-                <p>📅 ${usuario.dias_activos_semana_actual || 0} días activos</p>
-
-                <p>🏅 ${usuario.puntosLogros} puntos</p>
-
-            </div>
-
-            <a
-            href="usuario.html?usuario=${encodeURIComponent(usuario.nombre)}"
-            class="boton-ranking">
-
-            👤 Ver perfil
-
-            </a>
-
-        </div>
-
-        `;
-
-    });
-
-}
-
-
-
-
-// ==============================
-// BUSCADOR
-// ==============================
-
-
-buscador?.addEventListener(
-"input",
-()=>{
-
-
-    cargarRanking(
-        buscador.value
-    );
-
-
-});
-
-
-
-
 // INICIO
 
-cargarRanking();
 revisarLogrosRanking();
