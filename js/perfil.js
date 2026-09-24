@@ -1061,7 +1061,10 @@ document.getElementById("avatarAleatorio")?.addEventListener("click", ()=>{
     if(tipo === "modelo") return;
 
     const opciones = valoresDelCatalogo()
-      .filter(k => k.startsWith(modeloElegido + "_" + tipo));
+      .filter(k => k.startsWith(modeloElegido + "_" + tipo))
+      // Las de la tienda sin comprar no se pueden poner, y la vista
+      // previa del servidor tampoco las dibuja.
+      .filter(k => !(_tiendaPremiumPrecio.has(k) && !_tiendaComprados.has(k)));
 
     if(opciones.length > 0){
       editorCapas[tipo] = opciones[Math.floor(Math.random() * opciones.length)];

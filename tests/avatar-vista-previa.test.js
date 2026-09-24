@@ -7,10 +7,11 @@
 //
 // Lo que se sujeta:
 //
-//   SOLO LO QUE ESA PERSONA PODRÍA PONERSE. Una prenda sin publicar no
+//   SOLO LO QUE ESA PERSONA PODRÍA GUARDAR. Una prenda sin publicar no
 //   se dibuja: si no, la vista previa serviría para ver lo que el equipo
 //   de arte todavía no ha sacado. Lo retirado que ya lleva puesto, sí.
-//   Las de la tienda se pueden probar sin comprarlas.
+//   Y una de la tienda, solo comprada: si no, se sacaría entera sin
+//   pagarla, y la tienda solo enseña su previsualización.
 //
 //   LO YA DIBUJADO NO GASTA. El tope es por dibujo nuevo; volver a una
 //   combinación ya probada sale de memoria.
@@ -66,11 +67,12 @@ before(async () => {
   await sembrarPrenda("tora", "modelo", true);
   for (let n = 1; n <= 8; n++) await sembrarPrenda("tora_pelo9" + n, "pelo", true);
   for (let n = 1; n <= 8; n++) await sembrarPrenda("tora_remera9" + n, "remera", true);
+  await sembrarPrenda("tora_pelo89", "pelo", true);      // de la tienda
   await sembrarPrenda("tora_pelo80", "pelo", false);     // sin publicar
   await sembrarPrenda("tora_remera80", "remera", false); // retirada, pero ana la lleva
   await db.query(
     `INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
-     VALUES ('pelo', 'tora', 'tora_pelo98', 'De la tienda', 500)`);
+     VALUES ('pelo', 'tora', 'tora_pelo89', 'De la tienda', 500)`);
 
   const r = await db.query(
     `INSERT INTO users (username, password_hash, level, xp, status, created_at, last_login, avatar)
@@ -133,9 +135,22 @@ describe("la vista previa del editor", () => {
     assert.equal(r.codigo, 200, JSON.stringify(r.cuerpo));
   });
 
-  test("y una de la tienda se puede probar sin comprarla", async () => {
-    const r = await pedirVista({ modelo: "tora", pelo: "tora_pelo98" });
-    assert.equal(r.codigo, 200, JSON.stringify(r.cuerpo));
+  test("una de la tienda sin comprar no se dibuja, como al guardar", async () => {
+    const r = await pedirVista({ modelo: "tora", pelo: "tora_pelo89" });
+    assert.equal(r.codigo, 400);
+    assert.match(r.cuerpo.error, /compraste/);
+  });
+
+  test("y comprada, sí", async () => {
+    const item = await db.query("SELECT id FROM avatar_shop_items WHERE valor_capa = 'tora_pelo89'");
+    await db.query("INSERT INTO avatar_shop_purchases (user_id, item_id) VALUES ($1, $2)",
+      [idAna, item.rows[0].id]);
+    try {
+      const r = await pedirVista({ modelo: "tora", pelo: "tora_pelo89" });
+      assert.equal(r.codigo, 200, JSON.stringify(r.cuerpo));
+    } finally {
+      await db.query("DELETE FROM avatar_shop_purchases WHERE user_id = $1", [idAna]);
+    }
   });
 
   test("sin ninguna prenda no hay nada que dibujar: 204", async () => {

@@ -471,10 +471,12 @@ async function updateAdminAvatarPng(req, res) {
 // api/_vista-previa.js. Devuelve la imagen, no JSON; el editor la pide
 // con fetch, que lleva la sesión, y la pinta.
 //
-// Pide sesión y solo dibuja lo que esa persona podría ponerse: prendas
-// publicadas y en su ranura, o lo que ya lleva puesto aunque se haya
-// retirado. Así no sirve para ver lo que el equipo de arte todavía no
-// ha publicado. Las de la tienda se pueden probar sin comprarlas.
+// Pide sesión y solo dibuja lo que esa persona podría GUARDAR, con la
+// misma validarAvatar(): prendas publicadas y en su ranura, lo retirado
+// que ya lleva puesto, y de la tienda solo lo comprado. Así no sirve
+// para ver lo que el equipo de arte todavía no ha publicado, ni para
+// sacar entera, sin pagarla, una prenda de la tienda: la tienda solo
+// enseña su previsualización. El editor tampoco deja ponérsela.
 //
 // 204 si no lleva ninguna prenda (el editor pone la silueta) y 429 si
 // gastó su tope del minuto (el editor se queda con la anterior).
@@ -483,7 +485,7 @@ async function avatarVistaPrevia(req, res) {
   if (!auth) return;
 
   const { avatar } = req.body || {};
-  const revision = await validarAvatar(sql, auth.sub, avatar, { probar: true });
+  const revision = await validarAvatar(sql, auth.sub, avatar);
   if (!revision.ok) {
     return res.status(400).json({ success: false, error: revision.error });
   }
