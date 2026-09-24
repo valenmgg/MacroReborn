@@ -167,37 +167,12 @@ async function main() {
 
     // ----- El avatar ya compuesto -----
     // /avatares/<id>/<tam>.jpg, la direccion de esa persona, que no
-    // cambia nunca. Se cambia de ropa y el ARCHIVO cambia; la
-    // direccion no. Un archivo del disco, servido tal cual.
-    //
-    // Va antes del despacho de /api/ porque no es una llamada de API:
-    // es un estatico que resulta que se genero en vez de subirse.
-    const compuesto = avatarCompuesto.partirRuta(url.pathname);
-    if (compuesto) {
-      const datos = avatarCompuesto.leer(compuesto.destino, compuesto.ancho, compuesto.alto);
-      if (!datos) {
-        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-        return res.end("No encontrado");
-      }
-
-      // La cache depende de si viene ?v=. CON version, un ano: esa
-      // direccion exacta solo existe mientras el avatar sea ese, y en
-      // cuanto cambie las paginas serviran otra. SIN version, un
-      // minuto: la direccion desnuda es la misma para siempre, asi que
-      // guardarsela mucho seria ensenar la ropa de ayer. Es la que se
-      // escribe a mano, no la que usan las paginas.
-      const conVersion = !!url.searchParams.get("v");
-      const segundos = conVersion
-        ? avatarCompuesto.CACHE_CON_VERSION
-        : avatarCompuesto.CACHE_SIN_VERSION;
-
-      res.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": datos.length,
-        "Cache-Control": "public, max-age=" + segundos + (conVersion ? ", immutable" : "")
-      });
-      return res.end(req.method === "HEAD" ? undefined : datos);
-    }
+    // cambia nunca. Un archivo del disco, servido tal cual; si falta, se
+    // compone en ese momento, y si no se puede, la silueta generica. Va
+    // antes del despacho de /api/ porque no es una llamada de API. La
+    // ruta la atiende el propio modulo, para que los dos servidores
+    // hagan exactamente lo mismo.
+    if (await avatarCompuesto.atender(req, res, url, obtenerSql())) return;
 
     // ----- La previsualizacion de una prenda -----
     // /previsualizaciones/<id>.jpg. El mismo trato que el compuesto: un
