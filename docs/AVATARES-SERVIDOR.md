@@ -172,7 +172,7 @@ rompen nada mientras tanto.
 |---|---|---|---|---|
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
-| 3 | Empezada el 21/09 | Las listas | Página por página, cada una pasa a una sola imagen por persona. Hecha la comunidad entera el 24/09 (64 prendas sueltas a 0). Quedan las del punto de abajo | No |
+| 3 | 2026-09-24 | Las listas | Página por página, cada una pasa a una sola imagen por persona. Todas hechas: medido en producción, cero prendas sueltas fuera del editor. El editor es la fase 5 | No |
 | 4 | 2026-09-24 | Las previsualizaciones | 768 recortes automáticos sobre maniquí. Publicadas: el editor y la tienda las enseñan. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
@@ -318,30 +318,50 @@ Network: cero peticiones a `/prendas/`.
 | Página | Qué pinta | Archivos | Estado |
 |---|---|---|---|
 | Comunidad | Cuadrícula, podio, recién llegados, moderación, conectados, actividad | `comunidad-ranking.js` | Hecha el 24/09: 64 prendas sueltas a 0 |
-| Perfil público | Avatar grande, amigos, comentarios, actividad, actividad de amigos, galería | `usuario.js`, `usuario-actividad.js`, `usuario-avatares-galeria.js` | Pendiente |
-| Perfil propio | Avatar grande, amigos, comentarios, actividad, galería | `perfil.js`, `perfil-actividad.js`, `perfil-avatares-galeria.js` | Pendiente |
-| Amigos | La lista | `amigos.js` | Pendiente |
-| Chat | Los mensajes | `chat.js` | Pendiente |
-| Buscador | Los resultados, en la barra de casi todas las páginas | `buscador.js` | Pendiente |
-| Explorar | Amigos | `explorar.js` | Pendiente |
-| Portada con sesión | Avatar propio, bienvenida, amigos | `home-portal.js`, `index.html` | Pendiente |
-| Actividad de la comunidad | El feed | `actividad-comunidad.js` | Pendiente |
-| Juego | Reseñas | `resenas.js` | Pendiente |
+| Perfil público | Avatar grande, amigos, comentarios, actividad, actividad de amigos, galería | `usuario.js`, `usuario-actividad.js`, `usuario-avatares-galeria.js` | Hecha el 24/09 |
+| Perfil propio | Avatar grande, amigos, comentarios, actividad, galería | `perfil.js`, `perfil-actividad.js`, `perfil-avatares-galeria.js` | Hecha el 24/09, menos el editor |
+| Amigos | La lista | `amigos.js` | Hecha el 24/09 |
+| Chat | Los mensajes | `chat.js` | Hecha el 24/09 |
+| Buscador | Los resultados, en la barra de casi todas las páginas | `buscador.js` | Hecha el 24/09 |
+| Explorar | Amigos | `explorar.js` | Hecha el 24/09 |
+| Portada con sesión | Avatar propio, bienvenida, amigos | `home-portal.js`, `index.html` | Hecha el 24/09 |
+| Actividad de la comunidad | El feed | `actividad-comunidad.js` | Hecha el 24/09 |
+| Juego | Reseñas | `resenas.js` | Hecha el 24/09 |
 
-Cuando no quede ninguna, se quita de `js/core.js` lo que dibuja por
-capas: la rama de capas de `avatarMiniaturaHTML` y
-`componerAvatarPNG`, que vuelve a bajar las capas en un canvas.
+`tests/paginas-sin-capas.test.js` lleva la lista de las páginas
+migradas y falla si alguna vuelve a dibujar prenda por prenda.
+
+Medido en producción el 24/09, sin sesión: la portada, la comunidad,
+la actividad, un juego con reseñas, el catálogo, un perfil público
+con todas sus pestañas y el buscador piden cero prendas sueltas. Las
+páginas con sesión se comprobaron con pruebas y en local.
+
+**Lo que queda dibujando por capas**, y por qué:
+
+- El editor de `perfil.js` (la vista previa y las miniaturas sin
+  previsualización): enseña ropa que todavía no se ha guardado, y eso
+  no tiene compuesto. Es la fase 5.
+- `js/ranking.js`: su código de dibujo no se ejecuta nunca, porque
+  sus contenedores no existen en ningún HTML. Se carga en tres páginas
+  por otras dos funciones. Se puede borrar.
+- El taller y el panel de arte, que son del equipo de arte.
+
+Ya no queda ninguna fuera del editor, así que sobra lo que dibuja por
+capas en `js/core.js`: la rama de capas de `avatarMiniaturaHTML` y
+`componerAvatarPNG`, que vuelve a bajar las capas en un canvas. Se
+quita en la fase 5, junto al índice público.
 
 **Lo que hay que arreglar por el camino**, visto en el inventario del
 24/09/2026:
 
-- La caché de avatares de `js/core.js` (`cargarAvatarUsuario`) guarda
-  solo el avatar y tira el id y la huella, aunque la API los manda. La
-  usan el chat, los comentarios, la actividad y las reseñas.
-- `js/perfil.js` guarda en la sesión solo `{avatar}` al cambiarse de
-  ropa, aunque la API devuelve la huella nueva.
-- Guardar una ranura (`avatar-gallery`, POST) calcula la huella y no la
-  devuelve.
+- La caché de avatares de `js/core.js` (`cargarAvatarUsuario`) guardaba
+  solo el avatar y tiraba el id y la huella. Arreglado el 24/09.
+- `js/perfil.js` guardaba en la sesión solo `{avatar}` al cambiarse de
+  ropa: la portada habría pedido la huella de antes, cacheada un año.
+  Arreglado el 24/09.
+- La galería (`avatar-gallery`, GET) no mandaba la huella de cada
+  ranura. Arreglado el 24/09. El POST sigue sin devolverla, pero la
+  página vuelve a pedir la galería después de guardar.
 - `js/ranking.js` es código muerto (sus contenedores no existen en
   ningún HTML), y `home-portal.js` de la raíz no lo carga ninguna
   página. `portal-growth.js`, `liga-global.js` y `navbar.js` no
