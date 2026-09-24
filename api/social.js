@@ -83,8 +83,11 @@ async function friends(req, res) {
     //
     // Es el mismo fallo que ca518e6 arregló en /api/users en septiembre,
     // con el mismo tamaño casi exacto. Aquel arreglo no llegó hasta acá.
+    //
+    // El id y la huella, para pedir el avatar ya compuesto en vez de
+    // dibujarlo prenda por prenda: ver imagenDeAvatar() en js/core.js.
     const amigos = await sql`
-      SELECT u.username, u.level, u.xp, ${fragmentoAvatarLigero(sql)}
+      SELECT u.id, u.username, u.level, u.xp, u.avatar_compuesto, ${fragmentoAvatarLigero(sql)}
       FROM friendships f
       JOIN users u ON u.id = f.friend_id
       WHERE f.user_id = ${userId}

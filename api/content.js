@@ -2135,8 +2135,10 @@ async function avatarGallery(req, res) {
       return res.status(404).json({ success: false, error: "Usuario no encontrado" });
     }
 
+    // Con la huella de cada diseño y, abajo, el id de su dueño: con eso
+    // la galería pide el compuesto de cada ranura en vez de sus prendas.
     const guardados = await sql`
-      SELECT id, slot, avatar FROM saved_avatars WHERE user_id = ${userId};
+      SELECT id, slot, avatar, avatar_compuesto FROM saved_avatars WHERE user_id = ${userId};
     `;
 
     const conteos = await sql`
@@ -2185,13 +2187,14 @@ async function avatarGallery(req, res) {
         slot: n,
         id: fila.id,
         avatar: fila.avatar,
+        avatar_compuesto: fila.avatar_compuesto || null,
         likes,
         dislikes,
         miVoto: misVotos[fila.id] || null
       });
     }
 
-    return res.status(200).json({ success: true, slots, ranuras: cuantas });
+    return res.status(200).json({ success: true, slots, ranuras: cuantas, usuario_id: Number(userId) });
   }
 
   if (req.method === "POST") {
