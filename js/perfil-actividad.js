@@ -49,7 +49,7 @@ async function renderActividadReciente(){
   const lista = await obtenerMencionesRecibidas(usuarioActual.nombre);
 
   if(lista.length === 0){
-    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía nadie te mencionó con @${usuarioActual.nombre}.</p>`;
+    contenedor.innerHTML = `<p style="color:#94a3b8;font-size:14px;">Todavía nadie te mencionó con @${MRTexto.escapar(usuarioActual.nombre)}.</p>`;
     return;
   }
 

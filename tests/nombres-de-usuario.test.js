@@ -117,6 +117,8 @@ describe("los demás sitios que pintaban un nombre en crudo", () => {
   // vuelve a escribir la interpolación sin escapar, esto falla.
   const prohibido = {
     "admin.js": ['<span class="admin-top-nombre">${item.nombre}</span>'],
+    "navbar.js": ["<span>${usuarioNav.nombre}</span>", '">${usuarioNav.nombre}</div>'],
+    "perfil-actividad.js": ["@${usuarioActual.nombre}."],
     "amigos.js": ["👤 ${sol.de}", "👤 ${sol.para}"]
   };
   for (const [archivo, trozos] of Object.entries(prohibido)) {

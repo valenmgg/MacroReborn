@@ -155,13 +155,13 @@ if(navbar && nav){
                 <button type="button" class="sesion-extra user-guest-boton sesion-activa" id="botonUsuarioMenu" aria-haspopup="true" aria-expanded="false">
                     <span class="user-guest-avatar">👤</span>
                     <span class="user-guest-nombre">
-                        <span>${usuarioNav.nombre}</span>
+                        <span>${MRTexto.escapar(usuarioNav.nombre)}</span>
                         <span class="user-guest-nivel" id="navNivelUsuario">Nivel ${Number(usuarioNav.nivel ?? usuarioNav.level ?? 1)}</span>
                     </span>
                 </button>
 
                 <div class="user-guest-dropdown" id="dropdownUsuarioMenu">
-                    <div class="user-guest-dropdown-header">${usuarioNav.nombre}</div>
+                    <div class="user-guest-dropdown-header">${MRTexto.escapar(usuarioNav.nombre)}</div>
 
                     <div class="user-menu-lista">
                         <a href="perfil.html">🏠 Home</a>
