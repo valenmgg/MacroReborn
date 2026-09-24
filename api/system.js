@@ -1,6 +1,7 @@
 const { setCors } = require("./_utils");
 const { requerirAuth } = require("./_auth");
 const { obtenerSql } = require("./_db");
+const { fragmentoAvatarLigero, aligerarAvatarPNG } = require("./_avatar-ligero");
 
 const sql = obtenerSql();
 
@@ -425,7 +426,12 @@ async function communityStats(req, res) {
     sql`SELECT COUNT(*)::int AS n FROM users;`,
     sql`SELECT COUNT(*)::int AS n FROM users WHERE last_login > now() - interval '5 minutes';`,
     sql`SELECT COUNT(*)::int AS n FROM profile_comments WHERE created_at > now() - interval '1 hour';`,
-    sql`SELECT username, avatar FROM users WHERE created_at > now() - interval '1 day' ORDER BY created_at DESC LIMIT 12;`
+    // El id y la huella son para pedir el avatar ya compuesto, y el PNG
+    // de administrador va recortado: ver api/_avatar-ligero.js.
+    sql`SELECT u.id, u.username, u.avatar_compuesto, ${fragmentoAvatarLigero(sql)}
+        FROM users u
+        WHERE u.created_at > now() - interval '1 day'
+        ORDER BY u.created_at DESC LIMIT 12;`
 
   ]);
 
@@ -434,7 +440,7 @@ async function communityStats(req, res) {
     registradosTotal: registradosTotal[0].n,
     conectadosAhora: conectadosAhora[0].n,
     comentariosPorHora: comentariosUltimaHora[0].n,
-    recienLlegados
+    recienLlegados: recienLlegados.map(aligerarAvatarPNG)
   });
 }
 
@@ -450,7 +456,8 @@ async function communityStats(req, res) {
 async function moderatorsStatus(req, res) {
 
   const filas = await sql`
-    SELECT u.username, u.avatar, u.last_login, b.badge_id AS rol
+    SELECT u.id, u.username, u.avatar_compuesto, ${fragmentoAvatarLigero(sql)},
+           u.last_login, b.badge_id AS rol
     FROM badges b
     JOIN users u ON u.id = b.user_id
     WHERE b.badge_id IN ('administrador','moderador','colaborador')
@@ -464,9 +471,12 @@ async function moderatorsStatus(req, res) {
   `;
 
   const cincoMin = 5 * 60 * 1000;
-  const staff = filas.map(f => ({
+  // Con su id y su huella, para pedir el avatar ya compuesto.
+  const staff = filas.map(aligerarAvatarPNG).map(f => ({
+    id: f.id,
     username: f.username,
     avatar: f.avatar,
+    avatar_compuesto: f.avatar_compuesto,
     rol: f.rol,
     conectado: !!(f.last_login && (Date.now() - new Date(f.last_login).getTime()) <= cincoMin)
   }));

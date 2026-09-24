@@ -10,6 +10,7 @@ const previsualizaciones = require("./_previsualizaciones");
 // servidor, gemela de ORDEN_CAPAS_AVATAR en js/core.js. Se manda dentro
 // del catálogo para que el editor no tenga que llevar su propia copia.
 const { validarAvatar, CAPAS: CAPAS_AVATAR } = require("./_avatar-catalogo");
+const { fragmentoAvatarLigero, aligerarAvatarPNG } = require("./_avatar-ligero");
 const crypto = require("crypto");
 const png = require("./_png");
 const rafaga = require("./_rafaga");
@@ -2424,9 +2425,13 @@ async function communityFeed(req, res) {
 
   const limite = Math.min(parseInt(req.query.limit, 10) || 18, 60);
 
+  // usuario_id y no id: la fila es una actividad, no una persona. Con
+  // el y la huella se pide el avatar ya compuesto; el PNG de
+  // administrador va recortado, ver api/_avatar-ligero.js.
   const filas = await sql`
     SELECT a.tipo, a.detalle, a.created_at,
-           u.username, u.avatar
+           u.id AS usuario_id, u.username, u.avatar_compuesto,
+           ${fragmentoAvatarLigero(sql)}
     FROM activity_log a
     JOIN users u ON u.id = a.user_id
     WHERE a.tipo IN ('comentario','favorito','resena','like_juego','amigo','logro')
@@ -2434,7 +2439,7 @@ async function communityFeed(req, res) {
     LIMIT ${limite};
   `;
 
-  return res.status(200).json({ success: true, actividades: filas });
+  return res.status(200).json({ success: true, actividades: filas.map(aligerarAvatarPNG) });
 }
 
 
