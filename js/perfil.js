@@ -609,10 +609,21 @@ async function guardarAvatar(avatar){
       return false;
     }
 
+    // La huella nueva del compuesto va con el avatar. Sin ella, lo que
+    // pinta el avatar propio desde la sesión seguiría pidiendo la
+    // versión de antes, que el navegador guarda un año. Si la respuesta
+    // no la trae, se queda en null y se pide la dirección desnuda.
+    let huella = null;
+    try {
+      const datos = await respuesta.json();
+      huella = (datos && datos.user && datos.user.avatar_compuesto) || null;
+    } catch (_) { /* sin cuerpo legible: sin huella */ }
+    datosUsuario.avatar_compuesto = huella;
+
     // Neon confirmó el cambio: recién ahora actualizamos el estado global
     // para que navbar, perfil y otras pestañas vean el nuevo avatar.
     if (window.MRSession && typeof MRSession.update === "function") {
-      MRSession.update({ avatar: avatar });
+      MRSession.update({ avatar: avatar, avatar_compuesto: huella });
     } else {
       localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
     }
@@ -649,9 +660,12 @@ async function guardarAvatarPngAdmin(dataUrl){
     throw new Error((datos && datos.error) || "No se pudo guardar el PNG.");
   }
 
+  // El servidor borra la huella del compuesto al ponerse un PNG: la
+  // sesión tampoco puede quedarse con la de la ropa de antes.
   datosUsuario.avatar = datos.user.avatar;
+  datosUsuario.avatar_compuesto = null;
   if(window.MRSession && typeof MRSession.update === "function") {
-    MRSession.update({ avatar: datos.user.avatar });
+    MRSession.update({ avatar: datos.user.avatar, avatar_compuesto: null });
   } else {
     localStorage.setItem("usuarioActivo", JSON.stringify(datosUsuario));
   }
