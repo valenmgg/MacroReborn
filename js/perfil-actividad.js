@@ -2,59 +2,32 @@
 // MACROREBORN - ACTIVIDAD (PERFIL PROPIO) — Fase 2: Neon
 // =========================
 //
-// Usa datosUsuario, ORDEN_CAPAS y rutaDePrenda definidos en perfil.js
-// (se carga después en perfil.html), y las funciones del motor de
-// actividad (js/motor/actividad.js).
+// Usa datosUsuario, definido en perfil.js (se carga después en
+// perfil.html), y las funciones del motor de actividad
+// (js/motor/actividad.js).
 
 
-// ---------- AVATAR MINI (reutiliza el mismo criterio que perfil.js) ----------
+// ---------- AVATAR MINI ----------
 
 function avatarMiniActividad(nombre){
   // El avatar viaja embebido en el usuario (users.avatar, Neon); se lee
   // de la caché en memoria de js/core.js, precargada por
-  // renderActividadAmigos() antes de pintar la lista.
-  const avatar = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
+  // renderActividadAmigos() antes de pintar la lista, con su id y su
+  // huella. Una sola imagen por persona, con imagenDeAvatar(). Hasta el
+  // 24/09/2026 se dibujaba prenda por prenda.
+  const imagen = imagenDeAvatar(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96) ||
+    SILUETA_AVATAR;
 
-  if(!avatar){
-    return `<img src="imagenes/avatar.png" class="avatar-comentario" alt="" loading="lazy">`;
+  if(imagen.tipo === "silueta"){
+    return `<img src="${imagen.src}" class="avatar-comentario" alt="" loading="lazy">`;
   }
 
-  if(avatarEsPNG(avatar)){
-    return `<img data-src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
+  if(imagen.tipo === "png"){
+    return `<img data-src="${imagen.src}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
   }
 
-  // rutaDePrenda() de js/perfil.js, igual que hace el resto del perfil.
-  //
-  // Aquí había CAPAS_IMG[valor]. CAPAS_IMG era el mapa de 622 pares
-  // escritos a mano que vivía en perfil.js y que se borró al pasar el
-  // editor al catálogo del servidor. Este archivo se quedó atrás: es el
-  // único que no se convirtió, y desde entonces reventaba con
-  // "CAPAS_IMG is not defined" cada vez que la actividad del perfil
-  // pintaba una mención. El avatar se quedaba sin dibujar.
-  //
-  // No saltó en ningún test ni en ninguna revisión porque el error va
-  // dentro de un .map() dentro de una promesa: se queda en "Uncaught (in
-  // promise)" en la consola y el resto de la página sigue pintándose.
-  let capas = "";
-  let rutasCapas = [];
-  ORDEN_CAPAS.forEach(tipo=>{
-    const ruta = typeof rutaDePrenda === "function"
-      ? rutaDePrenda(avatar[tipo])
-      : (typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(avatar[tipo]) : null);
-    if(ruta){
-      capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
-      rutasCapas.push(ruta);
-    }
-  });
-
-  // FIX: este contenedor forzaba un tamaño inline de 44x44px, pero el
-  // recorte de ".capa-comentario" está calibrado matemáticamente para
-  // los 55x55px de ".avatar-mini" (ver nota en css/perfil.css). Ese
-  // desajuste de tamaño rompía por completo el recorte y el círculo
-  // quedaba vacío. Se saca el "style" inline para que use el mismo
-  // tamaño de 55px que ya funciona bien en Comentarios.
-  return `<div class="avatar-mini avatar-compuesto" ` +
-    `data-capas="${rutasCapas.join("|")}" data-capa-class="capa-comentario">${capas}</div>`;
+  // Sin tamaño en línea: .avatar-mini ya mide 55px (ver css/perfil.css).
+  return `<div class="avatar-mini"><img class="capa-comentario" data-src="${imagen.src}" alt="" loading="lazy"></div>`;
 }
 
 

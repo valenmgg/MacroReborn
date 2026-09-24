@@ -326,7 +326,6 @@ const RUTAS_RETIRADAS = new Map();
 // Bandera para no encadenar esperas: si el avatar se pide varias veces
 // mientras el catalogo esta en camino, solo una espera y las demas se
 // descartan. Sin esto, cada llamada dejaria su propio reintento.
-let _avatarEnEspera = false;
 
 let _promesaCatalogo = null;
 
@@ -899,81 +898,21 @@ function actualizarPreview(){
 
 
 // ---------- AVATAR PRINCIPAL ----------
+// El grande, una sola imagen de 327x504: su PNG de administrador, su
+// avatar ya compuesto o la silueta, con imagenDeAvatar() de js/core.js.
+// Es el avatar GUARDADO, no el del editor: al guardar, guardarAvatar()
+// deja en datosUsuario la huella nueva y esto pide esa versión. Hasta el
+// 24/09/2026 se dibujaba prenda por prenda, y tenía que esperar al
+// catálogo para saber dónde estaba cada dibujo.
 
 function actualizarAvatarPrincipal(){
-  const avatar=cargarAvatar();
   const avatarWrapper=document.querySelector(".avatar");
   if(!avatarWrapper)return;
 
-  if(!avatar){
-    avatarWrapper.innerHTML='<img id="avatarPrincipal" src="imagenes/avatar.png" alt="Tu avatar en MacroReborn">';
-    return;
-  }
-
-  if(avatarEsPNG(avatar)){
-    const src = avatarPNGData(avatar);
-    avatarWrapper.innerHTML = `<img id="avatarPrincipal" class="avatar-png-personalizado" src="${src}" alt="Avatar PNG personalizado">`;
-    return;
-  }
-
-  // Si el catálogo todavía no llegó, se espera en vez de dibujar con las
-  // rutas de imagenes/ y tener que repetirlo entero cuando llegue.
-  //
-  // Dibujar antes de tiempo no era gratis: en un HAR de una carga real
-  // las cuatro capas del avatar aparecían DOS veces, una por la ruta
-  // vieja y otra por la del catálogo. 464 kB descargados de más para
-  // pintar exactamente lo mismo.
-  //
-  // La espera es corta: core.js pide el catálogo nada más cargarse, muy
-  // antes de que esta función llegue a ejecutarse. Y si el catálogo
-  // falla, cargarCatalogo() resuelve igual y se sigue por la ruta vieja.
-  if(typeof cargarCatalogo === "function" && !RUTAS_PRENDA.size){
-    // La bandera decide si se PROGRAMA el reintento, no si se espera.
-    //
-    // Antes estaba dentro de la condición del if, y eso dejaba pasar de
-    // largo a la segunda llamada: entraba una, se ponía la bandera, y la
-    // siguiente ya no cumplía la condición, así que seguía hasta abajo y
-    // dibujaba con las rutas de imagenes/. Que es justo lo que este
-    // bloque existe para evitar.
-    //
-    // Se vio en un HAR: las cuatro capas del avatar otra vez por
-    // duplicado, 470 kB, después de un arreglo que se suponía que lo
-    // había quitado.
-    if(!_avatarEnEspera){
-      _avatarEnEspera = true;
-      cargarCatalogo().finally(()=>{
-        _avatarEnEspera = false;
-        actualizarAvatarPrincipal();
-      });
-    }
-    return;
-  }
-
-  let contenedor=document.createElement("div");
-  contenedor.style.position="relative";
-  contenedor.style.width="100%";
-  contenedor.style.height="100%";
-  contenedor.className="avatar-compuesto";
-
-  const estiloCapa = "position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;";
-  let rutasCapas = [];
-
-  ORDEN_CAPAS.forEach(tipo=>{
-    const ruta=rutaDePrenda(avatar[tipo]);
-    if(ruta){
-      let capa=document.createElement("img");
-      capa.src=ruta;
-      capa.setAttribute("style", estiloCapa);
-      contenedor.appendChild(capa);
-      rutasCapas.push(ruta);
-    }
-  });
-
-  contenedor.setAttribute("data-capas", rutasCapas.join("|"));
-  contenedor.setAttribute("data-capa-style", estiloCapa);
-
-  avatarWrapper.innerHTML="";
-  avatarWrapper.appendChild(contenedor);
+  const imagen = imagenDeAvatar(datosUsuario.avatar, datosUsuario, 327, 504) || SILUETA_AVATAR;
+  const clase = imagen.tipo === "png" ? ' class="avatar-png-personalizado"' : "";
+  const alt = imagen.tipo === "png" ? "Avatar PNG personalizado" : "Tu avatar en MacroReborn";
+  avatarWrapper.innerHTML = `<img id="avatarPrincipal"${clase} src="${imagen.src}" alt="${alt}">`;
 }
 
 
@@ -1491,30 +1430,20 @@ async function renderAmigosPerfil(){
 
   contenedor.innerHTML = `<div class="grid-usuarios">` + amigosOrdenados.map(amigo => {
     const nombreAmigo = amigo.username;
-    const avatar = normalizarAvatar(amigo.avatar);
     const esFavorito = misFavoritos.includes(nombreAmigo);
 
-    let capas = "";
-    let rutasCapas = [];
-
-    if(avatar){
-      ORDEN_CAPAS.forEach(tipo=>{
-        const ruta = rutaDePrenda(avatar[tipo]);
-        if(ruta){
-          capas += `<img class="capa-tarjeta" data-src="${ruta}" alt="" loading="lazy">`;
-          rutasCapas.push(ruta);
-        }
-      });
-    }
-
-    const avatarHTML = capas || `<img src="imagenes/avatar.png" class="avatar-default" alt="" loading="lazy">`;
+    // Una sola imagen por amigo: la lista trae su id y su huella.
+    const imagen = imagenDeAvatar(amigo.avatar, amigo, 62, 96) || SILUETA_AVATAR;
+    const avatarHTML = imagen.tipo === "silueta"
+      ? `<img src="${imagen.src}" class="avatar-default" alt="" loading="lazy">`
+      : `<img class="capa-tarjeta${imagen.tipo === "png" ? " avatar-png-personalizado" : ""}" data-src="${imagen.src}" alt="" loading="lazy">`;
 
     return `
       <div class="tarjeta-usuario">
 
         <button class="btn-favorito-amigo ${esFavorito ? "es-favorito" : ""}" data-nombre="${escaparHTML(nombreAmigo)}" title="${esFavorito ? "Quitar de favoritos" : "Marcar como favorito"}">★</button>
 
-        <div class="avatar-tarjeta avatar-compuesto" data-capas="${rutasCapas.join("|")}" data-capa-class="capa-tarjeta">
+        <div class="avatar-tarjeta">
           ${avatarHTML}
         </div>
 
@@ -1632,25 +1561,21 @@ function escaparHTML(texto) {
 function obtenerAvatarComentario(nombre){
   // El avatar viaja embebido en el usuario (users.avatar, Neon); se lee
   // de la caché en memoria de js/core.js, precargada por
-  // renderComentarios() antes de pintar la lista.
-  const avatar = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
+  // renderComentarios() antes de pintar la lista. La caché guarda
+  // también su id y su huella: una sola imagen por persona.
+  const imagen = imagenDeAvatar(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96) ||
+    SILUETA_AVATAR;
 
-  if(!avatar){
-    return `<img class="avatar-comentario" src="imagenes/avatar.png" alt="" loading="lazy">`;
+  if(imagen.tipo === "silueta"){
+    return `<img class="avatar-comentario" src="${imagen.src}" alt="" loading="lazy">`;
   }
 
-  let capas = "";
-  let rutasCapas = [];
-  ORDEN_CAPAS.forEach(tipo=>{
-    const ruta = rutaDePrenda(avatar[tipo]);
-    if(ruta){
-      capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
-      rutasCapas.push(ruta);
-    }
-  });
+  // El PNG de administrador aquí se quedaba en un círculo vacío.
+  if(imagen.tipo === "png"){
+    return `<img data-src="${imagen.src}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
+  }
 
-  return `<div class="avatar-mini avatar-compuesto" data-capas="${rutasCapas.join("|")}" ` +
-    `data-capa-class="capa-comentario">${capas}</div>`;
+  return `<div class="avatar-mini"><img class="capa-comentario" data-src="${imagen.src}" alt="" loading="lazy"></div>`;
 }
 
 // ÚLTIMOS COMENTARIOS (pestaña Inicio)

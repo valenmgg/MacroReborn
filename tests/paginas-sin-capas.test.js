@@ -32,7 +32,8 @@ const MIGRADOS = {
   "js/amigos.js": "2026-09-24",
   "js/chat.js": "2026-09-24",
   "js/home-portal.js": "2026-09-24",
-  "index.html": "2026-09-24"
+  "index.html": "2026-09-24",
+  "js/perfil-actividad.js": "2026-09-24"
 };
 
 // Lo que delata que se está dibujando prenda por prenda. La ruta de
@@ -69,6 +70,35 @@ describe("la actividad de la comunidad", () => {
     assert.match(js, /\{ id: item\.usuario_id, avatar_compuesto: item\.avatar_compuesto \}/);
     // Y ya no pinta con avatarMiniaturaHTML sin persona, que dibuja por capas.
     assert.ok(!/avatarMiniaturaHTML\(avatar\)/.test(js));
+  });
+
+});
+
+describe("el perfil propio", () => {
+
+  // js/perfil.js no entra en la lista de arriba: el editor sigue
+  // dibujando por capas hasta la fase 5. Lo que ya no lo hace son sus
+  // tres funciones que pintan avatares fuera del editor.
+  const PERFIL = leer("js", "perfil.js");
+  const cuerpo = nombre => {
+    const i = PERFIL.search(new RegExp("(async )?function " + nombre + "\\("));
+    assert.ok(i !== -1, "no está " + nombre);
+    return PERFIL.slice(i, i + PERFIL.slice(i).search(/\r?\n}\r?\n/));
+  };
+
+  for (const nombre of ["actualizarAvatarPrincipal", "renderAmigosPerfil", "obtenerAvatarComentario"]) {
+    test(nombre + " pide una sola imagen, sin capas", () => {
+      const texto = cuerpo(nombre);
+      assert.match(texto, /imagenDeAvatar\(/);
+      for (const rastro of ["rutaDePrenda", "ORDEN_CAPAS", "data-capas", "avatar-compuesto"]) {
+        assert.ok(!texto.includes(rastro), nombre + " todavía usa " + rastro);
+      }
+    });
+  }
+
+  test("el avatar grande es el guardado, en el tamaño grande", () => {
+    assert.match(cuerpo("actualizarAvatarPrincipal"),
+      /imagenDeAvatar\(datosUsuario\.avatar, datosUsuario, 327, 504\)/);
   });
 
 });
