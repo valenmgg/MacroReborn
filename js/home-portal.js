@@ -108,10 +108,10 @@
     const favoritos = favRes && Array.isArray(favRes.favoritos) ? favRes.favoritos : [];
     const monedas = Number(user.monedas ?? activo.monedas ?? 0);
     const ranking = Number(user.rank_actual || 0);
-    const avatar = typeof avatarMiniaturaHTML === "function" ? avatarMiniaturaHTML(user.avatar) : `<img src="imagenes/avatar.png" alt="Avatar">`;
+    const avatar = typeof avatarMiniaturaHTML === "function" ? avatarMiniaturaHTML(user.avatar, user) : `<img src="imagenes/avatar.png" alt="Avatar">`;
 
     const amigosHtml = amigos.slice(0, 5).map(amigo => `<a class="portal-amigo-mini" href="usuario.html?usuario=${encodeURIComponent(amigo.username)}">
-      <span class="portal-amigo-avatar">${typeof avatarMiniaturaHTML === "function" ? avatarMiniaturaHTML(amigo.avatar) : "👤"}</span>
+      <span class="portal-amigo-avatar">${typeof avatarMiniaturaHTML === "function" ? avatarMiniaturaHTML(amigo.avatar, amigo) : "👤"}</span>
       <span><b>${esc(amigo.username)}</b><small>Nivel ${Number(amigo.level || 1)}</small></span>
     </a>`).join("");
 

@@ -473,8 +473,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // que alcanza con reutilizar avatarMiniaturaHTML() de js/core.js
     // (misma función que ya usan el buscador, comentarios, etc.) en
     // vez de dejar el <img> estático del HTML.
+    //
+    // Con la persona entera, que en la sesión trae su id y su huella:
+    // así sale una sola imagen, su compuesto, y no prenda por prenda.
     if (avatarEl && typeof avatarMiniaturaHTML === "function") {
-      avatarEl.innerHTML = avatarMiniaturaHTML(usuario.avatar);
+      avatarEl.innerHTML = avatarMiniaturaHTML(usuario.avatar, usuario);
     }
   } catch (e) {
     // Si algo falla, se mantiene la vista de invitado por defecto.

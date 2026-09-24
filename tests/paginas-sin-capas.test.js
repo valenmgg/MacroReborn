@@ -30,7 +30,9 @@ const MIGRADOS = {
   "js/buscador.js": "2026-09-24",
   "js/explorar.js": "2026-09-24",
   "js/amigos.js": "2026-09-24",
-  "js/chat.js": "2026-09-24"
+  "js/chat.js": "2026-09-24",
+  "js/home-portal.js": "2026-09-24",
+  "index.html": "2026-09-24"
 };
 
 // Lo que delata que se está dibujando prenda por prenda. La ruta de
