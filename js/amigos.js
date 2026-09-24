@@ -123,12 +123,17 @@ htmlAvatarMini(amigo)
 
 
 
+// El nombre, escapado: lo escribe cada persona al registrarse, y hasta
+// el 24/09/2026 un nombre con HTML se ejecutaba aquí. Lo mismo en las
+// dos listas de solicitudes de abajo, y la de recibidas era la peor:
+// bastaba con mandar la solicitud, sin que nadie la aceptara. Ver el
+// punto 77 de docs/AUDITORIA.md.
 card.innerHTML += `
 
 <div class="amigo-info">
 
 <div class="amigo-nombre">
-${nombre}
+${MRTexto.escapar(nombre)}
 </div>
 
 ${typeof insigniasBloqueHTML === "function" ? insigniasBloqueHTML(nombre, true) : ""}
@@ -209,7 +214,7 @@ div.className="solicitud-card";
 div.innerHTML=`
 
 <div>
-👤 ${sol.de}
+👤 ${MRTexto.escapar(sol.de)}
 </div>
 
 
@@ -472,7 +477,7 @@ div.className="solicitud-card";
 div.innerHTML=`
 
 <div>
-👤 ${sol.para}
+👤 ${MRTexto.escapar(sol.para)}
 </div>
 
 <span class="badge">⏳ Pendiente</span>
