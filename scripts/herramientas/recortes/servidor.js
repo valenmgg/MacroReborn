@@ -2,9 +2,10 @@
 // LA HERRAMIENTA DE RECORTES, LADO SERVIDOR
 // scripts/herramientas/recortes/servidor.js
 // ==============================
-// Una pagina para elegir a mano el cuadro de las previsualizaciones:
-// una prenda puesta sobre su maniqui, un cuadro uno a uno encima, y la
-// miniatura final en vivo. Lo que se guarda va a
+// Una pagina para revisar, prenda por prenda, el cuadro automatico de su
+// previsualizacion, y forzar uno para toda una capa de un modelo si hace
+// falta: la prenda puesta sobre su maniqui, el cuadro encima y la
+// miniatura final en vivo. Lo forzado va a
 // api/recortes-previsualizacion.json. Fase 4 de docs/AVATARES-SERVIDOR.md.
 //
 // SOLO EXISTE EN EL SERVIDOR LOCAL. Esto lo engancha
@@ -143,21 +144,19 @@ async function catalogo(sql) {
     let caja = null;
     try { caja = compositor.cajaDibujada(compositor.componer([binario])); } catch (_) {}
 
-    const ficha = { valor: f.valor, nombre: f.nombre, url: "/prendas/" + f.sha256 + ".png", caja };
+    // `auto` es el cuadro con que se dibujara si nadie fuerza otro. Lo
+    // calcula el servidor, el mismo codigo que generara las 768, para que
+    // la pagina no tenga una copia de la regla que pueda discrepar.
+    const ficha = {
+      valor: f.valor, nombre: f.nombre, url: "/prendas/" + f.sha256 + ".png",
+      caja, auto: recortes.cuadroAutomatico(caja)
+    };
     ((prendas[f.modelo] = prendas[f.modelo] || {})[f.capa] =
       prendas[f.modelo][f.capa] || []).push(ficha);
     if (f.capa === "modelo") bases[f.modelo] = { valor: f.valor, url: ficha.url };
   }
 
-  const sugerencias = {};
-  for (const [modelo, porCapa] of Object.entries(prendas)) {
-    sugerencias[modelo] = {};
-    for (const [capa, lista] of Object.entries(porCapa)) {
-      sugerencias[modelo][capa] = recortes.sugerir(lista.map(p => p.caja));
-    }
-  }
-
-  _catalogo = { prendas, bases, sugerencias, datos };
+  _catalogo = { prendas, bases, datos };
   return _catalogo;
 }
 
@@ -212,7 +211,6 @@ async function atender(req, res, url, sql) {
       config: recortes.leer(),
       prendas: c.prendas,
       bases: c.bases,
-      sugerencias: c.sugerencias,
       referencias: referencias()
     });
     return true;

@@ -2,26 +2,27 @@
 // LOS CUADROS DE LAS PREVISUALIZACIONES — api/_recortes.js
 // ==============================
 // Una previsualizacion es la prenda puesta sobre un maniqui y recortada
-// a un cuadro fijo, como en el inventario de un videojuego: todas las
-// bocas de un modelo en el mismo sitio, todas sus camisas en el mismo.
-// Fase 4 de docs/AVATARES-SERVIDOR.md.
+// a un cuadro, como en el inventario de un videojuego. Fase 4 de
+// docs/AVATARES-SERVIDOR.md.
 //
-// LOS CUADROS LOS ELIGE UNA PERSONA, NO ESTE CODIGO. Se calcularon del
-// arte el 22/09/2026 y el resultado fue correcto pero no era lo que se
-// queria ver, asi que se decidio que los elige quien mira, con la
-// herramienta de scripts/herramientas/recortes. Lo que hay en el archivo
-// de abajo es lo que alguien decidio; lo que no esta, no se ha decidido.
+// EL CUADRO ES AUTOMATICO, UNO POR PRENDA. Decidido el 24/09/2026:
+// automatico para todas, y mas adelante se podran corregir una por una.
+// Uno por prenda, alrededor de su propio dibujo, y no uno compartido por
+// toda la capa: medido sobre las 768 prendas, uno compartido dejaba
+// diminutos el 58 % de los accesorios y cortaba el 93 % de los pelos, y
+// uno por prenda casi ninguno.
 //
-// UN CUADRO POR CAPA Y POR MODELO, no uno por capa. Los seis modelos
-// tienen poses muy distintas -fengchao agachado, fenglei con un brazo
-// arriba- y la cabeza de cada uno cae en otro sitio, asi que un solo
-// cuadro de "boca" no les sirve a los seis. Son 78 combinaciones con
-// prendas.
+// SE PUEDE FORZAR, y quien decide cual manda es cuadroParaPrenda:
+//   - para toda una capa de un modelo, con la herramienta de
+//     scripts/herramientas/recortes. Va al archivo de abajo, versionado;
+//     lo que no esta ahi es automatico.
+//   - para una prenda sola, todavia no. Cuando exista, entra en
+//     cuadroParaPrenda antes que lo demas.
 //
 // SIEMPRE CUADRADOS, uno a uno. Como el lienzo mide 327x504, el mayor
-// cuadrado que cabe es de 327: un fondo o una melena de cuerpo entero
-// no caben enteros y la previsualizacion enseña un trozo. Se acepto el
-// 23/09/2026 sabiendolo. Macrojuegos tenia la misma limitacion.
+// cuadrado que cabe es de 327: de un fondo o de una melena de cuerpo
+// entero se ve un trozo, el de arriba. Macrojuegos tenia la misma
+// limitacion.
 
 const fs = require("fs");
 const path = require("path");
@@ -158,30 +159,43 @@ function cuadroDe(config, modelo, capa) {
 }
 
 // ------------------------------------------------------------------
-// SUGERIR
+// EL CUADRO AUTOMATICO
 // ------------------------------------------------------------------
-// Un punto de partida para la herramienta, no una decision: el cuadro
-// mas pequeño que cubre el dibujo de todas las prendas de esa capa en ese
-// modelo, con margen, y cuadrado. La persona lo mueve desde ahi. No se
-// guarda nunca solo: lo que va al archivo es lo que alguien acepto.
-function sugerir(cajas, margen) {
+// El de UNA prenda: el menor cuadrado que contiene su dibujo, con margen,
+// centrado en el y empujado dentro del lienzo si se sale.
+//
+// Nunca mas chico que LADO_SALIDA. Una prenda diminuta, un pendiente, no
+// se amplia por encima de su tamaño real, que se veria borrosa; y asi las
+// pequeñas de una misma capa salen todas a la misma escala.
+//
+// Si no cabe entera -un fondo, la piel, una melena de cuerpo entero- se
+// ve su parte de ARRIBA: es la que la reconoce. De un pelo, la cabeza, no
+// las puntas.
+function cuadroAutomatico(caja, margen) {
   const m = margen === undefined ? 10 : margen;
-  const validas = (cajas || []).filter(Boolean);
-  if (!validas.length) return { x: 0, y: 0, lado: LADO_MAXIMO };
+  if (!caja) return { x: 0, y: 0, lado: LADO_MAXIMO };
 
-  const x0 = Math.min(...validas.map(c => c.x));
-  const y0 = Math.min(...validas.map(c => c.y));
-  const x1 = Math.max(...validas.map(c => c.x + c.ancho));
-  const y1 = Math.max(...validas.map(c => c.y + c.alto));
+  const lado = Math.max(LADO_SALIDA,
+    Math.min(LADO_MAXIMO, Math.max(caja.ancho, caja.alto) + 2 * m));
+  const cabe = caja.alto + 2 * m <= lado;
+  const cx = caja.x + caja.ancho / 2;
+  const y = cabe ? caja.y + caja.alto / 2 - lado / 2 : caja.y - m;
+  return {
+    x: Math.max(0, Math.min(LIENZO_ANCHO - lado, Math.round(cx - lado / 2))),
+    y: Math.max(0, Math.min(LIENZO_ALTO - lado, Math.round(y))),
+    lado
+  };
+}
 
-  const lado = Math.max(LADO_MINIMO,
-    Math.min(LADO_MAXIMO, Math.max(x1 - x0, y1 - y0) + 2 * m));
-
-  // Centrado sobre el dibujo, y empujado dentro del lienzo si se sale.
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-  const x = Math.max(0, Math.min(LIENZO_ANCHO - lado, Math.round(cx - lado / 2)));
-  const y = Math.max(0, Math.min(LIENZO_ALTO - lado, Math.round(cy - lado / 2)));
-  return { x, y, lado };
+// El cuadro con el que se dibuja una prenda. Es el UNICO sitio que lo
+// decide, de lo mas concreto a lo mas general:
+//   1. el de esa prenda sola. Todavia no existe; cuando exista, va aqui,
+//      antes que nada.
+//   2. el que se fijo para toda su capa en su modelo, con la herramienta.
+//   3. el automatico, alrededor de su propio dibujo.
+// `prenda` es { modelo, capa, caja }, con la caja de api/_compositor.js.
+function cuadroParaPrenda(config, prenda) {
+  return cuadroDe(config, prenda.modelo, prenda.capa) || cuadroAutomatico(prenda.caja);
 }
 
 // Cuantas de estas cajas se salen de un cuadro. Es lo que la herramienta
@@ -209,6 +223,7 @@ module.exports = {
   leer,
   escribir,
   cuadroDe,
-  sugerir,
+  cuadroAutomatico,
+  cuadroParaPrenda,
   cuantasSeSalen
 };

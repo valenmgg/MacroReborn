@@ -33,8 +33,8 @@
   <section class="columna lienzo">
     <div class="cabecera-lienzo">
       <h2 id="tituloLienzo">Elige una capa</h2>
-      <p id="avisoSugerencia" class="aviso" hidden>
-        Esto es una <b>sugerencia</b>. Mueve el cuadro o pulsa <b>Aceptar</b> para decidirlo.
+      <p id="avisoAutomatico" class="aviso" hidden>
+        Cuadro <b>automático</b> de esta prenda. Si lo mueves, pasa a ser el de toda la capa en este modelo.
       </p>
     </div>
     <canvas id="lienzo" tabindex="0" aria-label="Lienzo: arrastra el cuadro para moverlo, las esquinas para cambiar su tamaño, o usa las flechas"></canvas>
@@ -79,10 +79,9 @@
       </div>
       <p id="seSalen" class="se-salen"></p>
       <div class="acciones">
-        <button type="button" id="botonAceptar" class="primario">Aceptar</button>
-        <button type="button" id="botonSugerencia">Volver a la sugerencia</button>
+        <button type="button" id="botonAceptar" class="primario" title="Usa este mismo cuadro para todas las prendas de esta capa en este modelo">Usar para toda la capa</button>
         <button type="button" id="botonCopiar" title="Pone este mismo cuadro en esta capa de los demás modelos">Copiar a los demás modelos</button>
-        <button type="button" id="botonQuitar" class="discreto">Quitar decisión</button>
+        <button type="button" id="botonQuitar" class="discreto">Volver al automático</button>
       </div>
     </section>
 

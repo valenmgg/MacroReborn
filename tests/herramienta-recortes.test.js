@@ -1,12 +1,15 @@
 // ==============================
 // LA HERRAMIENTA DE RECORTES — tests/herramienta-recortes.test.js
 // ==============================
-// La pagina donde una persona elige a mano el cuadro de cada
-// previsualizacion. Se carga la de verdad en jsdom, con el lienzo, las
-// imagenes y el servidor de mentira, y se la maneja como lo haria alguien
-// con el raton.
+// La pagina donde se revisa el cuadro automatico de cada previsualizacion
+// y, si hace falta, se fuerza uno para toda una capa. Se carga la de
+// verdad en jsdom, con el lienzo, las imagenes y el servidor de mentira,
+// y se la maneja como lo haria alguien con el raton.
 //
 // Lo que hay que sujetar:
+//
+//   SIN FORZAR, CADA PRENDA ENSEÑA SU PROPIO CUADRO AUTOMATICO, el que
+//   manda el servidor, y cambia al pasar de prenda.
 //
 //   AGRANDAR DESDE UNA ESQUINA DEJA FIJA LA CONTRARIA Y SIGUE CUADRADO.
 //   Es la cuenta mas facil de equivocar: cuatro esquinas, cada una con su
@@ -14,9 +17,9 @@
 //
 //   EL CUADRO NUNCA SALE DEL LIENZO, arrastre lo que se arrastre.
 //
-//   LO QUE SE GUARDA ES SOLO LO DECIDIDO. Una capa que solo se miro, con
-//   la sugerencia puesta, no puede colarse en el archivo como si alguien
-//   la hubiera elegido.
+//   LO QUE SE GUARDA ES SOLO LO FORZADO. Una capa que solo se miro, con
+//   el automatico puesto, no puede colarse en el archivo como si alguien
+//   lo hubiera elegido.
 //
 //   Y LA HERRAMIENTA NO EXISTE EN PRODUCCION. Tiene una ruta que escribe
 //   un archivo del repositorio.
@@ -43,8 +46,11 @@ const APP = fs.readFileSync(raiz("scripts", "herramientas", "recortes", "app.js"
 const CAPAS = ["fondo", "espalda", "modelo", "piel", "ojos", "boca", "botas", "pantalon",
   "remera", "guantes", "accesorio", "cara", "pelo", "mascota", "borde"];
 
-const prenda = (valor, x, y, ancho, alto) =>
-  ({ valor, nombre: valor, url: "/p/" + valor + ".png", caja: { x, y, ancho, alto } });
+// `auto` es el cuadro automatico que mandaria el servidor. Aqui va fijo a
+// mano, para que las cuentas de los arrastres se lean solas; la regla de
+// verdad se prueba en tests/recortes.test.js.
+const prenda = (valor, x, y, ancho, alto, auto) =>
+  ({ valor, nombre: valor, url: "/p/" + valor + ".png", caja: { x, y, ancho, alto }, auto });
 
 function datosDePrueba(config) {
   return {
@@ -57,17 +63,14 @@ function datosDePrueba(config) {
     capasSolas: ["modelo", "fondo"],
     config: config || { ladoSalida: 96, maniqui: "plano", cuadros: {} },
     prendas: {
-      cereza: { boca: [prenda("cereza_boca1", 150, 100, 30, 20)] },
+      cereza: { boca: [prenda("cereza_boca1", 150, 100, 30, 20, { x: 140, y: 90, lado: 50 })] },
       tora: {
-        boca: [prenda("tora_boca1", 130, 120, 40, 20), prenda("tora_boca2", 120, 110, 80, 60)],
-        pelo: [prenda("tora_pelo1", 60, 10, 200, 150)]
+        boca: [prenda("tora_boca1", 130, 120, 40, 20, { x: 110, y: 100, lado: 60 }),
+               prenda("tora_boca2", 120, 110, 80, 60, { x: 100, y: 100, lado: 100 })],
+        pelo: [prenda("tora_pelo1", 60, 10, 200, 150, { x: 50, y: 0, lado: 220 })]
       }
     },
     bases: { cereza: { valor: "cereza", url: "/p/cereza.png" }, tora: { valor: "tora", url: "/p/tora.png" } },
-    sugerencias: {
-      cereza: { boca: { x: 140, y: 90, lado: 50 } },
-      tora: { boca: { x: 100, y: 100, lado: 100 }, pelo: { x: 50, y: 0, lado: 220 } }
-    },
     referencias: { porCapa: {} }
   };
 }
@@ -181,21 +184,60 @@ async function pulsarGuardar(w, guardados) {
 
 describe("al abrir", () => {
 
-  test("arranca en el primer modelo, en su primera capa con prendas, con la sugerencia", async () => {
+  test("arranca en el primer modelo, en su primera capa, con el automatico de su primera prenda", async () => {
     const { doc } = await montar();
     assert.match(doc.getElementById("tituloLienzo").textContent, /cereza · boca/);
     assert.deepStrictEqual(cuadro(doc), { x: 140, y: 90, lado: 50 });
-    assert.equal(doc.getElementById("avisoSugerencia").hidden, false,
-      "no avisa de que lo que se ve es una sugerencia");
+    assert.equal(doc.getElementById("avisoAutomatico").hidden, false,
+      "no avisa de que lo que se ve es el automatico");
   });
 
-  test("lo que ya estaba guardado vuelve como decidido", async () => {
+  test("lo que ya estaba guardado vuelve como forzado", async () => {
     const { w, doc } = await montar({ ladoSalida: 96, maniqui: "plano",
       cuadros: { tora: { boca: { x: 11, y: 22, lado: 88 } } } });
     await elegirModelo(w, "tora");
     await elegirCapa(w, "boca");
     assert.deepStrictEqual(cuadro(doc), { x: 11, y: 22, lado: 88 });
-    assert.equal(doc.getElementById("avisoSugerencia").hidden, true);
+    assert.equal(doc.getElementById("avisoAutomatico").hidden, true);
+  });
+
+});
+
+describe("el automatico, prenda por prenda", () => {
+
+  test("sin forzar, cada prenda enseña su propio cuadro", async () => {
+    const { w, doc } = await montar();
+    await elegirModelo(w, "tora");                          // tora · boca, en tora_boca1
+    assert.deepStrictEqual(cuadro(doc), { x: 110, y: 100, lado: 60 });
+    doc.getElementById("botonSiguiente").click();
+    await quieta(w);
+    assert.deepStrictEqual(cuadro(doc), { x: 100, y: 100, lado: 100 },
+      "al pasar de prenda no cambio al cuadro de la nueva");
+    assert.match(doc.getElementById("seSalen").textContent, /Automático/);
+  });
+
+  test("forzado para la capa, el cuadro ya no cambia al pasar de prenda", async () => {
+    const { w, doc } = await montar();
+    await elegirModelo(w, "tora");
+    await arrastrar(w, [140, 130], [150, 140]);            // mueve el de tora_boca1 y lo fuerza
+    assert.deepStrictEqual(cuadro(doc), { x: 120, y: 110, lado: 60 });
+    doc.getElementById("botonSiguiente").click();
+    await quieta(w);
+    assert.deepStrictEqual(cuadro(doc), { x: 120, y: 110, lado: 60 },
+      "lo forzado para la capa no le sirvio a la siguiente prenda");
+    assert.equal(doc.getElementById("avisoAutomatico").hidden, true);
+  });
+
+  test("Volver al automatico quita lo forzado y no queda nada que guardar", async () => {
+    const { w, doc } = await montar();
+    await arrastrar(w, [160, 110], [170, 120]);            // fuerza cereza · boca
+    assert.equal(doc.getElementById("botonGuardar").disabled, false);
+    doc.getElementById("botonQuitar").click();
+    await esperar(w);
+    assert.deepStrictEqual(cuadro(doc), { x: 140, y: 90, lado: 50 });
+    assert.equal(doc.getElementById("avisoAutomatico").hidden, false);
+    assert.equal(doc.getElementById("botonGuardar").disabled, true,
+      "tras volver al automatico sigue habiendo algo que guardar");
   });
 
 });
@@ -280,21 +322,22 @@ describe("guardar", () => {
     assert.equal(doc.getElementById("botonGuardar").disabled, true);
   });
 
-  test("una capa que solo se miro NO se guarda como decidida", async () => {
-    // La sugerencia es un punto de partida. Si se colara en el archivo,
-    // parecería que alguien eligio ese cuadro.
+  test("una capa que solo se miro NO se guarda como forzada", async () => {
+    // Lo que no esta en el archivo es automatico. Si el automatico se
+    // colara en el archivo, pareceria que alguien lo eligio, y dejaria de
+    // seguir a la prenda si su dibujo cambia.
     const { w, doc, guardados } = await montar();
-    await arrastrar(w, [160, 110], [170, 120]);             // decide cereza/boca
+    await arrastrar(w, [160, 110], [170, 120]);             // fuerza cereza/boca
     await elegirModelo(w, "tora");                           // mira tora/boca sin tocarla
     await pulsarGuardar(w, guardados);
 
     assert.equal(guardados.length, 1);
     assert.deepStrictEqual(Object.keys(guardados[0].cuadros), ["cereza"],
-      "se colo una capa que nadie decidio");
+      "se colo una capa que nadie forzo");
     assert.deepStrictEqual(guardados[0].cuadros.cereza.boca, { x: 150, y: 100, lado: 50 });
   });
 
-  test("Aceptar convierte la sugerencia en decision", async () => {
+  test("Usar para toda la capa fuerza el cuadro que se ve", async () => {
     const { w, doc, guardados } = await montar();
     doc.getElementById("botonAceptar").click();
     await esperar(w);
@@ -409,20 +452,31 @@ describe("lo que se pinta debajo de la prenda", () => {
 
 });
 
-describe("el aviso de las que se salen", () => {
+describe("el aviso de las que no caben", () => {
 
-  test("dice cuantas asoman fuera del cuadro", async () => {
+  test("en automatico dice que cada una tiene el suyo; forzado, cuantas asoman", async () => {
     const { w, doc } = await montar();
     await elegirModelo(w, "tora");
     await elegirCapa(w, "boca");
-    // La sugerencia de tora/boca es 100,100 lado 100: tora_boca2 (120,110 de 80x60) cabe.
-    assert.match(doc.getElementById("seSalen").textContent, /caben enteras/);
+    // Las dos bocas caben enteras en su propio cuadro automatico.
+    assert.match(doc.getElementById("seSalen").textContent, /cada prenda tiene su propio cuadro$/);
     const lienzo = doc.getElementById("lienzo");
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 30; i++) {                           // encogerlo lo fuerza para la capa
       lienzo.dispatchEvent(new w.KeyboardEvent("keydown", { key: "-", bubbles: true }));
     }
     await esperar(w);
-    assert.match(doc.getElementById("seSalen").textContent, /asoman fuera/);
+    assert.match(doc.getElementById("seSalen").textContent, /2 de 2 prendas asoman fuera/);
+  });
+
+  test("en automatico cuenta las que no caben enteras ni en el suyo", async () => {
+    // Un pelo mas alto que el lienzo: su cuadro automatico enseña la parte
+    // de arriba, y el aviso lo dice.
+    const { w, doc } = await montar(null, d => {
+      d.prendas.tora.pelo.push(prenda("tora_melena", 40, 10, 240, 480, { x: 0, y: 0, lado: 327 }));
+    });
+    await elegirModelo(w, "tora");
+    await elegirCapa(w, "pelo");
+    assert.match(doc.getElementById("seSalen").textContent, /1 no caben enteras y se ven desde arriba/);
   });
 
 });

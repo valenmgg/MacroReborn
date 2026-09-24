@@ -2,9 +2,9 @@
 // LA HERRAMIENTA DE RECORTES, LADO NAVEGADOR
 // scripts/herramientas/recortes/app.js
 // ==============================
-// Una persona elige, capa por capa y modelo por modelo, el cuadro que
-// enseñara cada previsualizacion. Aqui solo se decide; las 768 imagenes
-// las genera despues el servidor con lo guardado. Fase 4 de
+// Enseña, prenda por prenda, el cuadro automatico de su previsualizacion,
+// y deja forzar uno para toda una capa de un modelo. Aqui solo se mira y
+// se decide; las 768 imagenes las genera el servidor. Fase 4 de
 // docs/AVATARES-SERVIDOR.md.
 //
 // Todas las cuentas del cuadro se hacen en coordenadas del LIENZO, de
@@ -28,7 +28,7 @@
     maniqui: "plano",
     cuadros: {},            // SOLO lo decidido: cuadros[modelo][capa]
     guardado: "",           // la configuracion tal como esta en el archivo
-    cuadro: null,           // el que se ve ahora, decidido o sugerido
+    cuadro: null,           // el que se ve ahora, forzado o automatico
     k: 1,                   // escala lienzo -> pantalla
     arrastre: null,
     puesta: null,           // la prenda puesta, a tamaño de lienzo
@@ -82,13 +82,15 @@
     return !!(estado.cuadros[modelo] && estado.cuadros[modelo][capa]);
   }
 
-  function sugerencia(modelo, capa) {
-    const s = estado.datos.sugerencias[modelo];
-    return (s && s[capa]) || { x: 0, y: 0, lado: estado.datos.ladoMaximo };
+  // El cuadro automatico de la prenda que se esta mirando. Lo manda el
+  // servidor con cada prenda: aqui no hay copia de la regla.
+  function automatico() {
+    const p = prendas()[estado.indice];
+    return (p && p.auto) || { x: 0, y: 0, lado: estado.datos.ladoMaximo };
   }
 
-  // Poner el cuadro. Si `decidir`, queda como decision de esta capa en
-  // este modelo; si no, es solo lo que se enseña (una sugerencia).
+  // Poner el cuadro. Si `decidir`, queda forzado para toda esta capa en
+  // este modelo; si no, es solo lo que se enseña (el automatico).
   function fijar(c, decidir) {
     estado.cuadro = limitar(c);
     if (decidir) {
@@ -308,14 +310,23 @@
       if (document.activeElement !== el) el.value = v == null ? "" : v;
     }
 
-    const fuera = c ? lista.filter(p => seSale(p.caja, c)).length : 0;
+    // Con un cuadro forzado para toda la capa, la pregunta es si les sirve
+    // a todas. En automatico cada prenda tiene el suyo, y solo no caben las
+    // mas altas que el lienzo, que se ven desde arriba.
+    const esDecision = decidido(estado.modelo, estado.capa);
+    const noCabe = p => !!(p && c) && (esDecision ? seSale(p.caja, c) : !!p.auto && seSale(p.caja, p.auto));
+    const fuera = lista.filter(noCabe).length;
     const texto = $("seSalen");
     if (!lista.length) { texto.textContent = ""; }
+    else if (!esDecision) {
+      texto.textContent = "Automático: cada prenda tiene su propio cuadro" +
+        (fuera ? ". " + fuera + " no caben enteras y se ven desde arriba" : "");
+      texto.className = "se-salen bien";
+    }
     else if (fuera === 0) { texto.textContent = "Las " + lista.length + " prendas caben enteras en el cuadro"; texto.className = "se-salen bien"; }
     else { texto.textContent = fuera + " de " + lista.length + " prendas asoman fuera del cuadro"; texto.className = "se-salen mal"; }
 
-    const esDecision = decidido(estado.modelo, estado.capa);
-    $("avisoSugerencia").hidden = esDecision || !lista.length;
+    $("avisoAutomatico").hidden = esDecision || !lista.length;
     $("botonAceptar").disabled = esDecision || !lista.length;
     $("botonQuitar").disabled = !esDecision;
     $("botonCopiar").disabled = !lista.length;
@@ -325,19 +336,19 @@
     nombre.textContent = "";
     if (prenda) {
       nombre.append((prenda.nombre || prenda.valor) + " ");
-      if (c && seSale(prenda.caja, c)) {
+      if (noCabe(prenda)) {
         const s = document.createElement("span");
         s.className = "fuera";
-        s.textContent = "asoma fuera del cuadro";
+        s.textContent = esDecision ? "asoma fuera del cuadro" : "no cabe entera: se ve desde arriba";
         nombre.append(s);
       }
     }
 
-    // La tira: con borde amarillo las que se salen.
+    // La tira: con borde amarillo las que no caben.
     const tira = $("tira");
     tira.querySelectorAll("button").forEach((b, i) => {
       b.classList.toggle("actual", i === estado.indice);
-      b.classList.toggle("fuera", !!(c && seSale(lista[i] && lista[i].caja, c)));
+      b.classList.toggle("fuera", noCabe(lista[i]));
     });
   }
 
@@ -479,6 +490,8 @@
     const lista = prendas();
     if (!lista.length) return;
     estado.indice = (i + lista.length) % lista.length;
+    // Sin cuadro forzado, cada prenda enseña el suyo.
+    if (!decidido(estado.modelo, estado.capa)) estado.cuadro = limitar(automatico());
     ocupada(1);
     try {
       await componerPuesta();
@@ -493,7 +506,7 @@
     estado.capa = capa;
     estado.indice = 0;
     const d = estado.cuadros[estado.modelo] && estado.cuadros[estado.modelo][capa];
-    estado.cuadro = limitar(d || sugerencia(estado.modelo, capa));
+    estado.cuadro = limitar(d || automatico());
     $("tituloLienzo").textContent = estado.modelo + " · " + capa;
     pintarTira();
     pintarReferencias();
@@ -667,11 +680,12 @@
       });
     }
 
+    // Fijar el cuadro que se ve para toda la capa en este modelo.
     $("botonAceptar").addEventListener("click", () => fijar(estado.cuadro, true));
-    $("botonSugerencia").addEventListener("click", () => fijar(sugerencia(estado.modelo, estado.capa), true));
+    // Quitar lo forzado: cada prenda vuelve a su cuadro automatico.
     $("botonQuitar").addEventListener("click", () => {
       if (estado.cuadros[estado.modelo]) delete estado.cuadros[estado.modelo][estado.capa];
-      fijar(sugerencia(estado.modelo, estado.capa), false);
+      fijar(automatico(), false);
     });
     $("botonCopiar").addEventListener("click", () => {
       const c = estado.cuadro;

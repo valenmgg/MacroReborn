@@ -1,17 +1,22 @@
 // ==============================
 // LOS CUADROS DE LAS PREVISUALIZACIONES — tests/recortes.test.js
 // ==============================
-// api/_recortes.js guarda y valida los cuadros que una persona elige en
-// la herramienta, y api/_previsualizacion.js dibuja con ellos.
+// api/_recortes.js calcula el cuadro automatico de cada prenda, y guarda
+// y valida los que alguien fuerza con la herramienta;
+// api/_previsualizacion.js dibuja con ellos.
 //
 // Lo que hay que sujetar:
+//
+//   EL AUTOMATICO CONTIENE LA PRENDA, sin ampliarla por encima de su
+//   tamaño real y sin salirse del lienzo. Y si no cabe, se ve su parte de
+//   arriba: de un pelo largo, la cabeza.
 //
 //   UN CUADRO MALO NO LLEGA AL ARCHIVO. Si la herramienta manda uno que
 //   se sale del lienzo, el recorte revienta despues, al generar 768
 //   imagenes, lejos de quien se equivoco. Se para aqui, con el motivo.
 //
-//   LO QUE ESTA EN EL ARCHIVO ES LO QUE ALGUIEN DECIDIO. La sugerencia
-//   es un punto de partida y no se guarda sola.
+//   LO QUE SE FUERZA MANDA SOBRE EL AUTOMATICO, y solo en su capa y su
+//   modelo.
 //
 //   EL ORDEN DE LAS CAPAS SE RESPETA AL PONER LA PRENDA. El fondo va
 //   detras del cuerpo y la camisa delante. Al reves, un fondo taparia
@@ -146,27 +151,57 @@ describe("el archivo", () => {
 
 });
 
-describe("la sugerencia", () => {
+describe("el cuadro automatico", () => {
 
-  test("cubre el dibujo de todas las prendas, con margen, y es cuadrada", () => {
-    const cajas = [{ x: 100, y: 80, ancho: 40, alto: 30 }, { x: 110, y: 90, ancho: 60, alto: 20 }];
-    const s = R.sugerir(cajas, 10);
-    assert.equal(R.problemaDeCuadro(s), null);
-    assert.equal(R.cuantasSeSalen(cajas, s), 0, "la sugerencia deja prendas fuera");
+  test("contiene la prenda, con margen, y es cuadrado", () => {
+    const caja = { x: 100, y: 150, ancho: 120, alto: 80 };
+    const q = R.cuadroAutomatico(caja);
+    assert.equal(R.problemaDeCuadro(q), null);
+    assert.equal(R.cuantasSeSalen([caja], q), 0, "deja la prenda fuera");
+    assert.equal(q.lado, 140, "no es el menor cuadrado con margen");
   });
 
-  test("nunca se sale del lienzo, aunque el dibujo este en un borde", () => {
-    const s = R.sugerir([{ x: 300, y: 480, ancho: 27, alto: 24 }], 20);
-    assert.equal(R.problemaDeCuadro(s), null, JSON.stringify(s));
+  test("una prenda diminuta no se amplia por encima de su tamaño real", () => {
+    // Un pendiente de 30x20: ampliado a 96 se veria borroso. El cuadro no
+    // baja de lo que mide la previsualizacion.
+    const caja = { x: 150, y: 100, ancho: 30, alto: 20 };
+    const q = R.cuadroAutomatico(caja);
+    assert.equal(q.lado, R.LADO_SALIDA);
+    assert.equal(R.cuantasSeSalen([caja], q), 0);
   });
 
-  test("con dibujo de cuerpo entero da el mayor cuadrado posible", () => {
-    const s = R.sugerir([{ x: 0, y: 0, ancho: 327, alto: 504 }]);
-    assert.equal(s.lado, 327);
+  test("nunca se sale del lienzo, aunque la prenda este en un borde", () => {
+    const caja = { x: 300, y: 480, ancho: 27, alto: 24 };
+    const q = R.cuadroAutomatico(caja);
+    assert.equal(R.problemaDeCuadro(q), null, JSON.stringify(q));
+    assert.equal(R.cuantasSeSalen([caja], q), 0);
   });
 
-  test("sin prendas da algo valido en vez de reventar", () => {
-    assert.equal(R.problemaDeCuadro(R.sugerir([])), null);
+  test("si no cabe entera, se ve su parte de arriba", () => {
+    // Una melena hasta los pies: se ve la cabeza con el pelo, no las puntas.
+    const melena = { x: 60, y: 20, ancho: 200, alto: 450 };
+    const q = R.cuadroAutomatico(melena);
+    assert.equal(q.lado, 327);
+    assert.ok(q.y <= melena.y && q.y + q.lado > melena.y, "no se ve la parte de arriba: " + JSON.stringify(q));
+    // Un fondo, que ocupa todo el lienzo.
+    assert.deepStrictEqual(R.cuadroAutomatico({ x: 0, y: 0, ancho: 327, alto: 504 }), { x: 0, y: 0, lado: 327 });
+  });
+
+  test("sin dibujo da algo valido en vez de reventar", () => {
+    assert.equal(R.problemaDeCuadro(R.cuadroAutomatico(null)), null);
+  });
+
+  test("lo que se fuerza para una capa manda, y solo en su capa y su modelo", () => {
+    const caja = { x: 150, y: 100, ancho: 30, alto: 20 };
+    const config = R.vacio();
+    config.cuadros = { tora: { boca: { x: 1, y: 2, lado: 50 } } };
+    assert.deepStrictEqual(R.cuadroParaPrenda(config, { modelo: "tora", capa: "boca", caja }), { x: 1, y: 2, lado: 50 });
+    assert.deepStrictEqual(R.cuadroParaPrenda(config, { modelo: "cereza", capa: "boca", caja }),
+      R.cuadroAutomatico(caja), "le presto a cereza el cuadro de tora");
+    assert.deepStrictEqual(R.cuadroParaPrenda(config, { modelo: "tora", capa: "pelo", caja }),
+      R.cuadroAutomatico(caja));
+    assert.deepStrictEqual(R.cuadroParaPrenda(R.vacio(), { modelo: "tora", capa: "boca", caja }),
+      R.cuadroAutomatico(caja), "sin nada forzado no es automatico");
   });
 
 });
