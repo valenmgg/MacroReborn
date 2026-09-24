@@ -105,7 +105,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 20 | - | Función rota | `explorar.html` está vacía para todos: lee `window.juegos` y `datos-juegos.js` declara un `const`, que no cuelga de `window` | `js/explorar.js:14` | 10 min |
 | 21 | - | Contenido | 15 de 113 juegos no cargan. El usuario ve una pantalla negra sin mensaje | `js/datos-juegos.js` | 2 h |
 | 22 | - | Contenido | Un juego roto por una errata de un carácter: `fairytail` frente a `fairytale` | `js/datos-juegos.js:894` | 1 min |
-| 23 | - | Función rota | La tienda muestra 12 cajas vacías con precio. 130 de 152 artículos no tienen dibujo en el índice público | `js/comunidad-ranking.js:617` | 2 h |
+| 23 | 2026-09-24 | Función rota | La tienda muestra 12 cajas vacías con precio. 130 de 152 artículos no tienen dibujo en el índice público. Arreglado con las previsualizaciones: 162 de 162 artículos con imagen (docs/AVATARES-SERVIDOR.md 12) | `js/comunidad-ranking.js:617` | 2 h |
 | 24 | - | Función rota | Se puede comprar una prenda retirada y no poder ponérsela nunca | `api/content.js:2367` | 1 h |
 | 25 | - | Economía | 3 de 7 misiones diarias piden `minutes_today`, métrica que el servidor nunca calcula. 14 días de cada 31 son incompletables | `api/progreso.js:28` | 3 h |
 | 26 | - | Economía | El reto global anuncia 500 XP y 250 monedas que ningún código reparte | `api/progreso.js:60` | 2 h |
