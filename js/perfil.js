@@ -311,48 +311,28 @@ suscribirPerfilSesion();
 // funcionaron jamás porque su nombre llevaba mayúscula y espacio.
 //
 // Ahora el catálogo lo manda el servidor
-// (/api/content?action=avatar-catalogo) y de ahí sale todo: qué prendas
-// hay, cómo se llaman, de qué ranura son, cuánto cuestan y dónde está
-// su dibujo. Publicar una prenda deja de necesitar un despliegue.
+// (/api/content?action=avatar-catalogo-completo) y de ahí sale todo: qué
+// prendas hay, cómo se llaman, de qué ranura son, cuánto cuestan y su
+// previsualización. Publicar una prenda deja de necesitar un despliegue.
+//
+// Lo que ya no trae es dónde está el dibujo de cada una. Desde la fase 5
+// de docs/AVATARES-SERVIDOR.md esta página no dibuja prenda por prenda en
+// ningún sitio: los avatares son una sola imagen cada uno, y la vista
+// previa del editor la dibuja el servidor (ver actualizarPreview).
 
 let CATALOGO = null;
-const RUTAS_PRENDA = new Map();   // valor -> URL del dibujo (elegibles)
 
-// Las retiradas van aparte, y no en RUTAS_PRENDA, porque ese mapa es
-// además la lista de lo que el editor ofrece (ver valoresDelCatalogo).
-// Una prenda retirada hay que poder DIBUJARLA, pero no ELEGIRLA.
-const RUTAS_RETIRADAS = new Map();
-
-// Bandera para no encadenar esperas: si el avatar se pide varias veces
-// mientras el catalogo esta en camino, solo una espera y las demas se
-// descartan. Sin esto, cada llamada dejaria su propio reintento.
+// Los valores que el editor ofrece: los publicados. Es la lista que usa
+// el avatar aleatorio.
+const VALORES_ELEGIBLES = new Set();
 
 let _promesaCatalogo = null;
 
-// La descarga la hace core.js, que se carga antes que esto en todas las
-// páginas y ya la arranca al abrirse. Si acá se pidiera otra vez, la
-// misma página bajaría el catálogo dos veces en paralelo y habría dos
-// copias de la misma verdad en memoria.
-//
-// De esa llamada sale el mapa de URLs para dibujar. Lo que el editor
-// necesita además —nombres, ranuras, precios— está en el mismo cuerpo de
-// la respuesta, así que se guarda en CATALOGO desde acá.
-// El catálogo llega por dos puertas distintas, y esta página usa las dos
-// porque hace dos cosas:
-//
-//   VESTIR   el editor necesita nombres, ranuras y precios. Eso es el
-//            catálogo completo, y desde que dejó de ser público hay que
-//            pedirlo con la sesión. El interceptor de js/core.js le
-//            cuelga el Bearer solo, así que acá no hay nada que firmar.
-//
-//   DIBUJAR  los avatares de los comentarios, de la gente que pasa por
-//            el perfil, del propio dueño. Eso lo cubre el índice público
-//            de cargarCatalogoAvatares(), y lo puede ver cualquiera.
-//
-// Sin sesión, el completo contesta 401 y se cae al público: la página
-// sigue dibujando todos los avatares, y CATALOGO se queda en null, que
-// es justo lo que apaga el editor. Es el comportamiento correcto — quien
-// no tiene cuenta no tiene nada que vestir.
+// El catálogo completo hay que pedirlo con la sesión. El interceptor de
+// js/core.js le cuelga el Bearer solo, así que acá no hay nada que
+// firmar. Sin sesión contesta 401: CATALOGO se queda en null, que es
+// justo lo que apaga el editor. Quien no tiene cuenta no tiene nada que
+// vestir, y los avatares de la página no necesitan el catálogo.
 function cargarCatalogo(){
   if(_promesaCatalogo) return _promesaCatalogo;
 
@@ -363,28 +343,16 @@ function cargarCatalogo(){
       return r.json();
     })
     .then(datos => {
-      // Sin sesión: se dibuja con el índice público y no se arma editor.
+      VALORES_ELEGIBLES.clear();
       if(!datos){
-        return cargarCatalogoAvatares().then(publico => {
-          CATALOGO = null;
-          RUTAS_PRENDA.clear();
-          RUTAS_RETIRADAS.clear();
-          Object.entries((publico && publico.rutas) || {}).forEach(([valor, url]) => {
-            RUTAS_PRENDA.set(valor, url);
-          });
-          return null;
-        });
+        CATALOGO = null;
+        return null;
       }
 
       if(!datos.success) throw new Error("el catálogo vino sin éxito");
       CATALOGO = datos;
-      RUTAS_PRENDA.clear();
-      datos.modelos.forEach(m => RUTAS_PRENDA.set(m.valor, m.url));
-      datos.prendas.forEach(p => RUTAS_PRENDA.set(p.valor, p.url));
-
-      RUTAS_RETIRADAS.clear();
-      (datos.retiradas || []).forEach(r => RUTAS_RETIRADAS.set(r.valor, r.url));
-
+      datos.modelos.forEach(m => VALORES_ELEGIBLES.add(m.valor));
+      datos.prendas.forEach(p => VALORES_ELEGIBLES.add(p.valor));
       return datos;
     })
     .catch(error => {
@@ -396,52 +364,9 @@ function cargarCatalogo(){
   return _promesaCatalogo;
 }
 
-// Traduce un valor ("tora_pelo3") a la URL de su dibujo.
-//
-// Mientras el catálogo no esté cargado se usa la ruta de siempre en
-// imagenes/, que es lo que hacen el resto de páginas del sitio. Así, si
-// el catálogo tarda o falla, los avatares se siguen dibujando en vez de
-// quedarse en blanco: degradar a lo de antes es mejor que no mostrar
-// nada.
-//
-// Con el catálogo cargado manda él, y eso es una mejora sobre CAPAS_IMG:
-// un valor que ya no existe —como "tora_piel7", que tres cuentas tienen
-// guardado y cuyo fichero se borró hace tiempo— deja de pedirse, así que
-// deja de dar un 404 en la consola.
-//
-// Pero hay que separar dos cosas que antes estaban mezcladas, porque se
-// parecen y no son lo mismo:
-//
-//   - RETIRADA: existe en la base, alguien la lleva puesta, y se sacó
-//     del editor. HAY QUE DIBUJARLA. Retirar una prenda la saca del
-//     editor, no del avatar de quien ya la tenía.
-//
-//   - COLGANDO: no existe en ningún sitio. Se dibujaría como un hueco y
-//     un 404 en la consola. Esa no se pide.
-//
-// Estaban mezcladas porque el catálogo solo traía las publicadas, así
-// que las dos caían en el mismo "no está en el mapa" y las dos se
-// descartaban. El resultado se vio en producción: una persona con dos
-// prendas retiradas puestas veía su propio avatar sin fondo y sin piel.
-function rutaDePrenda(valor){
-  if(!valor || valor === "ninguno") return null;
-
-  const conocida = RUTAS_PRENDA.get(valor) || RUTAS_RETIRADAS.get(valor);
-  if(conocida) return conocida;
-
-  // Todavía sin catálogo: la ruta de siempre, igual que el resto de las
-  // páginas. Degradar a lo de antes es mejor que no mostrar nada.
-  if(!RUTAS_PRENDA.size){
-    return typeof rutaCapaAvatar === "function" ? rutaCapaAvatar(valor) : null;
-  }
-
-  // Con catálogo y sin rastro del valor: está colgando.
-  return null;
-}
-
 // Los valores que el catálogo reconoce. Sustituye a Object.keys(CAPAS_IMG).
 function valoresDelCatalogo(){
-  return [...RUTAS_PRENDA.keys()];
+  return [...VALORES_ELEGIBLES];
 }
 
 // ==============================
@@ -498,13 +423,14 @@ function construirOpcionesDelEditor(){
       // La URL se guarda, NO se asigna. Ver mostrarImagenesVisibles().
       //
       // La miniatura es la previsualizacion: la prenda puesta en su
-      // maniqui, un JPG pequeño y cuadrado. Si todavia no se genero, el
-      // dibujo suelto, como antes. Fase 4 de docs/AVATARES-SERVIDOR.md.
+      // maniqui, un JPG pequeño y cuadrado. Fase 4 de
+      // docs/AVATARES-SERVIDOR.md. Si faltara, la caja se queda sin
+      // imagen y con su nombre: el dibujo suelto de la prenda es justo lo
+      // que no tiene que salir del equipo de arte. Toda prenda la tiene
+      // desde que se sube.
       if(item.previsualizacion){
         img.dataset.src = item.previsualizacion;
         img.classList.add("previsualizacion");
-      } else {
-        img.dataset.src = item.url;
       }
 
       div.appendChild(img);
@@ -880,20 +806,87 @@ cargarEstadoTiendaAvatares();
 
 
 // ---------- PREVIEW EDITOR ----------
+// La ropa que se va eligiendo la dibuja el servidor, igual que el avatar
+// guardado: POST /api/users?action=avatar-vista-previa devuelve el JPG.
+// Antes se apilaban aquí las prendas sueltas, una por capa, y era lo
+// último que las pedía. Fase 5 de docs/AVATARES-SERVIDOR.md.
+//
+// Cada petición es un dibujo en el servidor, así que:
+//   - se espera a que se deje de hacer clic (250 ms) antes de pedirla;
+//   - lo ya visto en esta página se guarda y no se vuelve a pedir;
+//   - si llega tarde una respuesta vieja, se descarta;
+//   - si falla o se frena, se queda la anterior, algo apagada.
+
+const _previasVistas = new Map();   // receta -> URL de la imagen en memoria
+let _previaEsperando = null;
+let _previaUltima = 0;
+
+function claveDePrevia(capas){
+  return ORDEN_CAPAS.map(tipo => capas[tipo] || "ninguno").join("|");
+}
+
+function pintarPreview(preview, src){
+  preview.classList.remove("cargando");
+  let img = preview.querySelector("img.capa");
+  if(!img){
+    preview.innerHTML = "";
+    img = document.createElement("img");
+    img.className = "capa";
+    img.alt = "Vista previa de tu avatar";
+    preview.appendChild(img);
+  }
+  if(img.getAttribute("src") !== src) img.src = src;
+}
+
+async function pedirPreview(preview, receta, clave){
+  const numero = ++_previaUltima;
+  try{
+    const r = await fetch("/api/users?action=avatar-vista-previa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatar: receta })
+    });
+    let src;
+    if(r.status === 204){
+      src = SILUETA_AVATAR.src;          // sin ninguna prenda
+    }else if(r.ok){
+      src = URL.createObjectURL(await r.blob());
+    }else{
+      throw new Error("HTTP " + r.status);
+    }
+    _previasVistas.set(clave, src);
+    // Unos 45 kB cada una: se guardan las 60 últimas y se sueltan las
+    // más viejas, salvo la que está a la vista.
+    if(_previasVistas.size > 60){
+      const [vieja, url] = _previasVistas.entries().next().value;
+      _previasVistas.delete(vieja);
+      if(url.startsWith("blob:") && url !== preview.querySelector("img.capa")?.getAttribute("src")){
+        URL.revokeObjectURL(url);
+      }
+    }
+    if(numero === _previaUltima) pintarPreview(preview, src);
+  }catch(error){
+    console.warn("MacroReborn: no se pudo dibujar la vista previa.", error);
+    if(numero === _previaUltima) preview.classList.remove("cargando");
+  }
+}
 
 function actualizarPreview(){
   const preview=document.getElementById("previewAvatar");
   if(!preview)return;
-  preview.innerHTML="";
-  ORDEN_CAPAS.forEach(tipo=>{
-    const ruta=rutaDePrenda(editorCapas[tipo]);
-    if(ruta){
-      let img=document.createElement("img");
-      img.src=ruta;
-      img.className="capa";
-      preview.appendChild(img);
-    }
-  });
+
+  const receta = { ...editorCapas };
+  const clave = claveDePrevia(receta);
+
+  clearTimeout(_previaEsperando);
+  if(_previasVistas.has(clave)){
+    ++_previaUltima;                     // lo que estuviera en camino ya no vale
+    pintarPreview(preview, _previasVistas.get(clave));
+    return;
+  }
+
+  preview.classList.add("cargando");
+  _previaEsperando = setTimeout(() => pedirPreview(preview, receta, clave), 250);
 }
 
 

@@ -1096,6 +1096,13 @@ a.actividad-cita:hover {
   top: 0;
 }
 
+/* Mientras el servidor dibuja la vista previa (ver actualizarPreview en
+   js/perfil.js), la anterior se queda a la vista, algo apagada. */
+.preview-capas.cargando .capa {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
 /* ---- Panel de opciones ---- */
 
 .opciones-editor {

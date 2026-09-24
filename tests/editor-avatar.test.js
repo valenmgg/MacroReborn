@@ -33,16 +33,6 @@ const HTML = fs.readFileSync(path.join(RAIZ, "perfil.html"), "utf8");
 const INICIO = "let CATALOGO = null;";
 const FINAL = "let editorCapas={";
 
-// El bloque de js/core.js que descarga el catalogo y traduce un valor a
-// la URL de su dibujo. perfil.js se apoya en el, asi que hace falta en el
-// mismo contexto.
-function bloqueDeCore() {
-  const i = FUENTE_CORE.indexOf("const RUTAS_DE_PRENDA");
-  const j = FUENTE_CORE.indexOf("function avatarMiniaturaHTML");
-  assert.ok(i !== -1 && j !== -1, "no se encontro el bloque del catalogo en js/core.js");
-  return FUENTE_CORE.slice(i, j);
-}
-
 function bloqueDelCatalogo() {
   const i = FUENTE.indexOf(INICIO);
   const j = FUENTE.indexOf(FINAL, i);
@@ -61,14 +51,20 @@ function catalogoDePrueba(extra) {
             "botas", "pantalon", "remera", "guantes", "accesorio",
             "cara", "pelo", "mascota", "borde"],
     modelos: [
-      { valor: "tora", modelo: "tora", capa: "modelo", nombre: "Tora", url: "/prendas/aaa.png", precio: null },
-      { valor: "cereza", modelo: "cereza", capa: "modelo", nombre: "Cereza", url: "/prendas/bbb.png", precio: null }
+      { valor: "tora", modelo: "tora", capa: "modelo", nombre: "Tora", url: "/prendas/aaa.png", precio: null,
+        previsualizacion: "/previsualizaciones/1.jpg?v=aaaaaaaaaaaa" },
+      { valor: "cereza", modelo: "cereza", capa: "modelo", nombre: "Cereza", url: "/prendas/bbb.png", precio: null,
+        previsualizacion: "/previsualizaciones/2.jpg?v=bbbbbbbbbbbb" }
     ],
     prendas: [
-      { valor: "tora_botas1", modelo: "tora", capa: "botas", nombre: "Botas de combate", url: "/prendas/ccc.png", precio: 140 },
-      { valor: "tora_botas2", modelo: "tora", capa: "botas", nombre: "Botas 2", url: "/prendas/ddd.png", precio: null },
-      { valor: "cereza_botas1", modelo: "cereza", capa: "botas", nombre: "Botas urbanas", url: "/prendas/eee.png", precio: null },
-      { valor: "tora_pelo1", modelo: "tora", capa: "pelo", nombre: "Pelo 1", url: "/prendas/fff.png", precio: null }
+      { valor: "tora_botas1", modelo: "tora", capa: "botas", nombre: "Botas de combate", url: "/prendas/ccc.png", precio: 140,
+        previsualizacion: "/previsualizaciones/3.jpg?v=cccccccccccc" },
+      { valor: "tora_botas2", modelo: "tora", capa: "botas", nombre: "Botas 2", url: "/prendas/ddd.png", precio: null,
+        previsualizacion: "/previsualizaciones/4.jpg?v=dddddddddddd" },
+      { valor: "cereza_botas1", modelo: "cereza", capa: "botas", nombre: "Botas urbanas", url: "/prendas/eee.png", precio: null,
+        previsualizacion: "/previsualizaciones/5.jpg?v=eeeeeeeeeeee" },
+      { valor: "tora_pelo1", modelo: "tora", capa: "pelo", nombre: "Pelo 1", url: "/prendas/fff.png", precio: null,
+        previsualizacion: "/previsualizaciones/6.jpg?v=ffffffffffff" }
     ]
   }, extra || {});
 }
@@ -86,16 +82,9 @@ function montar(respuesta) {
 
   vm.createContext(contexto);
 
-  // El catálogo lo descarga core.js y perfil.js lo reutiliza, así que se
-  // evalúa el core.js de verdad en el mismo contexto. Antes acá había una
-  // copia a mano de rutaCapaAvatar: una copia se queda vieja en cuanto
-  // alguien toca el original, que es justo el problema que se estaba
-  // quitando del editor.
-  vm.runInContext(bloqueDeCore(), contexto);
-
   const api = vm.runInContext(
     bloqueDelCatalogo() +
-    "\n;({ cargarCatalogo, construirOpcionesDelEditor, rutaDePrenda, valoresDelCatalogo, avisarCatalogoCaido, mostrarImagenesVisibles })",
+    "\n;({ cargarCatalogo, construirOpcionesDelEditor, valoresDelCatalogo, avisarCatalogoCaido, mostrarImagenesVisibles })",
     contexto
   );
 
@@ -155,28 +144,38 @@ describe("construir las opciones desde el catálogo", () => {
     assert.equal(item.dataset.modelo, "tora");
     // El src no se asigna al construir: la URL espera en data-src
     // hasta que la miniatura se ve. Ver mostrarImagenesVisibles().
-    assert.equal(item.querySelector("img").dataset.src, "/prendas/ccc.png");
+    assert.equal(item.querySelector("img").dataset.src, "/previsualizaciones/3.jpg?v=cccccccccccc");
     assert.equal(item.querySelector("img").getAttribute("src"), null);
     assert.equal(item.querySelector("img").getAttribute("loading"), "lazy");
     assert.match(item.textContent, /Botas de combate/);
   });
 
   test("con previsualizacion, la miniatura es la previsualizacion", async () => {
-    // La prenda puesta en su maniqui, un JPG cuadrado. Sin ella, el dibujo
-    // suelto, como en la prueba de arriba.
-    const catalogo = catalogoDePrueba();
-    catalogo.prendas[0].previsualizacion = "/previsualizaciones/12.jpg?v=abcdef012345";
-    const { doc, api } = montar(respuestaOk(catalogo));
+    // La prenda puesta en su maniqui, un JPG cuadrado.
+    const { doc, api } = montar(respuestaOk(catalogoDePrueba()));
 
     await api.cargarCatalogo();
     api.construirOpcionesDelEditor();
 
     const img = doc.querySelector('.opcion-item[data-valor="tora_botas1"] img');
-    assert.equal(img.dataset.src, "/previsualizaciones/12.jpg?v=abcdef012345");
+    assert.equal(img.dataset.src, "/previsualizaciones/3.jpg?v=cccccccccccc");
     assert.ok(img.classList.contains("previsualizacion"), "sin la clase se veria estirada en la caja alta");
-    const sin = doc.querySelector('.opcion-item[data-valor="tora_botas2"] img');
-    assert.equal(sin.dataset.src, "/prendas/ddd.png");
-    assert.ok(!sin.classList.contains("previsualizacion"));
+  });
+
+  test("y sin ella NO se cae al dibujo suelto de la prenda", async () => {
+    // Fase 5: ese dibujo es justo lo que no tiene que salir del equipo de
+    // arte. La caja se queda con su nombre y sin imagen.
+    const catalogo = catalogoDePrueba();
+    delete catalogo.prendas[1].previsualizacion;
+    const { doc, api } = montar(respuestaOk(catalogo));
+
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
+
+    const sin = doc.querySelector('.opcion-item[data-valor="tora_botas2"]');
+    assert.equal(sin.querySelector("img").dataset.src, undefined);
+    assert.equal(sin.querySelector("img").getAttribute("src"), null);
+    assert.match(sin.textContent, /Botas 2/);
   });
 
   test("el selector de personaje NO lleva data-modelo", async () => {
@@ -214,7 +213,8 @@ describe("construir las opciones desde el catálogo", () => {
       prendas: [{
         valor: "tora_botas9", modelo: "tora", capa: "botas",
         nombre: '<img src=x onerror="robar()">Botas',
-        url: "/prendas/ggg.png", precio: null
+        url: "/prendas/ggg.png", precio: null,
+        previsualizacion: "/previsualizaciones/9.jpg?v=999999999999"
       }]
     });
 
@@ -227,45 +227,31 @@ describe("construir las opciones desde el catálogo", () => {
     assert.equal(item.querySelectorAll("img").length, 1);
     // El src no se asigna al construir: la URL espera en data-src
     // hasta que la miniatura se ve. Ver mostrarImagenesVisibles().
-    assert.equal(item.querySelector("img").dataset.src, "/prendas/ggg.png");
+    assert.equal(item.querySelector("img").dataset.src, "/previsualizaciones/9.jpg?v=999999999999");
     assert.equal(item.querySelector("img").getAttribute("src"), null);
     assert.match(item.textContent, /onerror/, "el texto debe verse tal cual, escapado");
   });
 });
 
-describe("resolver la ruta de una prenda", () => {
-  test("sin catálogo cargado, cae en la ruta de siempre", () => {
-    const { api } = montar(respuestaOk(catalogoDePrueba()));
+describe("el editor no guarda ni pide prendas sueltas", () => {
+  // Fase 5 de docs/AVATARES-SERVIDOR.md. Aquí vivía rutaDePrenda(), que
+  // traducía cada valor a la dirección de su dibujo para apilar las
+  // capas. Ya no se apila nada: la vista previa la dibuja el servidor.
+  test("ninguna miniatura ni ningún dato apunta a /prendas/", async () => {
+    const { doc, api } = montar(respuestaOk(catalogoDePrueba()));
+    await api.cargarCatalogo();
+    api.construirOpcionesDelEditor();
 
-    // Todavía no se llamó a cargarCatalogo().
-    assert.equal(api.rutaDePrenda("tora_pelo3"), "imagenes/tora/pelo3.png");
-    assert.equal(api.rutaDePrenda("tora"), "imagenes/tora.png");
+    const html = doc.getElementById("editorAvatar").outerHTML;
+    assert.ok(!html.includes("/prendas/"), "el editor lleva direcciones de prendas sueltas");
   });
 
-  test("con catálogo cargado, manda el catálogo", async () => {
+  test("y lo que ofrece sale del catálogo, sin sus direcciones", async () => {
     const { api } = montar(respuestaOk(catalogoDePrueba()));
     await api.cargarCatalogo();
 
-    assert.equal(api.rutaDePrenda("tora_botas1"), "/prendas/ccc.png");
-    assert.equal(api.rutaDePrenda("tora"), "/prendas/aaa.png");
-  });
-
-  test("un valor que ya no existe deja de pedirse", async () => {
-    // "tora_piel7" lo tienen tres cuentas guardado y su fichero se borró
-    // hace tiempo: hoy da un 404 en la consola de esas personas.
-    const { api } = montar(respuestaOk(catalogoDePrueba()));
-    await api.cargarCatalogo();
-
-    assert.equal(api.rutaDePrenda("tora_piel7"), null);
-  });
-
-  test("ninguno y vacío no dibujan nada", async () => {
-    const { api } = montar(respuestaOk(catalogoDePrueba()));
-    await api.cargarCatalogo();
-
-    assert.equal(api.rutaDePrenda("ninguno"), null);
-    assert.equal(api.rutaDePrenda(""), null);
-    assert.equal(api.rutaDePrenda(null), null);
+    assert.deepStrictEqual([...api.valoresDelCatalogo()].sort(),
+      ["cereza", "cereza_botas1", "tora", "tora_botas1", "tora_botas2", "tora_pelo1"]);
   });
 });
 
@@ -288,8 +274,7 @@ describe("cuando el catálogo no llega", () => {
 
     assert.equal(await api.cargarCatalogo(), null);
     assert.equal(api.construirOpcionesDelEditor(), false);
-    // Y los avatares se siguen dibujando con la ruta de siempre.
-    assert.equal(api.rutaDePrenda("tora_pelo3"), "imagenes/tora/pelo3.png");
+    assert.deepStrictEqual([...api.valoresDelCatalogo()], []);
   });
 
   test("solo se pide el catálogo una vez aunque se llame varias", async () => {
@@ -311,16 +296,12 @@ describe("cuando el catálogo no llega", () => {
 });
 
 // ==============================
-// RETIRADA NO ES LO MISMO QUE COLGANDO
+// UNA PRENDA RETIRADA NO SE OFRECE
 // ==============================
-// Las dos caen fuera de la lista de prendas elegibles, y por eso
-// estuvieron mezcladas: el catálogo solo traía las publicadas, así que
-// rutaDePrenda devolvía null para ambas y la capa no se dibujaba.
-//
-// Se vio en producción: una persona con "cereza_fondo40" y
-// "cereza_piel4" puestas -las dos retiradas- veía su propio avatar sin
-// fondo y sin piel. Retirar una prenda la saca del editor, no del avatar
-// de quien ya la llevaba.
+// Retirar una prenda la saca del editor, no del avatar de quien ya la
+// llevaba. Lo segundo ya no es cosa del editor: el avatar lo dibuja el
+// servidor, y su receta incluye lo retirado (ver recetaDe en
+// api/_avatar-compuesto.js). Lo primero sí.
 
 const CON_RETIRADAS = () => catalogoDePrueba({
   retiradas: [
@@ -329,24 +310,8 @@ const CON_RETIRADAS = () => catalogoDePrueba({
   ]
 });
 
-describe("una prenda retirada se sigue dibujando", () => {
-  test("devuelve su URL con huella, no null", async () => {
-    const { api } = montar(respuestaOk(CON_RETIRADAS()));
-    await api.cargarCatalogo();
-
-    assert.equal(api.rutaDePrenda("cereza_fondo40"), "/prendas/ret1.png");
-    assert.equal(api.rutaDePrenda("cereza_piel4"), "/prendas/ret2.png");
-  });
-
-  test("pero un valor colgando sigue devolviendo null", async () => {
-    // "tora_piel7" no existe en ningún sitio: pedirlo solo daría un 404.
-    const { api } = montar(respuestaOk(CON_RETIRADAS()));
-    await api.cargarCatalogo();
-
-    assert.equal(api.rutaDePrenda("tora_piel7"), null);
-  });
-
-  test("y NO aparece como opción del editor", async () => {
+describe("una prenda retirada", () => {
+  test("NO aparece como opción del editor", async () => {
     const { api } = montar(respuestaOk(CON_RETIRADAS()));
     await api.cargarCatalogo();
 
@@ -359,10 +324,8 @@ describe("una prenda retirada se sigue dibujando", () => {
   test("un catálogo sin el campo retiradas no rompe nada", async () => {
     // Por si el servidor es más viejo que el frontend.
     const { api } = montar(respuestaOk(catalogoDePrueba()));
-    await api.cargarCatalogo();
-
-    assert.equal(api.rutaDePrenda("tora_botas1"), "/prendas/ccc.png");
-    assert.equal(api.rutaDePrenda("cereza_fondo40"), null);
+    assert.ok(await api.cargarCatalogo());
+    assert.ok(api.valoresDelCatalogo().includes("tora_botas1"));
   });
 });
 
