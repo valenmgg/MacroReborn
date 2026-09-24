@@ -559,3 +559,30 @@ test("el catálogo de la tienda devuelve el saldo del usuario que lo pide", asyn
   assert.deepEqual(resp.comprados, [], "todavía no compró nada");
   assert.equal(resp.monedas, SALDO_INICIAL);
 });
+
+test("cada prenda de la tienda trae la dirección de su previsualización, o null", async () => {
+  // La tienda enseña la previsualizacion. Antes buscaba el dibujo en el
+  // indice publico, que solo trae lo que alguien lleva puesto, y lo que
+  // nadie llevaba salia como una caja vacia con precio.
+  const [item] = await sql`SELECT id, valor_capa FROM avatar_shop_items ORDER BY id LIMIT 1;`;
+  const archivo = await db.query(
+    `INSERT INTO avatar_archivos (sha256, datos, ancho, alto, peso) VALUES ($1, $2, 1, 1, 1) RETURNING id`,
+    ["9".repeat(64), Buffer.from([1])]
+  );
+  const prenda = await db.query(
+    `INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, previsualizacion)
+     VALUES ($1, 'tora', 'remera', 'Con previsualizacion', $2, $3)
+     ON CONFLICT (valor) DO UPDATE SET previsualizacion = EXCLUDED.previsualizacion
+     RETURNING id`,
+    [item.valor_capa, archivo.rows[0].id, "a1".repeat(32)]
+  );
+
+  const resp = await llamar(contentHandler, "GET", { action: "avatar-shop" });
+  const conPrevia = resp.items.find(i => i.id === item.id);
+  assert.equal(conPrevia.previsualizacion,
+    "/previsualizaciones/" + prenda.rows[0].id + ".jpg?v=" + "a1".repeat(6));
+  assert.ok(!("prendaId" in conPrevia), "se colo el id interno de la prenda");
+  const sinPrevia = resp.items.filter(i => i.id !== item.id);
+  assert.ok(sinPrevia.length > 0 && sinPrevia.every(i => i.previsualizacion === null),
+    "una prenda sin previsualizacion tiene que llegar con null");
+});

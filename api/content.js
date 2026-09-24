@@ -485,7 +485,7 @@ async function construirCatalogo(version) {
   // pago": la tienda sigue viviendo en avatar_shop_items, que no se
   // tocó, y se enlaza por el mismo texto del valor de capa.
   const filas = await sql`
-    SELECT p.valor, p.modelo, p.capa, p.nombre, a.sha256, s.precio
+    SELECT p.id, p.valor, p.modelo, p.capa, p.nombre, p.previsualizacion, a.sha256, s.precio
     FROM avatar_prendas p
     JOIN avatar_archivos a ON a.id = p.archivo_id
     LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
@@ -503,6 +503,13 @@ async function construirCatalogo(version) {
       capa: f.capa,
       nombre: f.nombre,
       url: "/prendas/" + f.sha256 + ".png",
+      // La miniatura del editor: la prenda puesta en su maniqui, un JPG
+      // pequeño. null si todavia no se genero, y entonces el editor usa
+      // el dibujo suelto como hasta ahora. Fase 4 de
+      // docs/AVATARES-SERVIDOR.md.
+      previsualizacion: f.previsualizacion
+        ? previsualizaciones.urlDe(Number(f.id), f.previsualizacion)
+        : null,
       precio: f.precio === null || f.precio === undefined ? null : Number(f.precio)
     };
     // La capa "modelo" son los personajes base, no ropa: el editor los
@@ -2463,11 +2470,23 @@ async function avatarShop(req, res) {
 
   const { username } = req.query;
 
-  const items = await sql`
-    SELECT id, categoria, modelo, valor_capa AS "valorCapa", nombre, precio, created_at AS "creadoEl"
-    FROM avatar_shop_items
-    ORDER BY created_at DESC, id DESC;
+  // Con la previsualizacion de cada prenda, que es lo que la tienda
+  // enseña. Antes la pagina buscaba el dibujo en el indice publico, que
+  // solo trae lo que alguien lleva puesto: lo que nadie llevaba salia
+  // como una caja vacia con precio (punto 23 de docs/AUDITORIA.md).
+  const filasItems = await sql`
+    SELECT s.id, s.categoria, s.modelo, s.valor_capa AS "valorCapa", s.nombre, s.precio,
+           s.created_at AS "creadoEl", p.id AS "prendaId", p.previsualizacion
+    FROM avatar_shop_items s
+    LEFT JOIN avatar_prendas p ON p.valor = s.valor_capa
+    ORDER BY s.created_at DESC, s.id DESC;
   `;
+  const items = filasItems.map(({ prendaId, previsualizacion, ...item }) => ({
+    ...item,
+    previsualizacion: previsualizacion
+      ? previsualizaciones.urlDe(Number(prendaId), previsualizacion)
+      : null
+  }));
 
   let comprados = [];
   let monedas = null;

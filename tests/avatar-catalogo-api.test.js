@@ -299,6 +299,19 @@ test("cada prenda trae la URL con la huella de su dibujo", async () => {
   assert.equal(botas.url, "/prendas/" + shaBotas + ".png");
 });
 
+test("y la de su previsualización cuando la tiene, o null si todavía no", async () => {
+  // Es la miniatura del editor. Sin ella, el editor usa el dibujo suelto.
+  await db.query("UPDATE avatar_prendas SET previsualizacion = $1 WHERE valor = 'prueba_botas1'", ["f".repeat(64)]);
+  await db.query("UPDATE avatar_catalogo_version SET version = version + 1 WHERE id = 1");
+  const id = (await db.query("SELECT id FROM avatar_prendas WHERE valor = 'prueba_botas1'")).rows[0].id;
+
+  const r = await conSesion();
+  const botas = r.cuerpo.prendas.find(p => p.valor === "prueba_botas1");
+  assert.equal(botas.previsualizacion, "/previsualizaciones/" + id + ".jpg?v=ffffffffffff");
+  const otras = r.cuerpo.prendas.filter(p => p.valor !== "prueba_botas1");
+  assert.ok(otras.length > 0 && otras.every(p => p.previsualizacion === null));
+});
+
 test("manda las 15 capas en su orden de dibujo", async () => {
   const r = await conSesion();
 
