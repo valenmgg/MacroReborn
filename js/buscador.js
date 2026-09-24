@@ -161,9 +161,13 @@
   // que alcanza con reutilizar avatarMiniaturaHTML() de js/core.js
   // -la misma función que arma el avatar en miniatura en comentarios,
   // reseñas y actividad- en vez de hardcodear la imagen por defecto.
+  //
+  // Con la persona entera, que trae su id y su huella: así sale una sola
+  // imagen, su compuesto. Solo con el avatar se dibujaba prenda por
+  // prenda. Ver docs/AVATARES-SERVIDOR.md, fase 3.
   function avatarUsuarioHTML(u) {
     if (typeof avatarMiniaturaHTML === "function") {
-      return avatarMiniaturaHTML(u.avatar);
+      return avatarMiniaturaHTML(u.avatar, u);
     }
     return `<img src="imagenes/avatar.png" alt="">`;
   }

@@ -26,14 +26,18 @@ const MIGRADOS = {
   "js/usuario-actividad.js": "2026-09-24",
   "js/usuario-avatares-galeria.js": "2026-09-24",
   "js/actividad-comunidad.js": "2026-09-24",
-  "js/resenas.js": "2026-09-24"
+  "js/resenas.js": "2026-09-24",
+  "js/buscador.js": "2026-09-24"
 };
 
 // Lo que delata que se está dibujando prenda por prenda. La ruta de
 // las prendas cuenta solo dentro de una cadena: en un comentario que
 // explica lo que se hacía antes no pide nada.
+//
+// avatarMiniaturaHTML() de js/core.js con un solo argumento también:
+// sin la persona no sabe de quién es, y dibuja por capas.
 const RASTROS = [/ORDEN_CAPAS_AVATAR/, /rutaCapaAvatar/, /rutaImagenCapa/, /data-capas/, /RK_ORDEN_CAPAS/,
-                 /["'`]\/prendas\//];
+                 /["'`]\/prendas\//, /avatarMiniaturaHTML\([^,()]+\)/];
 
 describe("las páginas migradas", () => {
 
@@ -46,7 +50,8 @@ describe("las páginas migradas", () => {
     });
 
     test(archivo + " pide la imagen con imagenDeAvatar", () => {
-      assert.match(leer(archivo), /imagenDeAvatar\(|imagenAvatarPerfil\(/);
+      // O con avatarMiniaturaHTML y la persona, que la usa por dentro.
+      assert.match(leer(archivo), /imagenDeAvatar\(|imagenAvatarPerfil\(|avatarMiniaturaHTML\([^,()]+,\s*\w+\)/);
     });
   }
 
