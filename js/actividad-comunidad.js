@@ -14,16 +14,18 @@
 
   function isOnline(user) { if (!user?.lastLogin) return false; const t = new Date(user.lastLogin).getTime(); return Number.isFinite(t) && (Date.now()-t) <= 10*60*1000; }
 
-  function avatarHTML(user) {
-    if (!user?.avatar) return '<span>👤</span>';
-    const avatar = typeof normalizarAvatar === "function" ? normalizarAvatar(user.avatar) : user.avatar;
-    if(typeof avatarPNGData === "function" && avatarPNGData(avatar)){
-      return `<img data-src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="" loading="lazy">`;
-    }
-    if(typeof avatarMiniaturaHTML === "function"){
-      return avatarMiniaturaHTML(avatar);
-    }
-    return '<span>👤</span>';
+  // Una sola imagen por persona: su PNG de administrador o su avatar ya
+  // compuesto, con imagenDeAvatar() de js/core.js. La fila es una
+  // actividad, así que el id de la persona llega como usuario_id. Sin
+  // avatar, el emoji de siempre. Hasta el 24/09/2026 se dibujaba prenda
+  // por prenda. Ver docs/AVATARES-SERVIDOR.md, fase 3.
+  function avatarHTML(item) {
+    if (typeof imagenDeAvatar !== "function") return '<span>👤</span>';
+    const persona = { id: item.usuario_id, avatar_compuesto: item.avatar_compuesto };
+    const imagen = imagenDeAvatar(item.avatar, persona, 62, 96);
+    if (!imagen || imagen.tipo === "silueta") return '<span>👤</span>';
+    const clase = imagen.tipo === "png" ? ' class="avatar-png-personalizado"' : '';
+    return `<img data-src="${escapeHTML(imagen.src)}"${clase} alt="" loading="lazy">`;
   }
 
   function activityText(item) {

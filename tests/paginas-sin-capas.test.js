@@ -24,7 +24,8 @@ const MIGRADOS = {
   "js/comunidad-ranking.js": "2026-09-24",
   "js/usuario.js": "2026-09-24",
   "js/usuario-actividad.js": "2026-09-24",
-  "js/usuario-avatares-galeria.js": "2026-09-24"
+  "js/usuario-avatares-galeria.js": "2026-09-24",
+  "js/actividad-comunidad.js": "2026-09-24"
 };
 
 // Lo que delata que se está dibujando prenda por prenda. La ruta de
@@ -47,6 +48,17 @@ describe("las páginas migradas", () => {
       assert.match(leer(archivo), /imagenDeAvatar\(|imagenAvatarPerfil\(/);
     });
   }
+
+});
+
+describe("la actividad de la comunidad", () => {
+
+  test("pasa usuario_id, que es el id de la persona en una actividad", () => {
+    const js = leer("js", "actividad-comunidad.js");
+    assert.match(js, /\{ id: item\.usuario_id, avatar_compuesto: item\.avatar_compuesto \}/);
+    // Y ya no pinta con avatarMiniaturaHTML sin persona, que dibuja por capas.
+    assert.ok(!/avatarMiniaturaHTML\(avatar\)/.test(js));
+  });
 
 });
 
