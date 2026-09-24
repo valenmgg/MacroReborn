@@ -32,7 +32,7 @@ const FUENTE = fs.readFileSync(path.join(__dirname, "..", "js", "core.js"), "utf
 // El trozo de core.js que gestiona las imágenes perezosas.
 function bloque() {
   const i = FUENTE.indexOf("const _observadorPerezosas");
-  const j = FUENTE.indexOf("// AVATAR — COMPOSICIÓN EN UNA SOLA IMAGEN");
+  const j = FUENTE.indexOf("// YA NO SE COMPONEN AVATARES EN EL NAVEGADOR");
   assert.ok(i !== -1 && j !== -1, "no se encontró el bloque en js/core.js");
   return FUENTE.slice(i, j);
 }

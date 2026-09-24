@@ -279,11 +279,8 @@ describe("cuando el catálogo no llega", () => {
 
   test("solo se pide el catálogo una vez aunque se llame varias", async () => {
     // Se cuentan SOLO las llamadas al catálogo completo, que es lo que
-    // pide esta página. La otra que sale de aquí es el índice público,
-    // que dispara js/core.js solo al cargarse para poder dibujar los
-    // avatares de los comentarios y de quien pasa por el perfil. Son dos
-    // peticiones distintas a propósito desde que el catálogo se partió
-    // en dos: una pública para dibujar y una con sesión para vestir.
+    // pide esta página. Hasta la fase 5 salía también el índice público
+    // que pedía js/core.js para dibujar avatares por capas; ya no existe.
     let llamadas = 0;
     const { api } = montar((url) => {
       if (String(url).includes("avatar-catalogo-completo")) llamadas++;

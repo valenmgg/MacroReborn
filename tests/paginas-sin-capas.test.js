@@ -75,6 +75,51 @@ describe("la actividad de la comunidad", () => {
 
 });
 
+describe("js/core.js, que cargan todas las páginas", () => {
+
+  // Fase 5: se quitó el índice público de prendas (valor -> dirección
+  // del dibujo suelto) que core.js pedía al abrir cualquier página, y lo
+  // que dibujaba por capas.
+  const CORE = leer("js", "core.js");
+
+  test("ya no pide el índice público de prendas", () => {
+    assert.ok(!/fetch\([^)]*avatar-catalogo/.test(CORE), "core.js sigue pidiendo el índice");
+  });
+
+  test("ni sabe traducir una prenda a su dibujo suelto, ni juntar capas", () => {
+    for (const quitado of ["function rutaCapaAvatar", "function cargarCatalogoAvatares",
+                           "function componerAvatarPNG", "RUTAS_DE_PRENDA =", "data-capas"]) {
+      assert.ok(!CORE.includes(quitado), "queda " + quitado);
+    }
+  });
+
+  test("avatarMiniaturaHTML sin la persona da la silueta, no capas", () => {
+    const vm = require("node:vm");
+    const trozo = nombre => {
+      const i = CORE.indexOf("function " + nombre + "(");
+      assert.ok(i !== -1, "no está " + nombre);
+      return CORE.slice(i, i + CORE.slice(i).search(/\r?\n}\r?\n/)) + "\n}\n";
+    };
+    const k = CORE.indexOf("const ORDEN_CAPAS_AVATAR");
+    const i = CORE.indexOf("function urlAvatarCompuesto");
+    const j = CORE.indexOf("function avatarMiniaturaHTML");
+    const contexto = { console: { warn() {}, error() {}, log() {} } };
+    vm.createContext(contexto);
+    const mini = vm.runInContext(
+      trozo("leerJSON") + trozo("normalizarAvatar") + trozo("avatarPNGData") +
+      CORE.slice(k, CORE.indexOf("];", k) + 2) + "\n" + CORE.slice(i, j) + trozo("avatarMiniaturaHTML") +
+      ";avatarMiniaturaHTML", contexto);
+
+    const sinPersona = mini({ modelo: "tora", pelo: "tora_pelo3" });
+    assert.match(sinPersona, /imagenes\/avatar\.png/);
+    assert.ok(!/prendas|data-capas|tora/.test(sinPersona), "dibujó capas: " + sinPersona);
+
+    const conPersona = mini({ modelo: "tora" }, { id: 38, avatar_compuesto: "abcdef123456" });
+    assert.match(conPersona, /data-src="\/avatares\/38\/62x96\.jpg\?v=abcdef123456"/);
+  });
+
+});
+
 describe("el perfil propio", () => {
 
   // js/perfil.js no entra en la lista de arriba: el editor sigue

@@ -511,112 +511,18 @@ const ORDEN_CAPAS_AVATAR = [
 ];
 
 // ------------------------------------------------------------------
-// EL CATÁLOGO, PARA TODAS LAS PÁGINAS
+// YA NO HAY ÍNDICE PÚBLICO DE PRENDAS
 // ------------------------------------------------------------------
-// Un mapa de valor -> URL del dibujo, que llega de /api/content.
+// Aquí vivía cargarCatalogoAvatares(), que en cada página pedía
+// /api/content?action=avatar-catalogo: un mapa de cada prenda puesta a
+// la dirección de su dibujo suelto, para que rutaCapaAvatar() apilara
+// las capas de cada avatar.
 //
-// Hasta ahora esto solo lo tenía el editor del perfil, y el resto de las
-// páginas armaban la ruta a mano a partir del valor guardado. Funcionaba
-// gracias a una vía de compatibilidad en server.js que, cuando el
-// fichero no está en el disco, busca la prenda en la base. Pero esa vía
-// se cachea con revalidación cada 5 minutos, porque el nombre no dice
-// nada del contenido y una prenda podría cambiar de dibujo.
-//
-// La URL del catálogo lleva la huella SHA-256 del contenido, así que
-// puede cachearse un año y de verdad: si el dibujo cambiara, cambiaría
-// la URL. Poniendo el mapa acá lo heredan de una vez los ocho archivos
-// que dibujan avatares, porque todos pasan por rutaCapaAvatar().
-const RUTAS_DE_PRENDA = new Map();
-let _promesaCatalogoAvatares = null;
-
-function cargarCatalogoAvatares(){
-  if(_promesaCatalogoAvatares) return _promesaCatalogoAvatares;
-
-  // Este es el índice PÚBLICO, y trae una sola cosa: valor -> URL del
-  // dibujo, de las prendas que alguien lleva puestas. Nada de nombres,
-  // ranuras ni precios.
-  //
-  // Antes esta misma llamada bajaba el catálogo entero -las 630 prendas
-  // con todos sus datos-, y lo bajaba sin sesión. Eso convertía una
-  // petición en el índice completo del trabajo del equipo de dibujo, y
-  // las 630 descargas siguientes en una copia del catálogo. Lo que el
-  // editor necesita de más ahora se pide aparte y con sesión, en
-  // cargarCatalogoCompleto() de js/perfil.js.
-  //
-  // Las retiradas vienen mezcladas con el resto y está bien: acá lo
-  // único que importa es poder DIBUJAR lo que alguien lleva puesto. Una
-  // prenda retirada hay que poder dibujarla —quien ya la llevaba sigue
-  // con ella—, y elegirla o no se decide en el editor, que se arma con
-  // otra respuesta.
-  _promesaCatalogoAvatares = fetch("/api/content?action=avatar-catalogo")
-    .then(r => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
-    .then(datos => {
-      if(!datos || !datos.success) throw new Error("el catálogo vino sin éxito");
-      RUTAS_DE_PRENDA.clear();
-      Object.entries(datos.rutas || {}).forEach(([valor, url]) => {
-        RUTAS_DE_PRENDA.set(valor, url);
-      });
-
-      return datos;
-    })
-    .catch(error => {
-      // Que no se pueda cargar el catálogo no puede dejar sin avatar a
-      // nadie: rutaCapaAvatar sigue funcionando con la ruta de siempre.
-      console.warn("MacroReborn: no se pudo cargar el catálogo de avatares.", error);
-      return null;
-    });
-
-  return _promesaCatalogoAvatares;
-}
-
-// Se pide cuanto antes, no cuando haga falta: así el mapa suele estar
-// listo para el primer avatar que se dibuje. Lo que se dibuje antes sale
-// con la ruta de siempre, que también funciona.
-cargarCatalogoAvatares();
-
-function rutaCapaAvatar(valor){
-  if(!valor || valor === "ninguno") return null;
-
-  const delCatalogo = RUTAS_DE_PRENDA.get(valor);
-  if(delCatalogo) return delCatalogo;
-
-  // Sin catálogo TODAVÍA: la ruta de siempre. Que la red falle o que el
-  // catálogo tarde en llegar no puede dejar a nadie sin avatar.
-  if(!RUTAS_DE_PRENDA.size){
-    const texto = String(valor);
-    const idx = texto.indexOf("_");
-
-    if(idx === -1) return "imagenes/" + texto + ".png";
-
-    return "imagenes/" + texto.slice(0, idx) + "/" + texto.slice(idx + 1) + ".png";
-  }
-
-  // CON catálogo y sin rastro del valor: la prenda está COLGANDO.
-  //
-  // Esto ya NO incluye a las retiradas. Antes sí, y por eso acá se
-  // adivinaba una ruta: una prenda retirada tiene que seguir dibujándose
-  // en quien ya la llevaba puesta. Desde que el servidor manda la lista
-  // "retiradas" con su URL con huella (ver construirCatalogo en
-  // api/content.js), una retirada entra en RUTAS_DE_PRENDA como
-  // cualquier otra y no llega hasta acá.
-  //
-  // Lo que llega es un valor que no existe en NINGUNA fila de
-  // avatar_prendas. Adivinarle "imagenes/<modelo>/<resto>.png" no lo
-  // arregla, porque ese fichero tampoco está: lo único que consigue es
-  // un 404, y un 404 en una <img> no se ve como un hueco sino como la
-  // marca de "imagen no encontrada" del navegador, pegada encima del
-  // avatar y con el tamaño que el CSS le dio a la capa.
-  //
-  // Medido contra la base de producción: "tora_piel7" está puesto cinco
-  // veces -tres cuentas y dos casilleros de galería- y no tiene fila ni
-  // fichero. Es el único caso hoy, y los cinco daban esa marca.
-  //
-  // Devolver null lo deja fuera, y el avatar se dibuja con el resto de
-  // las capas. Es lo mismo que hace rutaDePrenda() en js/perfil.js desde
-  // que se arregló ahí; esto pone de acuerdo a las otras siete páginas
-  // que dibujan avatares.
-  return null;
-}
+// Desde la fase 5 de docs/AVATARES-SERVIDOR.md ninguna página dibuja
+// prenda por prenda: cada avatar es una sola imagen, compuesta por el
+// servidor (ver imagenDeAvatar, más abajo), y la vista previa del editor
+// también la dibuja él. Y ese mapa era justo la lista de lo que no tiene
+// que salir del equipo de arte. Se quitó el 24/09/2026.
 
 // ------------------------------------------------------------------
 // UNA CAPA QUE NO CARGA NO DEJA MARCA
@@ -627,12 +533,10 @@ function rutaCapaAvatar(valor){
 // haya dado a la <img>. Encima de un avatar eso no se lee como un error
 // de red: se lee como una prenda rota que la persona lleva puesta.
 //
-// Lo de arriba (rutaCapaAvatar devolviendo null) tapa el caso conocido,
-// pero solo ese y solo después de que el catálogo llegue. Quedan otros
-// que no dependen de nosotros:
+// Desde la fase 5 las páginas ya no apilan capas: cada avatar es una
+// sola imagen. Quien sí las apila es el vestidor del equipo de arte
+// (vest-capa), y ahí esto sigue haciendo falta:
 //
-//   - El avatar se dibuja ANTES de que el catálogo cargue, que es lo
-//     normal: ahí todavía se adivina la ruta de siempre.
 //   - Un 404 que nginx marcó como immutable y el navegador se guardó
 //     treinta días (ya pasó: ver el comentario de "retiradas" en
 //     api/content.js).
@@ -751,9 +655,8 @@ const SILUETA_AVATAR = Object.freeze({ tipo: "silueta", src: "imagenes/avatar.pn
 //   compuesto  lleva prendas y no hay huella: la direccion desnuda.
 //
 // Devuelve { tipo, src }. Y null solo cuando lleva prendas pero no se
-// sabe quien es: son las paginas que aun no pasan el usuario, y esas
-// siguen dibujando por capas hasta que se migren. Ninguna prenda suelta
-// sale de aqui.
+// sabe quien es: quien llama enseña entonces la silueta, SILUETA_AVATAR.
+// Ninguna prenda suelta sale de aqui.
 function imagenDeAvatar(avatarCrudo, usuario, ancho, alto){
   const png = avatarPNGData(avatarCrudo);
   if(png) return { tipo: "png", src: png };
@@ -779,10 +682,9 @@ function imgCompuesta(url, estilo, clase){
     ` style="${estilo}">`;
 }
 
-// El segundo parametro es opcional a proposito: quien solo tenga el
-// avatar a mano sigue llamando con uno solo y se dibuja por capas,
-// como antes. Quien tenga el usuario entero pasa los dos y se lleva la
-// imagen compuesta. Asi las paginas se migran de una en una.
+// Con la persona entera, { id, avatar_compuesto }, sale su compuesto.
+// Solo con el avatar ya no se sabe de quien es: sale la silueta, y hasta
+// la fase 5 salia dibujado prenda por prenda.
 function avatarMiniaturaHTML(avatarCrudo, usuario){
   const imagen = imagenDeAvatar(avatarCrudo, usuario, 62, 96);
 
@@ -797,31 +699,7 @@ function avatarMiniaturaHTML(avatarCrudo, usuario){
     `<img src="imagenes/avatar.png" alt="" loading="lazy" ` +
     `style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
 
-  if(imagen) return avatarPorDefecto;
-
-  // Por capas: solo quien aun no pasa el usuario.
-  const avatar = normalizarAvatar(avatarCrudo);
-  if(!avatar) return avatarPorDefecto;
-
-  let capas = "";
-  ORDEN_CAPAS_AVATAR.forEach(tipo=>{
-    const ruta = rutaCapaAvatar(avatar[tipo]);
-    if(ruta){
-      capas += `<img data-src="${ruta}" alt="" loading="lazy" ` +
-        `style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;">`;
-    }
-  });
-
-  if(!capas) return avatarPorDefecto;
-
-  const rutas = ORDEN_CAPAS_AVATAR
-    .map(tipo => rutaCapaAvatar(avatar[tipo]))
-    .filter(Boolean);
-
-  const estiloCapa = "position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;";
-
-  return `<div class="avatar-compuesto" data-capas="${rutas.join("|")}" ` +
-    `data-capa-style="${estiloCapa}">${capas}</div>`;
+  return avatarPorDefecto;
 }
 
 
@@ -894,200 +772,27 @@ function activarImagenesPerezosas(raiz){
 }
 
 // ==============================
-// AVATAR — COMPOSICIÓN EN UNA SOLA IMAGEN (Fase 4: click derecho)
+// YA NO SE COMPONEN AVATARES EN EL NAVEGADOR
 // ==============================
-// El editor (js/perfil.js) sigue armando el avatar con varias <img>
-// superpuestas, tal cual funcionaba siempre: esto NO se toca. El
-// problema es que, fuera del editor (perfil, comentarios, amigos,
-// ranking, buscador, actividad, chat, reseñas), esas mismas capas
-// apiladas hacen que el botón derecho del navegador ("Guardar imagen
-// como", "Copiar imagen", "Abrir imagen") tome una sola capa suelta en
-// vez del avatar completo.
-//
-// La solución no reemplaza el sistema de capas: lo reutiliza. Cada
-// lugar del sitio que arma un avatar para MOSTRAR (no para editar)
-// sigue calculando sus capas exactamente igual que antes (mismo orden,
-// mismas rutas, mismas clases CSS) y las pinta apiladas como siempre
-// -eso da el primer pantallazo, instantáneo e idéntico al actual-,
-// pero además envuelve ese grupo de capas en un contenedor con
-// class="avatar-compuesto" y un data-capas con las rutas en orden.
-//
-// Esta sección junta esas capas en un <canvas>, las funde en un único
-// PNG con transparencia y reemplaza el contenido del contenedor por
-// una sola <img> con ese PNG -conservando la misma clase/estilo que
-// tenían las capas individuales, para que el recorte/zoom que ya
-// define cada CSS (.capa-comentario, .capa-ranking, etc.) se vea
-// exactamente igual-. A partir de ahí, para el navegador es una imagen
-// común y corriente: el click derecho la trata como una sola imagen.
-//
-// No hace falta acordarse de llamar a nada después de cada innerHTML:
-// un MutationObserver vigila el documento y compone solo cualquier
-// ".avatar-compuesto" que aparezca (más abajo).
-
-const _cacheAvatarCompuesto = {};
-
-function _cargarImagenAvatarParaCanvas(ruta){
-  return new Promise(resolve=>{
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null); // una capa rota no debe tirar abajo el resto
-    img.src = ruta;
-  });
-}
-
-// Todas las capas de un mismo avatar están pensadas para superponerse
-// en el mismo encuadre (por eso hoy funcionan apiladas con
-// position:absolute + object-fit:contain dentro del mismo contenedor).
-// Alcanza entonces con dibujar cada una a pantalla completa dentro de
-// un canvas del tamaño de la primera capa que cargue bien: el
-// resultado es un PNG con el mismo encuadre que tenía cada capa suelta,
-// así que al insertarlo con la misma clase/estilo CSS que usaban las
-// capas se ve exactamente igual (incluido cualquier recorte o zoom que
-// ya aplique ese CSS).
-
-function componerAvatarPNG(rutas){
-  const clave = rutas.join("|");
-  if(_cacheAvatarCompuesto[clave]) return _cacheAvatarCompuesto[clave];
-
-  const promesa = (async ()=>{
-    const imagenes = (await Promise.all(rutas.map(_cargarImagenAvatarParaCanvas))).filter(Boolean);
-    if(!imagenes.length) return null;
-
-    const ancho = imagenes[0].naturalWidth || 512;
-    const alto = imagenes[0].naturalHeight || 512;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = ancho;
-    canvas.height = alto;
-    const ctx = canvas.getContext("2d");
-
-    imagenes.forEach(img => ctx.drawImage(img, 0, 0, ancho, alto));
-
-    return canvas.toDataURL("image/png");
-  })();
-
-  _cacheAvatarCompuesto[clave] = promesa;
-  return promesa;
-}
-
-// Busca contenedores ".avatar-compuesto" todavía no procesados dentro
-// de "raiz" (por defecto, todo el documento) y les compone la imagen
-// única. Si algo falla (capas rotas, canvas no disponible, etc.) deja
-// las capas apiladas tal cual estaban: se sigue viendo igual, solo que
-// en ese caso puntual el click derecho seguiría tomando una sola capa.
-
-// Compone UN avatar. Antes esto vivía suelto dentro del bucle de
-// componerAvataresEnPantalla; se saca aparte para poder llamarlo cuando
-// el avatar se acerca a la pantalla y no antes.
-async function _componerUnAvatar(nodo){
-  {
-    nodo.setAttribute("data-compuesto", "1"); // evita procesarlo dos veces
-
-    const rutasTexto = nodo.getAttribute("data-capas") || "";
-    const rutas = rutasTexto.split("|").filter(Boolean);
-
-    // Una sola capa ya ES una sola imagen: no hace falta canvas.
-    if(rutas.length < 2) return;
-
-    try{
-      const dataURL = await componerAvatarPNG(rutas);
-      if(!dataURL) return;
-      if(!nodo.isConnected) return; // se sacó del DOM mientras se componía
-
-      const clase = nodo.getAttribute("data-capa-class") || "";
-      const estilo = nodo.getAttribute("data-capa-style") || "";
-
-      const imgFinal = document.createElement("img");
-      if(clase) imgFinal.className = clase;
-      if(estilo) imgFinal.setAttribute("style", estilo);
-      imgFinal.alt = "";
-      // FIX: esta imagen ya está 100% en memoria (es un data:URI en base64,
-      // resultado de fusionar las capas en el <canvas> de más arriba), no
-      // hay nada que "cargar" de la red. Ponerle loading="lazy" a un <img>
-      // creado por JS, absolutamente posicionado y recortado dentro de un
-      // círculo chico (overflow:hidden), hacía que en varios navegadores el
-      // cálculo de "¿está visible?" del lazy-loading nativo fallara para
-      // este tipo de elemento fuera de flujo, y la imagen se quedaba sin
-      // pintar nunca: el círculo aparecía vacío aunque el <img> ya tuviera
-      // su src asignado y ningún error en consola. Con loading="eager" se
-      // pinta apenas está lista, como corresponde para algo que ya está en
-      // memoria.
-      imgFinal.loading = "eager";
-      imgFinal.src = dataURL;
-
-      nodo.innerHTML = "";
-      nodo.appendChild(imgFinal);
-    }catch(error){
-      console.warn("MacroReborn: no se pudo componer el avatar en una sola imagen.", error);
-    }
-  }
-}
-
-// Componer un avatar obliga a descargar sus capas con new Image(), y eso
-// NO respeta el loading="lazy" que llevan las <img> apiladas: una imagen
-// creada por JavaScript se descarga en cuanto se le asigna src, esté
-// donde esté el avatar.
-//
-// Como esto recorría el documento entero, cada avatar de la página se
-// bajaba completo aunque estuviera mucho más abajo de lo que se ve. En
-// un HAR de una carga real del perfil eran 20 y pico peticiones de
-// capas de gente que ni aparecía en pantalla. Fue lo que el dueño del
-// sitio describió como "imágenes que no reconozco".
-//
-// Ahora se espera a que el avatar se acerque a la vista. No se pierde
-// nada: la composición existe para que el clic derecho copie el avatar
-// entero, y solo se puede hacer clic derecho en lo que se ve.
-const _observadorAvatares = (typeof IntersectionObserver !== "undefined")
-  ? new IntersectionObserver(entradas=>{
-      entradas.forEach(entrada=>{
-        if(!entrada.isIntersecting) return;
-        _observadorAvatares.unobserve(entrada.target);
-        _componerUnAvatar(entrada.target);
-      });
-    }, { rootMargin: "300px" })   // un poco antes de que asome, para que no se note
-  : null;
-
-async function componerAvataresEnPantalla(raiz){
-  const contenedor = raiz || document;
-  const nodos = contenedor.querySelectorAll(".avatar-compuesto:not([data-compuesto]):not([data-esperando-vista])");
-  if(!nodos.length) return;
-
-  // Sin IntersectionObserver (navegador viejo) se compone todo de una,
-  // como antes: es peor para la red pero sigue funcionando.
-  if(!_observadorAvatares){
-    await Promise.all(Array.from(nodos).map(_componerUnAvatar));
-    return;
-  }
-
-  Array.from(nodos).forEach(nodo=>{
-    nodo.setAttribute("data-esperando-vista", "1");
-    _observadorAvatares.observe(nodo);
-  });
-}
+// Aquí vivía componerAvatarPNG(): juntaba en un <canvas> las capas
+// apiladas de cada avatar, para que el clic derecho copiara el avatar
+// entero y no una capa suelta. Para eso volvía a descargar cada capa.
+// Desde la fase 3 el avatar ya llega hecho una sola imagen del servidor,
+// así que no queda nada que juntar. Se quitó el 24/09/2026.
 
 function _iniciarObservadorAvatares(){
   activarImagenesPerezosas(document);
-  componerAvataresEnPantalla(document);
 
-  if(typeof MutationObserver === "undefined") return; // navegador muy viejo: se queda con las capas apiladas
+  if(typeof MutationObserver === "undefined") return; // navegador muy viejo: se cargan las que ya estaban
 
   const observador = new MutationObserver(mutaciones=>{
     for(const mutacion of mutaciones){
       for(const nodo of mutacion.addedNodes){
         if(nodo.nodeType !== 1) continue;
 
-        // Lo primero: recoger las imágenes que esperan a verse. Se hace
-        // en cada nodo nuevo y no solo cuando hay avatares, porque
-        // data-src lo usan también otras listas.
+        // Recoger las imágenes que esperan a verse, en cada nodo nuevo:
+        // data-src lo usan los avatares y también otras listas.
         activarImagenesPerezosas(nodo);
-
-        const esCandidato =
-          (nodo.matches && nodo.matches(".avatar-compuesto:not([data-compuesto])")) ||
-          (nodo.querySelector && nodo.querySelector(".avatar-compuesto:not([data-compuesto])"));
-        if(esCandidato){
-          componerAvataresEnPantalla(document);
-          return;
-        }
       }
     }
   });
