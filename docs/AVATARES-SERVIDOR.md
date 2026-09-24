@@ -172,7 +172,7 @@ rompen nada mientras tanto.
 |---|---|---|---|---|
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
-| 3 | Empezada el 21/09 | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto. Hecha solo la cuadrícula principal de la comunidad (5.562 kB a 399 kB). Medido el 24/09: en esa misma página la actividad, los moderadores y los conectados siguen apilando capas (64 prendas sueltas), y el perfil público también | No |
+| 3 | Empezada el 21/09 | Las listas | Página por página, cada una pasa a una sola imagen por persona. Hecha la comunidad entera el 24/09 (64 prendas sueltas a 0). Quedan las del punto de abajo | No |
 | 4 | 2026-09-24 | Las previsualizaciones | 768 recortes automáticos sobre maniquí. Publicadas: el editor y la tienda las enseñan. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
@@ -285,14 +285,73 @@ huella.
   devolvían cero. Arreglado de paso.
 ### Fase 3 — Las listas
 
-Aquí es donde se gana el 92 %. Los endpoints devuelven la URL del
-compuesto junto al avatar, y los archivos que hoy arman quince
-etiquetas `img` pintan una sola.
+Aquí es donde se gana el 92 %. Cada página que pinta avatares de otras
+personas deja de pedir quince prendas sueltas y pide una sola imagen.
 
-Son al menos diez: `core.js`, `comunidad-ranking.js`,
-`actividad-comunidad.js`, `amigos.js`, `buscador.js`, `chat.js`,
-`explorar.js`, `home-portal.js`, `perfil-actividad.js`,
-`perfil-avatares-galeria.js`, `usuario.js` y `portal-growth.js`.
+**La regla, decidida el 24/09/2026.** El dibujo lo hace el servidor,
+siempre. El navegador elige una de tres cosas, en este orden, con
+`imagenDeAvatar()` de `js/core.js`:
+
+1. el PNG de administrador, si lo tiene;
+2. su avatar compuesto: `/avatares/<id>/62x96.jpg`, con `?v=` si trae
+   la huella (un año de caché) o sin ella (un minuto);
+3. la silueta del sitio, `imagenes/avatar.png`, si no lleva ninguna
+   prenda. Sin preguntar al servidor.
+
+Si el compuesto falta, el servidor lo compone en el momento de pedirlo
+y lo guarda. **Solo entonces**: lo que ya está en el disco se sirve tal
+cual, sin recalcular nada. Si no puede (sin prendas, freno agotado,
+fallo del dibujo) manda la silueta, con caché corta para que se vuelva
+a intentar. Nunca una prenda suelta. Ver `leerOComponer()` en
+`api/_avatar-compuesto.js`.
+
+Para que eso no enseñe ropa vieja, **el archivo del disco siempre es el
+del avatar que se lleva puesto**: quitarse todas las prendas, ponerse
+un PNG de administrador o agotar el freno borran el compuesto anterior.
+
+**Cómo se migra una página.** Su API manda el id de la persona y su
+huella (`avatar_compuesto`); si la fila no es una persona, el id va
+como `usuario_id`. La página pasa la persona a su función de avatar y
+deja de saber dibujar por capas. Se publica y se mide en producción con
+Network: cero peticiones a `/prendas/`.
+
+| Página | Qué pinta | Archivos | Estado |
+|---|---|---|---|
+| Comunidad | Cuadrícula, podio, recién llegados, moderación, conectados, actividad | `comunidad-ranking.js` | Hecha el 24/09: 64 prendas sueltas a 0 |
+| Perfil público | Avatar grande, amigos, comentarios, actividad, actividad de amigos, galería | `usuario.js`, `usuario-actividad.js`, `usuario-avatares-galeria.js` | Pendiente |
+| Perfil propio | Avatar grande, amigos, comentarios, actividad, galería | `perfil.js`, `perfil-actividad.js`, `perfil-avatares-galeria.js` | Pendiente |
+| Amigos | La lista | `amigos.js` | Pendiente |
+| Chat | Los mensajes | `chat.js` | Pendiente |
+| Buscador | Los resultados, en la barra de casi todas las páginas | `buscador.js` | Pendiente |
+| Explorar | Amigos | `explorar.js` | Pendiente |
+| Portada con sesión | Avatar propio, bienvenida, amigos | `home-portal.js`, `index.html` | Pendiente |
+| Actividad de la comunidad | El feed | `actividad-comunidad.js` | Pendiente |
+| Juego | Reseñas | `resenas.js` | Pendiente |
+
+Cuando no quede ninguna, se quita de `js/core.js` lo que dibuja por
+capas: la rama de capas de `avatarMiniaturaHTML` y
+`componerAvatarPNG`, que vuelve a bajar las capas en un canvas.
+
+**Lo que hay que arreglar por el camino**, visto en el inventario del
+24/09/2026:
+
+- La caché de avatares de `js/core.js` (`cargarAvatarUsuario`) guarda
+  solo el avatar y tira el id y la huella, aunque la API los manda. La
+  usan el chat, los comentarios, la actividad y las reseñas.
+- `js/perfil.js` guarda en la sesión solo `{avatar}` al cambiarse de
+  ropa, aunque la API devuelve la huella nueva.
+- Guardar una ranura (`avatar-gallery`, POST) calcula la huella y no la
+  devuelve.
+- `js/ranking.js` es código muerto (sus contenedores no existen en
+  ningún HTML), y `home-portal.js` de la raíz no lo carga ninguna
+  página. `portal-growth.js`, `liga-global.js` y `navbar.js` no
+  pintan avatares: usan la inicial o un emoji.
+
+**Las pruebas no escriben en `datos-locales/`.** Pasó el 24/09: una
+tanda reescribió el compuesto de siete cuentas de la copia local con
+los cuadrados de colores de las pruebas, y parecía un fallo del
+compositor. `tests/_aislar-datos.js` lo impide, y
+`tests/aislar-datos.test.js` vigila que ninguna prueba lo olvide.
 
 ### Fase 4 — Las previsualizaciones
 
