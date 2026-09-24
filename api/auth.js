@@ -2,6 +2,7 @@ const { setCors } = require("./_utils");
 const { obtenerSql } = require("./_db");
 const { PasswordService } = require("./_password");
 const { crearToken, requerirAuth } = require("./_auth");
+const { validarNombreUsuario } = require("./_nombre-usuario");
 
 const sql = obtenerSql();
 const passwordService = new PasswordService(sql);
@@ -63,6 +64,12 @@ async function register(req, res) {
       success: false,
       error: "Usuario y contraseña son obligatorios"
     });
+  }
+
+  // El nombre se pinta en todo el sitio: ver api/_nombre-usuario.js.
+  const revision = validarNombreUsuario(username);
+  if (!revision.ok) {
+    return res.status(200).json({ success: false, error: revision.error });
   }
 
   const existente = await sql`SELECT id FROM users WHERE username = ${username};`;

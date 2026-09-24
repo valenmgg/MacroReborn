@@ -32,6 +32,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { JSDOM } = require("jsdom");
 
+const { validarNombreUsuario } = require("../api/_nombre-usuario");
 const { crearBaseLocal, crearSqlPGlite } = require("../scripts/pglite");
 const { usarSqlLocal } = require("../api/_db");
 
@@ -129,4 +130,94 @@ describe("los demás sitios que pintaban un nombre en crudo", () => {
       });
     }
   }
+});
+
+// ==============================
+// AL REGISTRARSE
+// ==============================
+
+describe("qué nombre se puede registrar", () => {
+
+  test("los estilos que la gente ya usa siguen valiendo", () => {
+    // Sacados de los nombres de producción del 24/09/2026.
+    for (const nombre of ["soydegurime", "Kylen.", "𝕊𝔼𝔼𝕀ℕ𝔾", "ᛝ 𝐙 𝐀 𝐑 𝐀 𝐓 𝐇 𝐔 𝐒 𝐓 𝐑 𝐀 ᛝ", "Bianca♡",
+                          "piñato", "Bardero UY", "𝐿𝒶𝒹𝓎_𝒥𝒶𝓃𝑒𝓉𓆩♡𓆪", "L.Lunita", "☦    𝐑𝐞𝐦𝐨𝐯𝐞𝐫    ☦",
+                          "King Pazuzu!", "Fredd_Dark", "1234478", "ana"]) {
+      assert.deepStrictEqual(validarNombreUsuario(nombre), { ok: true, nombre }, nombre);
+    }
+  });
+
+  test("lo que rompe el HTML, un atributo o una ruta, no", () => {
+    for (const nombre of [MALO, "a<b", "a>b", 'a"b', "a'b", "a`b", "a&b", "a/b", "a\\b"]) {
+      assert.equal(validarNombreUsuario(nombre).ok, false, nombre);
+    }
+  });
+
+  test("ni lo invisible: controles, marcas de dirección, espacios de ancho cero", () => {
+    for (const nombre of ["ana\nluis", "ana\tluis", "ana‮luis", "ana​luis", "ana﻿luis",
+                          "ana luis", "ana\u0000luis"]) {
+      assert.equal(validarNombreUsuario(nombre).ok, false, JSON.stringify(nombre));
+    }
+  });
+
+  test("ni espacios en los bordes, ni largos fuera de 3 a 25", () => {
+    for (const nombre of [" ana", "ana ", "an", "a".repeat(26), ""]) {
+      assert.equal(validarNombreUsuario(nombre).ok, false, JSON.stringify(nombre));
+    }
+    assert.equal(validarNombreUsuario("a".repeat(25)).ok, true);
+    // Una letra decorativa es un carácter, aunque ocupe dos en JavaScript.
+    assert.equal(validarNombreUsuario("𝕊".repeat(25)).ok, true);
+  });
+
+  test("y lo que no es texto, tampoco", () => {
+    for (const nombre of [undefined, null, 123, {}, ["ana"]]) {
+      assert.equal(validarNombreUsuario(nombre).ok, false, JSON.stringify(nombre));
+    }
+  });
+
+  test("el error se puede enseñar tal cual en el formulario", () => {
+    assert.match(validarNombreUsuario("a<b").error, /no puede llevar/);
+  });
+
+});
+
+describe("el registro de verdad lo comprueba", () => {
+
+  let db, auth;
+  before(async () => {
+    db = await crearBaseLocal();
+    usarSqlLocal(crearSqlPGlite(db));
+    auth = require("../api/auth");
+  });
+
+  function registrar(username) {
+    return new Promise((resolve) => {
+      const req = { method: "POST", query: { action: "register" }, body: { username, password: "clave-de-prueba-1" }, headers: {} };
+      const res = {
+        statusCode: 200,
+        status(c) { this.statusCode = c; return this; },
+        setHeader() {},
+        json(obj) { resolve({ codigo: this.statusCode, cuerpo: obj }); },
+        end(c) { resolve({ codigo: this.statusCode, cuerpo: c }); }
+      };
+      auth(req, res);
+    });
+  }
+
+  test("un nombre con HTML no se registra, y no queda nada en la base", async () => {
+    for (const nombre of [MALO, "<b>ana</b>"]) {
+      const r = await registrar(nombre);
+      assert.equal(r.cuerpo.success, false, nombre);
+      const filas = await db.query("SELECT count(*)::int AS n FROM users WHERE username = $1", [nombre]);
+      assert.equal(filas.rows[0].n, 0, nombre);
+    }
+    assert.match((await registrar("<b>ana</b>")).cuerpo.error, /no puede llevar/);
+  });
+
+  test("uno con estilo, sí", async () => {
+    const r = await registrar("Bianca♡ 2");
+    assert.equal(r.cuerpo.success, true, JSON.stringify(r.cuerpo));
+    assert.equal(r.cuerpo.user.username, "Bianca♡ 2");
+  });
+
 });
