@@ -322,10 +322,15 @@ async function asegurarSinFallar(sql, destino, avatar, huellaGuardada) {
 // Borra los archivos de un destino. Para cuando alguien vacía una
 // ranura: sin esto, el dibujo de un diseño borrado seguiria sirviendose
 // en su direccion para siempre.
+//
+// Solo los archivos, nunca la carpeta del avatar puesto: las de las
+// ranuras viven dentro, y un borrado recursivo se llevaria los diseños
+// guardados de esa persona. La de una ranura si se quita entera.
 function borrar(destino) {
   if (!destinoValido(destino)) return false;
   try {
-    fs.rmSync(carpetaDe(destino), { recursive: true, force: true });
+    for (const [a, l] of TAMANOS) fs.rmSync(rutaDe(destino, a, l), { force: true });
+    if (destino.ranura) fs.rmSync(carpetaDe(destino), { recursive: true, force: true });
     return true;
   } catch (error) {
     console.error("avatar compuesto: no se pudo borrar.", error.message);

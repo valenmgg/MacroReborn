@@ -241,6 +241,19 @@ describe("borrar", () => {
     assert.ok(AC.leer(ANA, 62, 96), "borrar la ranura se llevó el avatar puesto");
   });
 
+  test("y borrar el avatar puesto no se lleva los diseños guardados", async () => {
+    // Las carpetas de las ranuras viven dentro de la del avatar puesto,
+    // y el borrado era recursivo: se las llevaba todas.
+    AC.olvidarPresupuesto();
+    await AC.asegurar(sql, ANA, avatarBase);
+    await AC.asegurar(sql, RANURA, avatarBase);
+
+    assert.equal(AC.borrar(ANA), true);
+
+    assert.equal(AC.leer(ANA, 62, 96), null);
+    assert.ok(AC.leer(RANURA, 62, 96), "borrar el avatar puesto se llevo la ranura");
+  });
+
   test("borrar algo que no existe no es un error", () => {
     assert.equal(AC.borrar({ usuarioId: 999999, ranura: 7 }), true);
   });
