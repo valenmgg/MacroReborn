@@ -67,21 +67,14 @@ function obtenerActivo() {
     : leerJSON(localStorage.getItem("usuarioActivo") || "null");
 }
 
-// ---------- ORDEN DE CAPAS ----------
-// La lista de capas y la resolución de rutas viven en js/core.js, que
-// se carga antes que este archivo en todas las páginas. Acá solo se les
-// da el nombre local de siempre, para no volver a copiar la lista.
-//
-// Estaba repetida en once archivos, y por eso ranking.js y
-// comunidad-ranking.js llevaban meses dibujando las botas encima del
-// pantalón: alguien cambió el orden en dos copias y no en el resto.
-
-const ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
-
-// El "modelo" (ej: "tora") vive en imagenes/tora.png.
-// El resto de las capas (ej: "tora_piel1") viven en imagenes/tora/piel1.png.
-function rutaImagenCapa(valor) {
-  return rutaCapaAvatar(valor);
+// ---------- AVATARES ----------
+// Una sola imagen por persona: su PNG de administrador, su avatar ya
+// compuesto por el servidor o la silueta. Lo decide imagenDeAvatar() en
+// js/core.js, y esta página ya no sabe dibujar prenda por prenda. Hasta
+// el 24/09/2026 lo hacía en el avatar grande, los amigos, los
+// comentarios y la actividad. Ver docs/AVATARES-SERVIDOR.md, fase 3.
+function imagenAvatarPerfil(avatarCrudo, persona, ancho, alto) {
+  return imagenDeAvatar(avatarCrudo, persona, ancho, alto) || SILUETA_AVATAR;
 }
 
 
@@ -339,30 +332,19 @@ if (!usuario) {
 
     contenedor.innerHTML = `<div class="grid-usuarios">` + amigosOrdenados.map(amigo => {
       const nombreAmigo = amigo.username;
-      const av = normalizarAvatar(amigo.avatar);
       const esFavorito = _favoritosDeEstePerfil.includes(nombreAmigo);
 
-      let capas = "";
-      let rutasCapas = [];
-
-      if (av) {
-        ORDEN_CAPAS.forEach(tipo => {
-          const ruta = rutaImagenCapa(av[tipo]);
-          if (ruta) {
-            capas += `<img class="capa-tarjeta" data-src="${ruta}" alt="" loading="lazy">`;
-            rutasCapas.push(ruta);
-          }
-        });
-      }
-
-      const avatarHTML = capas || `<img src="imagenes/avatar.png" class="avatar-default" alt="" loading="lazy">`;
+      const imagen = imagenAvatarPerfil(amigo.avatar, amigo, 62, 96);
+      const avatarHTML = imagen.tipo === "silueta"
+        ? `<img src="${imagen.src}" class="avatar-default" alt="" loading="lazy">`
+        : `<img class="capa-tarjeta${imagen.tipo === "png" ? " avatar-png-personalizado" : ""}" data-src="${imagen.src}" alt="" loading="lazy">`;
 
       return `
         <div class="tarjeta-usuario">
 
           ${esFavorito ? `<span class="icono-favorito-amigo" title="Amigo favorito">★</span>` : ""}
 
-          <div class="avatar-tarjeta avatar-compuesto" data-capas="${rutasCapas.join("|")}" data-capa-class="capa-tarjeta">
+          <div class="avatar-tarjeta">
             ${avatarHTML}
           </div>
 
@@ -387,58 +369,16 @@ if (!usuario) {
 
 
   // ---------- AVATAR ----------
-  // El avatar viaja embebido en el usuario (users.avatar), ya no hace
-  // falta ir a buscarlo a una clave localStorage aparte.
-
-  const avatar = normalizarAvatar(usuario.avatar);
+  // El grande, 327x504: es lo primero que se ve, así que va con src y
+  // no espera a entrar en pantalla.
   const caja = document.getElementById("avatarUsuario");
 
-if (avatar && caja) {
-
-  if(avatarEsPNG(avatar)){
-    caja.innerHTML = `<img src="${avatarPNGData(avatar)}" class="avatar-png-personalizado" alt="Avatar PNG" style="width:100%;height:100%;object-fit:contain;">`;
-  } else {
-
-  caja.innerHTML = "";
-
-  let contenedorAvatar = document.createElement("div");
-
-  contenedorAvatar.style.position = "relative";
-  contenedorAvatar.style.width = "100%";
-  contenedorAvatar.style.height = "100%";
-  contenedorAvatar.style.display = "flex";
-  contenedorAvatar.style.justifyContent = "center";
-  contenedorAvatar.style.alignItems = "center";
-  contenedorAvatar.className = "avatar-compuesto";
-
-  const estiloCapaUsuario = "position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;";
-  let rutasCapasUsuario = [];
-
-  ORDEN_CAPAS.forEach(tipo => {
-
-    const ruta = rutaImagenCapa(avatar[tipo]);
-
-    if(ruta){
-
-      const img = document.createElement("img");
-
-      img.src = ruta;
-      img.setAttribute("style", estiloCapaUsuario);
-
-      contenedorAvatar.appendChild(img);
-      rutasCapasUsuario.push(ruta);
-
-    }
-
-  });
-
-  contenedorAvatar.setAttribute("data-capas", rutasCapasUsuario.join("|"));
-  contenedorAvatar.setAttribute("data-capa-style", estiloCapaUsuario);
-
-  caja.appendChild(contenedorAvatar);
-
+  if (caja) {
+    const imagen = imagenAvatarPerfil(usuario.avatar, usuario, 327, 504);
+    caja.innerHTML = `<img src="${imagen.src}"` +
+      (imagen.tipo === "png" ? ` class="avatar-png-personalizado"` : "") +
+      ` alt="Avatar del jugador" style="width:100%;height:100%;object-fit:contain;">`;
   }
-}
 
 
   // ---------- BOTÓN AGREGAR AMIGO ----------
@@ -720,24 +660,14 @@ function escaparHTML(texto) {
     // El avatar viaja embebido en el usuario (users.avatar, Neon); se
     // lee de la caché en memoria de js/core.js, precargada antes de
     // pintar la lista de comentarios (ver renderComentarios más abajo).
-    const av = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
-    if (!av) {
-      return `<img src="imagenes/avatar.png" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f0b429;" alt="" loading="lazy">`;
+    const imagen = imagenAvatarPerfil(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96);
+    if (imagen.tipo === "silueta") {
+      return `<img src="${imagen.src}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #f0b429;" alt="" loading="lazy">`;
     }
-    if(avatarEsPNG(av)){
-      return `<img data-src="${avatarPNGData(av)}" style="width:40px;height:40px;border-radius:50%;object-fit:contain;border:2px solid #f0b429;" class="avatar-png-personalizado" alt="" loading="lazy">`;
+    if (imagen.tipo === "png") {
+      return `<img data-src="${imagen.src}" style="width:40px;height:40px;border-radius:50%;object-fit:contain;border:2px solid #f0b429;" class="avatar-png-personalizado" alt="" loading="lazy">`;
     }
-    let capas = "";
-    let rutasCapas = [];
-    ORDEN_CAPAS.forEach(tipo => {
-      const ruta = rutaImagenCapa(av[tipo]);
-      if (ruta) {
-        capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
-        rutasCapas.push(ruta);
-      }
-    });
-    return `<div class="avatar-mini avatar-compuesto" data-capas="${rutasCapas.join("|")}" ` +
-      `data-capa-class="capa-comentario">${capas}</div>`;
+    return `<div class="avatar-mini"><img class="capa-comentario" data-src="${imagen.src}" alt="" loading="lazy"></div>`;
   }
 
   // Comentarios viven en Neon (tabla profile_comments,

@@ -74,32 +74,21 @@ renderActividadUsuario();
 
 const contenedorActividadAmigosUsuario = document.getElementById("listaActividadAmigosUsuario");
 
-// Reutiliza rutaImagenCapa()/ORDEN_CAPAS (definidas de forma global en
-// js/usuario.js, fuera de su IIFE) en vez de CAPAS_IMG, que es el
-// criterio propio de perfil.js.
+// Una sola imagen por persona, como el resto de la página: ver
+// imagenAvatarPerfil() en js/usuario.js. La persona sale de la memoria
+// de js/core.js, que se llena antes de pintar.
 function avatarMiniActividadUsuario(nombre){
-  const avatar = typeof obtenerAvatarCacheado === "function" ? obtenerAvatarCacheado(nombre) : null;
+  const imagen = imagenAvatarPerfil(obtenerAvatarCacheado(nombre), obtenerPersonaCacheada(nombre), 62, 96);
 
-  if(!avatar){
-    return `<img src="imagenes/avatar.png" class="avatar-comentario" alt="" loading="lazy">`;
+  if(imagen.tipo === "silueta"){
+    return `<img src="${imagen.src}" class="avatar-comentario" alt="" loading="lazy">`;
   }
 
-  if(avatarEsPNG(avatar)){
-    return `<img data-src="${avatarPNGData(avatar)}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
+  if(imagen.tipo === "png"){
+    return `<img data-src="${imagen.src}" class="avatar-comentario avatar-png-personalizado" alt="" loading="lazy">`;
   }
 
-  let capas = "";
-  let rutasCapas = [];
-  ORDEN_CAPAS.forEach(tipo=>{
-    const ruta = rutaImagenCapa(avatar[tipo]);
-    if(ruta){
-      capas += `<img class="capa-comentario" data-src="${ruta}" alt="" loading="lazy">`;
-      rutasCapas.push(ruta);
-    }
-  });
-
-  return `<div class="avatar-mini avatar-compuesto" ` +
-    `data-capas="${rutasCapas.join("|")}" data-capa-class="capa-comentario">${capas}</div>`;
+  return `<div class="avatar-mini"><img class="capa-comentario" data-src="${imagen.src}" alt="" loading="lazy"></div>`;
 }
 
 async function renderActividadAmigosUsuario(){
