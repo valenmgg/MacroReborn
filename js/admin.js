@@ -339,8 +339,13 @@
     // Neon en vez de recorrer localStorage); acá solo se pintan en
     // el DOM.
 
+    // Todo escapado: en los tops de nivel y XP el nombre es el de una
+    // cuenta, y en los de logros, insignias y juegos puede ser el id
+    // crudo que haya en la base. Y esto se pinta en el navegador de un
+    // administrador. Ver el punto 77 de docs/AUDITORIA.md.
     function _filaTop(item, unidad){
-      return `<li><span class="admin-top-nombre">${item.nombre}</span><span class="admin-top-valor">${item.valor !== undefined ? item.valor : item.veces}${unidad || ""}</span></li>`;
+      const valor = item.valor !== undefined ? item.valor : item.veces;
+      return `<li><span class="admin-top-nombre">${MRTexto.escapar(item.nombre)}</span><span class="admin-top-valor">${MRTexto.escapar(String(valor) + (unidad || ""))}</span></li>`;
     }
 
     function _pintarLista(idLista, items, vacio, unidad){
