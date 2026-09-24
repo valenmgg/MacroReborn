@@ -76,8 +76,7 @@ let _comSolicitudesRecibidas = [];
 // las listas pasan la persona, y si alguna llegara sin ella, sale la
 // silueta: nunca una prenda suelta. Ver docs/AVATARES-SERVIDOR.md.
 function rkImagenAvatar(avatarCrudo, usuario) {
-  return imagenDeAvatar(avatarCrudo, usuario, 62, 96) ||
-    { tipo: "silueta", src: "imagenes/avatar.png" };
+  return imagenDeAvatar(avatarCrudo, usuario, 62, 96) || SILUETA_AVATAR;
 }
 
 // Esta pagina pinta 181 tarjetas, asi que aqui es donde se nota: 5.562

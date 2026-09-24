@@ -739,6 +739,10 @@ function avatarTienePrendas(avatarCrudo){
   });
 }
 
+// Lo que las paginas ya migradas enseñan cuando imagenDeAvatar() no
+// sabe de quien es: la silueta, nunca las capas.
+const SILUETA_AVATAR = Object.freeze({ tipo: "silueta", src: "imagenes/avatar.png" });
+
 // Que imagen enseñar como avatar de alguien, en este orden:
 //
 //   png        su PNG de administrador;
@@ -759,7 +763,7 @@ function imagenDeAvatar(avatarCrudo, usuario, ancho, alto){
     return { tipo: "compuesto", src: urlAvatarCompuesto(usuario, ancho, alto) };
   }
   if(!avatarTienePrendas(avatarCrudo)){
-    return { tipo: "silueta", src: "imagenes/avatar.png" };
+    return SILUETA_AVATAR;
   }
   if(conId){
     return { tipo: "compuesto", src: urlAvatarCompuesto(usuario, ancho, alto) };
@@ -1139,5 +1143,6 @@ if (typeof window !== "undefined") {
   window.urlAvatarCompuesto = urlAvatarCompuesto;
   window.imagenDeAvatar = imagenDeAvatar;
   window.avatarTienePrendas = avatarTienePrendas;
+  window.SILUETA_AVATAR = SILUETA_AVATAR;
   window.obtenerPersonaCacheada = obtenerPersonaCacheada;
 }
