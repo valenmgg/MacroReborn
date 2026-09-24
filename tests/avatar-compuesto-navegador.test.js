@@ -255,6 +255,64 @@ describe("qué imagen se enseña", () => {
 
 });
 
+describe("la memoria de avatares de otras personas", () => {
+
+  // El chat, los comentarios, la actividad y las reseñas pintan a otras
+  // personas desde una memoria que se llena con /api/users. La API manda
+  // el id y la huella, y hasta el 24/09/2026 aquí se tiraban.
+  function montarMemoria(respuesta) {
+    const i = CORE.indexOf("const _cacheAvatares = {};");
+    const j = CORE.indexOf("async function cargarAvatarUsuario(");
+    assert.ok(i !== -1 && j > i, "no está la memoria de avatares en js/core.js");
+    const fin = j + CORE.slice(j).search(/\r?\n}\r?\n/);
+
+    const pedidas = [];
+    const contexto = {
+      console: { warn() {}, error() {}, log() {} },
+      fetch: async (url) => { pedidas.push(url); return { json: async () => respuesta }; }
+    };
+    vm.createContext(contexto);
+    const m = vm.runInContext(
+      funcion("leerJSON") + funcion("normalizarAvatar") +
+      CORE.slice(i, fin) + "\n}\n" +
+      ";({ cargar: cargarAvatarUsuario, persona: obtenerPersonaCacheada, avatar: obtenerAvatarCacheado })",
+      contexto
+    );
+    m.pedidas = pedidas;
+    return m;
+  }
+
+  test("guarda el id y la huella, no solo el avatar", async () => {
+    const m = montarMemoria({ success: true, user: { id: 38, username: "luis",
+      avatar: { modelo: "tora" }, avatar_compuesto: "401ddea4553c" } });
+    await m.cargar("luis");
+    assert.deepStrictEqual({ ...m.persona("luis") }, { id: 38, avatar_compuesto: "401ddea4553c" });
+    assert.deepStrictEqual({ ...m.avatar("luis") }, { modelo: "tora" });
+  });
+
+  test("sin huella guardada, la persona va igual, con la huella en null", async () => {
+    const m = montarMemoria({ success: true, user: { id: 7, username: "ana", avatar: null } });
+    await m.cargar("ana");
+    assert.deepStrictEqual({ ...m.persona("ana") }, { id: 7, avatar_compuesto: null });
+  });
+
+  test("si no existe, ni persona ni avatar", async () => {
+    const m = montarMemoria({ success: false });
+    await m.cargar("nadie");
+    assert.equal(m.persona("nadie"), null);
+    assert.equal(m.avatar("nadie"), null);
+    assert.equal(m.persona("nunca-pedida"), null);
+  });
+
+  test("y la pide ligera, sin el PNG entero dentro", async () => {
+    const m = montarMemoria({ success: true, user: { id: 38, username: "luis" } });
+    await m.cargar("luis");
+    assert.equal(m.pedidas.length, 1);
+    assert.match(m.pedidas[0], /ligero=1/);
+  });
+
+});
+
 describe("la etiqueta que se pinta", () => {
 
   test("sale con data-src, que es lo que recoge el cargador perezoso", () => {

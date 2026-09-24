@@ -343,11 +343,22 @@ function avatarPNGImgHTML(avatarCrudo, clase="", alt="") {
 // y un getter sincrónico (obtenerAvatarCacheado) para usar en el HTML.
 
 const _cacheAvatares = {};
+const _cachePersonas = {};
 const _peticionesAvatares = {};
 
 function obtenerAvatarCacheado(nombre){
   return Object.prototype.hasOwnProperty.call(_cacheAvatares, nombre)
     ? _cacheAvatares[nombre]
+    : null;
+}
+
+// Su id y la huella de su compuesto, { id, avatar_compuesto }, para
+// pasarselos a imagenDeAvatar(). La API los manda desde el 21/09/2026 y
+// hasta el 24/09 aqui se tiraban: el chat, los comentarios, la actividad
+// y las reseñas no tenian con que pedir el compuesto.
+function obtenerPersonaCacheada(nombre){
+  return Object.prototype.hasOwnProperty.call(_cachePersonas, nombre)
+    ? _cachePersonas[nombre]
     : null;
 }
 
@@ -375,6 +386,9 @@ async function cargarAvatarUsuario(nombre){
       const resp = await fetch("/api/users?ligero=1&username=" + encodeURIComponent(nombre));
       const datos = await resp.json();
       const avatar = (datos && datos.success) ? normalizarAvatar(datos.user.avatar) : null;
+      _cachePersonas[nombre] = (datos && datos.success && datos.user.id)
+        ? { id: datos.user.id, avatar_compuesto: datos.user.avatar_compuesto || null }
+        : null;
       _cacheAvatares[nombre] = avatar;
       return avatar;
     }catch(error){
@@ -1121,4 +1135,5 @@ if (typeof window !== "undefined") {
   window.urlAvatarCompuesto = urlAvatarCompuesto;
   window.imagenDeAvatar = imagenDeAvatar;
   window.avatarTienePrendas = avatarTienePrendas;
+  window.obtenerPersonaCacheada = obtenerPersonaCacheada;
 }
