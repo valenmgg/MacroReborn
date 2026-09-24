@@ -694,16 +694,59 @@ if(typeof document !== "undefined"){
 // arma otra direccion, y el navegador baja la nueva. Sin el habria que
 // preguntar por cada avatar en cada visita.
 //
-// Devuelve null cuando no hay compuesto, y entonces quien llama dibuja
-// por capas como siempre. Pasa con quien no tiene avatar, con los PNG
-// del administrador, y con quien agoto el freno del servidor. Ninguno
-// se queda en blanco.
+// Sin huella sale la direccion desnuda, que tambien vale: si el
+// compuesto falta, el servidor lo compone al pedirlo, y si no puede
+// manda la silueta. Se cachea un minuto en vez de un ano. Pasa con quien
+// agoto el freno del servidor o con un guardado que fallo.
+//
+// Devuelve null solo si no se sabe de quien es.
 function urlAvatarCompuesto(usuario, ancho, alto){
-  if(!usuario || !usuario.id || !usuario.avatar_compuesto) return null;
+  if(!usuario || !usuario.id) return null;
   const a = ancho || 62, l = alto || 96;
+  const ruta = "/avatares/" + encodeURIComponent(usuario.id) + "/" + a + "x" + l + ".jpg";
+  if(!usuario.avatar_compuesto) return ruta;
   const v = String(usuario.avatar_compuesto).slice(0, 12);
-  return "/avatares/" + encodeURIComponent(usuario.id) + "/" + a + "x" + l +
-    ".jpg?v=" + encodeURIComponent(v);
+  return ruta + "?v=" + encodeURIComponent(v);
+}
+
+// ¿Lleva alguna prenda puesta? El mismo criterio que capasCon() en
+// api/_avatar-compuesto.js: sin ninguna, el servidor no compone nada, y
+// no hace falta preguntarle para acabar en la silueta.
+function avatarTienePrendas(avatarCrudo){
+  const avatar = normalizarAvatar(avatarCrudo);
+  if(!avatar || typeof avatar !== "object" || avatar.tipo === "png") return false;
+  return ORDEN_CAPAS_AVATAR.some(capa=>{
+    const valor = avatar[capa];
+    return typeof valor === "string" && valor !== "" && valor !== "ninguno";
+  });
+}
+
+// Que imagen enseñar como avatar de alguien, en este orden:
+//
+//   png        su PNG de administrador;
+//   compuesto  con huella: la version, cacheada un ano;
+//   silueta    no lleva ninguna prenda: la del sitio, sin preguntar;
+//   compuesto  lleva prendas y no hay huella: la direccion desnuda.
+//
+// Devuelve { tipo, src }. Y null solo cuando lleva prendas pero no se
+// sabe quien es: son las paginas que aun no pasan el usuario, y esas
+// siguen dibujando por capas hasta que se migren. Ninguna prenda suelta
+// sale de aqui.
+function imagenDeAvatar(avatarCrudo, usuario, ancho, alto){
+  const png = avatarPNGData(avatarCrudo);
+  if(png) return { tipo: "png", src: png };
+
+  const conId = !!(usuario && usuario.id);
+  if(conId && usuario.avatar_compuesto){
+    return { tipo: "compuesto", src: urlAvatarCompuesto(usuario, ancho, alto) };
+  }
+  if(!avatarTienePrendas(avatarCrudo)){
+    return { tipo: "silueta", src: "imagenes/avatar.png" };
+  }
+  if(conId){
+    return { tipo: "compuesto", src: urlAvatarCompuesto(usuario, ancho, alto) };
+  }
+  return null;
 }
 
 // Una sola etiqueta con el compuesto, con el mismo data-src perezoso
@@ -719,21 +762,23 @@ function imgCompuesta(url, estilo, clase){
 // como antes. Quien tenga el usuario entero pasa los dos y se lleva la
 // imagen compuesta. Asi las paginas se migran de una en una.
 function avatarMiniaturaHTML(avatarCrudo, usuario){
-  const compuesta = urlAvatarCompuesto(usuario, 62, 96);
-  if(compuesta){
-    return imgCompuesta(compuesta,
+  const imagen = imagenDeAvatar(avatarCrudo, usuario, 62, 96);
+
+  if(imagen && imagen.tipo === "compuesto"){
+    return imgCompuesta(imagen.src,
       "width:100%;height:100%;object-fit:cover;border-radius:inherit;");
   }
-
-  const avatar = normalizarAvatar(avatarCrudo);
-  if(avatarEsPNG(avatar)){
-    const src = avatarPNGData(avatar);
-    return `<img class="avatar-png-personalizado" src="${src}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;">`;
+  if(imagen && imagen.tipo === "png"){
+    return `<img class="avatar-png-personalizado" src="${imagen.src}" alt="Avatar" loading="lazy" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;">`;
   }
   const avatarPorDefecto =
     `<img src="imagenes/avatar.png" alt="" loading="lazy" ` +
     `style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
 
+  if(imagen) return avatarPorDefecto;
+
+  // Por capas: solo quien aun no pasa el usuario.
+  const avatar = normalizarAvatar(avatarCrudo);
   if(!avatar) return avatarPorDefecto;
 
   let capas = "";
@@ -1074,4 +1119,6 @@ if (typeof window.crearNotificacion !== "function") {
 // buscar desde fuera.
 if (typeof window !== "undefined") {
   window.urlAvatarCompuesto = urlAvatarCompuesto;
+  window.imagenDeAvatar = imagenDeAvatar;
+  window.avatarTienePrendas = avatarTienePrendas;
 }

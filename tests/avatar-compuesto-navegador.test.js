@@ -14,7 +14,9 @@
 //
 //   SIN COMPUESTO SE SIGUE DIBUJANDO. Quien no tiene avatar, quien usa
 //   un PNG de administrador y quien agotó el freno del servidor no
-//   tienen huella. Ninguno puede quedarse en blanco.
+//   tienen huella. Ninguno puede quedarse en blanco, y ninguno puede
+//   acabar pidiendo prendas sueltas: el PNG va antes que el compuesto,
+//   sin prendas sale la silueta, y sin huella la dirección desnuda.
 //
 //   LA PAGINA DE COMUNIDAD PASA EL USUARIO. Es donde está el ahorro, y
 //   es un argumento nuevo en una llamada que ya tenía cuatro: olvidarlo
@@ -35,18 +37,33 @@ const COMUNIDAD = fs.readFileSync(raiz("js", "comunidad-ranking.js"), "utf8");
 
 const AC = require("../api/_avatar-compuesto");
 
+// Una función suelta de core.js, de su "function" a su llave de cierre.
+function funcion(nombre) {
+  const i = CORE.indexOf("function " + nombre + "(");
+  assert.ok(i !== -1, "no está " + nombre + " en js/core.js");
+  const fin = CORE.slice(i).search(/\r?\n}\r?\n/);
+  return CORE.slice(i, i + fin) + "\n}\n";
+}
+
 // Levanta solo el trozo de core.js que va del ayudante nuevo a
-// avatarMiniaturaHTML, sin arrastrar el resto del fichero.
+// avatarMiniaturaHTML, y lo poco de fuera que usa, sin arrastrar el
+// resto del fichero.
 function montarAyudante() {
   const i = CORE.indexOf("function urlAvatarCompuesto");
   const j = CORE.indexOf("function avatarMiniaturaHTML");
   assert.ok(i !== -1, "no está urlAvatarCompuesto en js/core.js");
   assert.ok(j > i, "avatarMiniaturaHTML debería ir después");
 
+  const k = CORE.indexOf("const ORDEN_CAPAS_AVATAR");
+  const orden = CORE.slice(k, CORE.indexOf("];", k) + 2);
+
   const contexto = { console: { warn() {}, error() {}, log() {} } };
   vm.createContext(contexto);
   return vm.runInContext(
-    CORE.slice(i, j) + "\n;({ url: urlAvatarCompuesto, img: imgCompuesta })",
+    funcion("leerJSON") + funcion("normalizarAvatar") + funcion("avatarPNGData") +
+    orden + "\n" + CORE.slice(i, j) +
+    "\n;({ url: urlAvatarCompuesto, img: imgCompuesta, imagen: imagenDeAvatar," +
+    " tienePrendas: avatarTienePrendas })",
     contexto
   );
 }
@@ -93,10 +110,20 @@ describe("la dirección que arma el navegador", () => {
     }
   });
 
-  test("sin huella no hay dirección, y entonces se dibuja por capas", () => {
+  test("sin huella sale la dirección desnuda, que el servidor también entiende", () => {
+    // El servidor lo compone al pedirlo si falta, o manda la silueta.
+    // Se cachea un minuto en vez de un año, y nada más cambia.
     const { url } = montarAyudante();
-    assert.equal(url({ id: 38 }), null);
-    assert.equal(url({ id: 38, avatar_compuesto: null }), null);
+    assert.equal(url({ id: 38 }), "/avatares/38/62x96.jpg");
+    assert.equal(url({ id: 38, avatar_compuesto: null }, 327, 504), "/avatares/38/327x504.jpg");
+
+    const partida = AC.partirRuta(url({ id: 38 }));
+    assert.ok(partida, "el servidor no entiende la dirección desnuda");
+    assert.deepStrictEqual(partida.destino, { usuarioId: 38 });
+  });
+
+  test("y sin saber de quién es, no hay dirección", () => {
+    const { url } = montarAyudante();
     assert.equal(url({ avatar_compuesto: "abc" }), null);
     assert.equal(url(null), null);
     assert.equal(url(undefined), null);
@@ -109,6 +136,77 @@ describe("la dirección que arma el navegador", () => {
     assert.ok(!sucio.includes("../"), "el id salió sin escapar: " + sucio);
     // Y el servidor lo rechaza igualmente.
     assert.equal(AC.partirRuta(sucio.split("?")[0]), null);
+  });
+
+});
+
+describe("qué imagen se enseña", () => {
+
+  const CAPAS = { modelo: "tora", pelo: "tora_pelo3" };
+  const PNG = { tipo: "png", url: "/api/users?action=avatar-png&username=luis&v=abc" };
+
+  test("con huella, el compuesto con su versión", () => {
+    const { imagen } = montarAyudante();
+    assert.deepStrictEqual({ ...imagen(CAPAS, LUIS) },
+      { tipo: "compuesto", src: "/avatares/38/62x96.jpg?v=401ddea4553c" });
+    assert.equal(imagen(CAPAS, LUIS, 327, 504).src, "/avatares/38/327x504.jpg?v=401ddea4553c");
+  });
+
+  test("el PNG de administrador va antes, aunque quede una huella vieja", () => {
+    // Antes del 24/09/2026 ponerse un PNG no borraba la huella: con el
+    // compuesto primero, saldría la ropa de antes.
+    const { imagen } = montarAyudante();
+    assert.deepStrictEqual({ ...imagen(PNG, LUIS) }, { tipo: "png", src: PNG.url });
+  });
+
+  test("sin ninguna prenda, la silueta, sin preguntarle al servidor", () => {
+    // 65 de 186 cuentas no llevan nada: pedirle al servidor cada una
+    // sería una consulta a la base por avatar para acabar igual.
+    const { imagen } = montarAyudante();
+    for (const vacio of [null, undefined, "", {}, { pelo: "ninguno" }, { pelo: "" }]) {
+      assert.deepStrictEqual({ ...imagen(vacio, { id: 38 }) },
+        { tipo: "silueta", src: "imagenes/avatar.png" }, JSON.stringify(vacio));
+    }
+  });
+
+  test("con prendas y sin huella, la dirección desnuda", () => {
+    const { imagen } = montarAyudante();
+    assert.deepStrictEqual({ ...imagen(CAPAS, { id: 38 }) },
+      { tipo: "compuesto", src: "/avatares/38/62x96.jpg" });
+    // El avatar también puede llegar como texto JSON, como en la base.
+    assert.equal(imagen(JSON.stringify(CAPAS), { id: 38 }).tipo, "compuesto");
+  });
+
+  test("con prendas y sin saber quién es, null: esa página aún dibuja por capas", () => {
+    const { imagen } = montarAyudante();
+    assert.equal(imagen(CAPAS), null);
+    assert.equal(imagen(CAPAS, { avatar_compuesto: "abc" }), null);
+  });
+
+  test("un PNG que apunta fuera no se enseña: sale la silueta", () => {
+    const { imagen } = montarAyudante();
+    const ajeno = { tipo: "png", url: "https://otro.sitio/cara.png" };
+    assert.deepStrictEqual({ ...imagen(ajeno, { id: 38 }) },
+      { tipo: "silueta", src: "imagenes/avatar.png" });
+  });
+
+  test("cuándo lleva prendas lo decide igual que el servidor", () => {
+    // Si el navegador creyera que no lleva nada y el servidor que sí,
+    // alguien con ropa saldría como silueta. Y al revés, se preguntaría
+    // al servidor por nada.
+    const { tienePrendas } = montarAyudante();
+    const casos = [{}, { pelo: "ninguno" }, { pelo: "" }, { pelo: null }, CAPAS,
+      { fondo: "tora_fondo1" }, { borde: "x" }, { mascota: "ninguno", ojos: "tora_ojos2" },
+      { cualquiera: "tora_pelo3" }];
+    for (const avatar of casos) {
+      assert.equal(tienePrendas(avatar), AC.capasCon(avatar).length > 0, JSON.stringify(avatar));
+    }
+  });
+
+  test("y mira las mismas capas que el servidor", () => {
+    const k = CORE.indexOf("const ORDEN_CAPAS_AVATAR");
+    const lista = CORE.slice(k, CORE.indexOf("];", k)).match(/"[a-z]+"/g).map(s => s.slice(1, -1));
+    assert.deepStrictEqual(lista, require("../api/_avatar-catalogo").CAPAS);
   });
 
 });
