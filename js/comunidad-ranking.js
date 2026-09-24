@@ -640,7 +640,12 @@ async function crCargarTienda() {
     crGridTienda.innerHTML = items.map(item => {
 
       const yaLaTiene = comprados.has(item.id);
-      const ruta = rkRutaCapa(item.valorCapa);
+      // La previsualizacion: la prenda puesta en su maniqui, un JPG
+      // cuadrado que existe para todas. Sin ella, el dibujo suelto como
+      // antes, que solo se encuentra si alguien la lleva puesta; por eso
+      // habia cajas vacias con precio. Fase 4 de docs/AVATARES-SERVIDOR.md.
+      const previa = item.previsualizacion || null;
+      const ruta = previa || rkRutaCapa(item.valorCapa);
 
       let boton;
       if (!activoComRk) {
@@ -654,7 +659,7 @@ async function crCargarTienda() {
       return `
         <div class="cr-item-tienda">
           <div class="cr-item-tienda-imagen">
-            ${ruta ? `<img data-src="${ruta}" alt="${MRTexto.escapar(item.nombre)}" loading="lazy">` : ""}
+            ${ruta ? `<img data-src="${MRTexto.escapar(ruta)}"${previa ? ' class="cr-previsualizacion"' : ""} alt="${MRTexto.escapar(item.nombre)}" loading="lazy">` : ""}
           </div>
           <p class="cr-item-tienda-nombre">${MRTexto.escapar(item.nombre)}</p>
           <p class="cr-item-tienda-precio">🪙 ${item.precio}</p>

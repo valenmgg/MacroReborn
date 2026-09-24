@@ -843,6 +843,16 @@
   object-fit: contain;
 }
 
+/* La previsualizacion ya es cuadrada y trae su fondo blanco: llena la
+   caja entera en vez de flotar al 82 % sobre el fondo oscuro. */
+.cr-item-tienda-imagen img.cr-previsualizacion {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+}
+
 .cr-item-tienda-nombre {
   font-size: 11.5px;
   font-weight: 800;
