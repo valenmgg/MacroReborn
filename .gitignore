@@ -16,6 +16,10 @@ revision-lienzo/
 # existir en el repo ni desplegarse. Ademas lleva arte dentro.
 revision-avatares/
 
+# Lo mismo para las previsualizaciones de prenda
+# (npm run revision:previsualizaciones): lleva las 768 dentro.
+revision-previsualizaciones/
+
 # Imagen temporal para un anuncio de Discord. Se hace, se captura y se borra.
 anuncio-*.html
 
