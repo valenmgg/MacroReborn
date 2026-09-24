@@ -64,74 +64,40 @@ let _comSolicitudesRecibidas = [];
 
 
 // ==============================
-// AVATAR POR CAPAS (compartido)
+// EL AVATAR DE CADA PERSONA (compartido)
 // ==============================
-// El orden y la resolución de rutas vienen de js/core.js, que se carga
-// antes que este archivo.
+// Una sola imagen por persona: su PNG de administrador, su avatar ya
+// compuesto por el servidor o la silueta del sitio. Lo decide
+// imagenDeAvatar() en js/core.js, que se carga antes que este archivo.
 //
-// Hasta ahora esta copia tenía "pantalon" antes que "botas", al revés
-// que el resto del sitio. Como el orden es el orden de dibujo, el mismo
-// avatar se veía con las botas encima del pantalón acá y debajo en
-// cualquier otra página. Al pasar a la lista compartida, las botas
-// vuelven a quedar bajo el pantalón, como en el editor donde la gente
-// arma su avatar.
-
-const RK_ORDEN_CAPAS = ORDEN_CAPAS_AVATAR;
-
-function rkRutaCapa(valor) {
-  return rutaCapaAvatar(valor);
+// Hasta el 24/09/2026 esta pagina dibujaba prenda por prenda a quien no
+// traia su compuesto: 64 imagenes sueltas de /prendas/ en las listas de
+// moderacion, conectados y actividad, medidas en produccion. Ahora todas
+// las listas pasan la persona, y si alguna llegara sin ella, sale la
+// silueta: nunca una prenda suelta. Ver docs/AVATARES-SERVIDOR.md.
+function rkImagenAvatar(avatarCrudo, usuario) {
+  return imagenDeAvatar(avatarCrudo, usuario, 62, 96) ||
+    { tipo: "silueta", src: "imagenes/avatar.png" };
 }
 
-// El ultimo parametro es el usuario entero, y es opcional: sin el se
-// dibuja por capas como siempre. Con el, si el servidor ya compuso su
-// avatar, se manda UNA imagen en vez de quince. Esta pagina pinta 181
-// tarjetas, asi que aqui es donde se nota: 5.562 kB de capas sueltas
-// pasan a 468 en miniatura. Ver docs/AVATARES-SERVIDOR.md.
+// Esta pagina pinta 181 tarjetas, asi que aqui es donde se nota: 5.562
+// kB de capas sueltas pasaron a 468 en miniatura.
 function rkAvatarHTML(avatarCrudo, contenedorClase, capaClase, defaultAncho, usuario) {
 
-  const compuesta = typeof urlAvatarCompuesto === "function"
-    ? urlAvatarCompuesto(usuario, 62, 96)
-    : null;
-  if (compuesta) {
+  const imagen = rkImagenAvatar(avatarCrudo, usuario);
+
+  if (imagen.tipo === "silueta") {
     return `
       <div class="${contenedorClase}">
-        <img data-src="${compuesta}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
+        <img src="${imagen.src}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
       </div>
     `;
   }
 
-  const avatar = normalizarAvatar(avatarCrudo);
-
-  if (!avatar) {
-    return `
-      <div class="${contenedorClase}">
-        <img src="imagenes/avatar.png" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
-      </div>
-    `;
-  }
-
-  if(avatarEsPNG(avatar)){
-    return `
-      <div class="${contenedorClase}">
-        <img data-src="${avatarPNGData(avatar)}" class="${capaClase} avatar-png-personalizado" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
-      </div>
-    `;
-  }
-
-  let html = "";
-  let rutas = [];
-
-  RK_ORDEN_CAPAS.forEach(tipo => {
-    const ruta = rkRutaCapa(avatar[tipo]);
-    if (ruta) {
-      html += `<img class="${capaClase}" data-src="${ruta}" alt="" loading="lazy">`;
-      rutas.push(ruta);
-    }
-  });
-
+  const clase = imagen.tipo === "png" ? ` class="${capaClase} avatar-png-personalizado"` : "";
   return `
-    <div class="${contenedorClase} avatar-compuesto" data-capas="${rutas.join("|")}" data-capa-class="${capaClase}">
-      ${html}
+    <div class="${contenedorClase}">
+      <img data-src="${imagen.src}"${clase} alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;">
     </div>
   `;
 
@@ -447,35 +413,16 @@ const crMonedasUsuario = document.getElementById("crMonedasUsuario");
 const crGridTienda = document.getElementById("crGridTienda");
 const crFeedActividad = document.getElementById("crFeedActividad");
 
-// Mismas capas/rutas que ya usa rkAvatarHTML más arriba, pero devuelve
-// solo las <img> sueltas (sin div contenedor) para insertarlas dentro
+// La misma imagen que rkAvatarHTML, pero sin div contenedor: va dentro
 // de un <a> que YA trae position:relative + overflow:hidden por CSS
 // (ver .cr-grid-conectados a, .cr-avatar-chico en comunidad-ranking.css).
-
-function crAvatarCapasHTML(avatarCrudo, claseCapa, usuario) {
-  // Aqui no hay div contenedor: se devuelven las <img> sueltas para
-  // meterlas dentro de un <a> que ya trae position:relative por CSS.
-  // El compuesto es UNA sola, y encaja igual.
-  const compuesta = typeof urlAvatarCompuesto === "function"
-    ? urlAvatarCompuesto(usuario, 62, 96)
-    : null;
-  if (compuesta) {
-    return `<img class="${claseCapa}" data-src="${compuesta}" alt="" loading="lazy">`;
+function crAvatarHTML(avatarCrudo, claseCapa, usuario) {
+  const imagen = rkImagenAvatar(avatarCrudo, usuario);
+  if (imagen.tipo === "silueta") {
+    return `<img src="${imagen.src}" alt="" loading="lazy">`;
   }
-
-  const avatar = normalizarAvatar(avatarCrudo);
-  if (!avatar) {
-    return `<img src="imagenes/avatar.png" alt="" loading="lazy">`;
-  }
-  if(avatarEsPNG(avatar)){
-    return `<img data-src="${avatarPNGData(avatar)}" class="${claseCapa} avatar-png-personalizado" alt="" loading="lazy">`;
-  }
-  let html = "";
-  RK_ORDEN_CAPAS.forEach(tipo => {
-    const ruta = rkRutaCapa(avatar[tipo]);
-    if (ruta) html += `<img class="${claseCapa}" data-src="${ruta}" alt="" loading="lazy">`;
-  });
-  return html || `<img src="imagenes/avatar.png" alt="" loading="lazy">`;
+  const clase = imagen.tipo === "png" ? claseCapa + " avatar-png-personalizado" : claseCapa;
+  return `<img class="${clase}" data-src="${imagen.src}" alt="" loading="lazy">`;
 }
 
 // ---- Pestañas ----
@@ -510,7 +457,7 @@ async function crCargarEstadisticas() {
       crRecienLlegados.innerHTML = llegados.length
         ? llegados.map(u => `
             <a href="usuario.html?usuario=${encodeURIComponent(u.username)}" class="cr-avatar-chico" title="${MRTexto.escapar(u.username)}">
-              ${crAvatarCapasHTML(u.avatar, "cr-capa-chica", u)}
+              ${crAvatarHTML(u.avatar, "cr-capa-chica", u)}
             </a>
           `).join("")
         : `<p class="cr-vacio">Todavía no se registró nadie hoy.</p>`;
@@ -540,7 +487,7 @@ async function crCargarModeracion() {
     crListaModeracion.innerHTML = datos.staff.map(s => `
       <div class="cr-fila-staff">
         <a href="usuario.html?usuario=${encodeURIComponent(s.username)}" class="cr-avatar-chico" title="${MRTexto.escapar(s.username)}">
-          ${crAvatarCapasHTML(s.avatar, "cr-capa-chica")}
+          ${crAvatarHTML(s.avatar, "cr-capa-chica", s)}
         </a>
         <div class="cr-staff-info">
           <p class="cr-staff-nombre">${MRTexto.escapar(s.username)}</p>
@@ -594,7 +541,7 @@ function crRenderConectados(lista, filtro = "") {
 
   crGridConectados.innerHTML = conectados.slice(0, 24).map(u => `
     <a href="usuario.html?usuario=${encodeURIComponent(u.nombre)}" title="${MRTexto.escapar(u.nombre)}">
-      ${crAvatarCapasHTML(u.avatar, "cr-capa-chica")}
+      ${crAvatarHTML(u.avatar, "cr-capa-chica", u)}
     </a>
   `).join("");
 }
@@ -746,7 +693,8 @@ async function crCargarFeed() {
       return `
         <div class="cr-feed-item">
           <a href="usuario.html?usuario=${encodeURIComponent(item.username)}" class="cr-feed-avatar" title="${MRTexto.escapar(item.username)}">
-            ${crAvatarCapasHTML(item.avatar, "cr-capa-chica")}
+            ${crAvatarHTML(item.avatar, "cr-capa-chica",
+              { id: item.usuario_id, avatar_compuesto: item.avatar_compuesto })}
           </a>
           <div class="cr-feed-texto">
             <p>${MRTexto.escapar(texto)}</p>

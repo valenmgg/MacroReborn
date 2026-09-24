@@ -18,10 +18,10 @@
 //   acabar pidiendo prendas sueltas: el PNG va antes que el compuesto,
 //   sin prendas sale la silueta, y sin huella la dirección desnuda.
 //
-//   LA PAGINA DE COMUNIDAD PASA EL USUARIO. Es donde está el ahorro, y
-//   es un argumento nuevo en una llamada que ya tenía cuatro: olvidarlo
-//   en uno de los cuatro sitios no rompe nada visible, solo deja esa
-//   lista sin el ahorro. Se comprueba leyendo el fichero.
+//   LA PAGINA DE COMUNIDAD PASA EL USUARIO, en sus siete listas. Desde
+//   el 24/09/2026 ya no dibuja por capas: la lista que lo olvide sale
+//   con siluetas. Se ejecutan sus funciones de verdad, y se comprueba
+//   leyendo el fichero que cada llamada pasa la persona.
 //
 // Correr:  npm test
 
@@ -68,6 +68,48 @@ function montarAyudante() {
     " tienePrendas: avatarTienePrendas })",
     contexto
   );
+}
+
+// Lo mismo, con las funciones de avatar de la pagina de comunidad
+// encima, que usan imagenDeAvatar.
+function montarComunidad() {
+  const trozo = nombre => {
+    const i = COMUNIDAD.indexOf("function " + nombre + "(");
+    assert.ok(i !== -1, "no está " + nombre + " en js/comunidad-ranking.js");
+    const fin = COMUNIDAD.slice(i).search(/\r?\n}\r?\n/);
+    return COMUNIDAD.slice(i, i + fin) + "\n}\n";
+  };
+  const i = CORE.indexOf("function urlAvatarCompuesto");
+  const j = CORE.indexOf("function avatarMiniaturaHTML");
+  const k = CORE.indexOf("const ORDEN_CAPAS_AVATAR");
+  const contexto = { console: { warn() {}, error() {}, log() {} } };
+  vm.createContext(contexto);
+  return vm.runInContext(
+    funcion("leerJSON") + funcion("normalizarAvatar") + funcion("avatarPNGData") +
+    CORE.slice(k, CORE.indexOf("];", k) + 2) + "\n" + CORE.slice(i, j) +
+    trozo("rkImagenAvatar") + trozo("rkAvatarHTML") + trozo("crAvatarHTML") +
+    "\n;({ rk: rkAvatarHTML, cr: crAvatarHTML })",
+    contexto
+  );
+}
+
+// Cada llamada a una funcion, con sus argumentos enteros aunque ocupen
+// varias lineas o lleven parentesis dentro.
+function llamadasA(texto, nombre) {
+  const salida = [];
+  let desde = 0;
+  for (;;) {
+    const i = texto.indexOf(nombre + "(", desde);
+    if (i === -1) return salida;
+    let nivel = 0, j = i + nombre.length;
+    for (; j < texto.length; j++) {
+      if (texto[j] === "(") nivel++;
+      if (texto[j] === ")" && --nivel === 0) break;
+    }
+    const llamada = texto.slice(i, j + 1);
+    if (!texto.slice(Math.max(0, i - 9), i).includes("function")) salida.push(llamada);
+    desde = j;
+  }
 }
 
 const LUIS = { id: 38, avatar_compuesto: "401ddea4553cacbbe043e00d0c330eca" };
@@ -229,41 +271,69 @@ describe("la etiqueta que se pinta", () => {
 
 describe("la página de comunidad", () => {
 
-  test("las cuatro listas pasan el usuario, no solo su avatar", () => {
-    // Olvidarlo en una no rompe nada visible: esa lista sigue
-    // dibujándose por capas y nadie se entera de que no se ahorró.
-    const llamadas = COMUNIDAD.match(/rkAvatarHTML\([^)]*\)/g) || [];
-    const usos = llamadas.filter(l => !l.includes("function"));
-    assert.ok(usos.length >= 3, "se esperaban al menos tres usos, hay " + usos.length);
-    for (const uso of usos) {
-      assert.match(uso, /usuario\)\s*$/, "esta llamada no pasa el usuario: " + uso);
-    }
+  const CAPAS = { modelo: "tora", pelo: "tora_pelo3" };
+  const PNG = { tipo: "png", url: "/api/users?action=avatar-png&username=jefa&v=abc" };
 
-    assert.match(COMUNIDAD, /crAvatarCapasHTML\(u\.avatar, "cr-capa-chica", u\)/,
-      "la lista de conectados no pasa el usuario");
+  test("con la persona, su compuesto", () => {
+    const { rk, cr } = montarComunidad();
+    assert.match(cr(CAPAS, "cr-capa-chica", LUIS),
+      /<img class="cr-capa-chica" data-src="\/avatares\/38\/62x96\.jpg\?v=401ddea4553c"/);
+    assert.match(rk(CAPAS, "avatar-tarjeta", "capa-tarjeta", null, LUIS),
+      /data-src="\/avatares\/38\/62x96\.jpg\?v=401ddea4553c"/);
+    // Sin huella, la direccion desnuda.
+    assert.match(cr(CAPAS, "cr-capa-chica", { id: 38 }), /data-src="\/avatares\/38\/62x96\.jpg"/);
   });
 
-  test("y las dos funciones miran primero si hay compuesto", () => {
-    for (const nombre of ["rkAvatarHTML", "crAvatarCapasHTML"]) {
-      const i = COMUNIDAD.indexOf("function " + nombre);
-      assert.ok(i !== -1, "no está " + nombre);
-      // El corte tiene que llegar a las capas: rkAvatarHTML es larga.
-      const cuerpo = COMUNIDAD.slice(i, i + 2500);
-      const dondeCompuesto = cuerpo.indexOf("urlAvatarCompuesto");
-      const dondeCapas = cuerpo.indexOf("RK_ORDEN_CAPAS");
+  test("el PNG de administrador, con su clase para el repliegue", () => {
+    // avatar-png-personalizado es lo que core.js mira para caer a la
+    // silueta si el PNG no carga.
+    const { rk, cr } = montarComunidad();
+    assert.match(cr(PNG, "cr-capa-chica", LUIS), /class="cr-capa-chica avatar-png-personalizado"/);
+    assert.match(rk(PNG, "rk-mini-avatar", "capa-rk-mini", null, LUIS),
+      /class="capa-rk-mini avatar-png-personalizado"/);
+  });
 
-      assert.ok(dondeCompuesto !== -1, nombre + " no usa el compuesto");
-      assert.ok(dondeCapas !== -1, "el corte no llega a las capas de " + nombre);
-      assert.ok(dondeCompuesto < dondeCapas,
-        nombre + " mira las capas antes que el compuesto");
+  test("sin prendas, o si una lista llega sin la persona, la silueta", () => {
+    const { rk, cr } = montarComunidad();
+    for (const html of [cr(null, "cr-capa-chica", { id: 38 }), cr(CAPAS, "cr-capa-chica"),
+                        rk(CAPAS, "rk-podio-avatar", "capa-rk", null), rk({}, "x", "y", null, { id: 38 })]) {
+      assert.match(html, /src="imagenes\/avatar\.png"/);
     }
   });
 
-  test("pero siguen sabiendo dibujar por capas si no lo hay", () => {
-    // El repliegue tiene que seguir entero: 64 de 182 cuentas no tienen
-    // avatar, y un PNG de administrador tampoco tiene huella.
-    assert.match(COMUNIDAD, /RK_ORDEN_CAPAS\.forEach/);
-    assert.match(COMUNIDAD, /imagenes\/avatar\.png/);
+  test("y nunca una prenda suelta, pase lo que pase", () => {
+    const { rk, cr } = montarComunidad();
+    const casos = [[CAPAS, LUIS], [CAPAS, { id: 38 }], [CAPAS, undefined], [PNG, undefined],
+                   [null, undefined], [JSON.stringify(CAPAS), undefined]];
+    for (const [avatar, usuario] of casos) {
+      for (const html of [cr(avatar, "c", usuario), rk(avatar, "a", "b", null, usuario)]) {
+        assert.ok(!/prendas\/|imagenes\/tora|data-capas/.test(html), "salió una prenda: " + html);
+      }
+    }
+  });
+
+  test("las siete listas pasan la persona, no solo su avatar", () => {
+    // La que lo olvide sale con siluetas.
+    const rk = llamadasA(COMUNIDAD, "rkAvatarHTML");
+    assert.equal(rk.length, 3, "cambió el número de usos de rkAvatarHTML");
+    for (const uso of rk) {
+      assert.match(uso, /, usuario\)$/, "esta llamada no pasa el usuario: " + uso);
+    }
+
+    const cr = llamadasA(COMUNIDAD, "crAvatarHTML");
+    assert.equal(cr.length, 4, "cambió el número de usos de crAvatarHTML");
+    for (const uso of cr) {
+      assert.match(uso, /"cr-capa-chica",\s*\S/, "esta llamada no pasa la persona: " + uso);
+    }
+    // La actividad no es una persona: su id se llama usuario_id.
+    assert.ok(cr.some(uso => /id: item\.usuario_id, avatar_compuesto: item\.avatar_compuesto/.test(uso)),
+      "la actividad no pasa usuario_id");
+  });
+
+  test("y la página ya no sabe dibujar por capas", () => {
+    for (const rastro of ["ORDEN_CAPAS_AVATAR", "rutaCapaAvatar", "data-capas", "RK_ORDEN_CAPAS", "rkRutaCapa"]) {
+      assert.ok(!COMUNIDAD.includes(rastro), "queda " + rastro + " en js/comunidad-ranking.js");
+    }
   });
 
 });
