@@ -72,3 +72,18 @@ describe("nginx", () => {
   });
 
 });
+
+describe("las prendas sueltas", () => {
+
+  test("/prendas/ no se cachea en nginx", () => {
+    // Fase 5: el dibujo suelto solo sale con firma, y la comprueba Node.
+    // Una cache delante lo serviria a quien pidiera la direccion, con
+    // firma o sin ella. Ver api/_prendas-firma.js.
+    const b = bloques().find(x => /\/prendas\//.test(x.cabeza));
+    assert.ok(b, "no esta el location de /prendas/");
+    assert.match(b.cuerpo, /proxy_cache\s+off;/);
+    assert.ok(!/proxy_cache\s+prendas;/.test(b.cuerpo), "sigue usando la zona de cache");
+    assert.ok(!/proxy_cache_valid/.test(b.cuerpo), "sigue guardando respuestas");
+  });
+
+});
