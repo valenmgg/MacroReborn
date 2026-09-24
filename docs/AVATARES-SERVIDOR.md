@@ -173,7 +173,7 @@ rompen nada mientras tanto.
 | 1 | 2026-09-21 | El compositor | `api/_compositor.js`, `jpeg-js`, tests. No se enchufa a nada | No |
 | 2 | 2026-09-21 | Guardar y servir | Migración, `/avatares/<huella>/<tam>.jpg`, gancho al guardar, relleno de los 215 que ya existen | No |
 | 3 | Empezada el 21/09 | Las listas | Los diez archivos que pintan avatares pasan a la URL del compuesto. La comunidad ya: sus miniaturas bajaron de 5.562 kB a 399 kB | No |
-| 4 | Empezada el 23/09 | Las previsualizaciones | 768 recortes sobre maniquí, para editor y tienda. Automáticas desde el 24/09; falta generarlas, servirlas y usarlas. Ver el punto 12 | No |
+| 4 | 2026-09-24 | Las previsualizaciones | 768 recortes automáticos sobre maniquí. Publicadas: el editor y la tienda las enseñan. Ver el punto 12 | No |
 | 5 | - | Cerrar la puerta | `/prendas/` deja de servir a nadie salvo al taller | Sí, a propósito |
 
 ### Fase 1 — El compositor
@@ -302,7 +302,7 @@ recortada a un cuadro.
 **El cuadro es automático, uno por prenda**, alrededor de su propio
 dibujo. Decidido el 24/09/2026, después de probar a que lo eligiera una
 persona para cada capa; más adelante se podrán corregir una a una.
-Cómo es la regla, en el punto 12.
+Cómo es la regla, y cómo se publicaron, en el punto 12.
 
 Esta fase arregla de paso el punto 23 de la auditoría: las cajas vacías
 de la tienda dejan de estarlo. Son el mismo trabajo.
@@ -749,13 +749,44 @@ ellas son fondos, bordes, pieles y modelos, que ocupan el lienzo
 entero. No correrla con el servidor local abierto: las dos abren la
 misma copia de la base.
 
-### Lo que queda de la fase 4
+### Publicadas el 24/09/2026
 
-1. Generarlas en el servidor, guardarlas en disco como los avatares
-   compuestos y servirlas con caché larga.
-2. Que el editor y la tienda las usen. Esto arregla de paso las cajas
-   vacías de la tienda, que es el punto 23 de la auditoría.
-3. ~~Borrar las referencias de macrojuegos.~~ Hecho el 24/09/2026.
+| | |
+|---|---|
+| Dónde viven | `datos-locales/previsualizaciones/<miles>/<id>.jpg`, fuera de git, como los compuestos |
+| Su dirección | `/previsualizaciones/<id>.jpg?v=<huella>`, con un año de caché; sin versión, un minuto |
+| Su huella | En `avatar_prendas.previsualizacion`, migración 021 |
+| Quién las genera | `scripts/generar-previsualizaciones.js`, y cada prenda nueva al subirse desde el panel |
+| Quién las enseña | El editor, en sus miniaturas, y la tienda de la comunidad |
+
+Medido al publicarlas:
+
+- **Las 768 en 43 segundos** en el VPS, 2 MB en total, ninguna fallida.
+  Salen idénticas a las de la copia local: la receta es determinista.
+- **La tienda: 162 artículos, 162 con previsualización.** Antes, 130 de
+  152 no tenían dibujo y los 12 que se enseñaban eran cajas vacías con
+  precio: el punto 23 de la auditoría, arreglado de paso.
+- nginx sirve con las cuatro cabeceras de seguridad y su caché acierta
+  a la segunda petición.
+
+**Cuándo hay que volver a correr el relleno** en producción:
+
+```
+cd ~/MacroReborn && set -a && . ./.env && set +a
+node scripts/generar-previsualizaciones.js --produccion            # simulacro
+node scripts/generar-previsualizaciones.js --produccion --aplicar
+```
+
+- si se cambia la regla del cuadro, el maniquí o la calidad; en ese
+  caso, además, subir `VERSION` en `api/_previsualizaciones.js`;
+- si se fuerza un cuadro con la herramienta y se despliega el archivo;
+- si se resube el dibujo de un modelo.
+
+Lo que no cambió no se rehace, así que correrlo de más no cuesta nada.
+
+**Lo que falta de todo este plan**: el avatar que se va vistiendo en el
+editor sigue usando las prendas sueltas; dejar de mandarlas es la fase
+5. Y las listas que todavía apilan capas son la fase 3.
 
 ### Más adelante: corregir una prenda sola
 
