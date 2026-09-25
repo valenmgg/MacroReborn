@@ -72,6 +72,11 @@ async function persona(username) {
 const pulso = (p, gameId) => llamar(usersHandler, "POST", { action: "xp" },
   { username: p.username, cantidad: 10, gameId: gameId === undefined ? "juego-1" : gameId }, p.headers);
 
+// Que pase un minuto: el servidor no cuenta dos en menos de 55 segundos
+// (migración 024).
+const pasaUnMinuto = (p) => db.query(
+  "UPDATE users SET ultimo_minuto_jugado = ultimo_minuto_jugado - interval '1 minute' WHERE id = $1", [p.id]);
+
 const estado = async (p) => (await llamar(progresoHandler, "GET", { action: "status" }, null, p.headers)).cuerpo;
 
 // La racha guardada, como si el último día jugado fuera hace "dias" días.
@@ -93,9 +98,8 @@ describe("la racha se cuenta sola al jugar", () => {
 
   test("más minutos el mismo día no la suben", async () => {
     const p = await persona("insistente");
-    await pulso(p);
-    await pulso(p);
-    await pulso(p);
+    for (let i = 0; i < 3; i++) { await pulso(p); await pasaUnMinuto(p); }
+    assert.equal((await internas.obtenerMetricas(p.id)).minutes_today, 3);
     assert.equal((await estado(p)).streak.current_streak, 1);
   });
 
@@ -186,7 +190,7 @@ describe("las misiones", () => {
 
   test("los minutos de hoy los suman los pulsos de juego", async () => {
     const p = await persona("minutera");
-    for (let i = 0; i < 4; i++) await pulso(p);
+    for (let i = 0; i < 4; i++) { await pulso(p); await pasaUnMinuto(p); }
     assert.equal((await internas.obtenerMetricas(p.id)).minutes_today, 4);
   });
 

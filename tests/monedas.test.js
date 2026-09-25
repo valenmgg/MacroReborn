@@ -446,7 +446,10 @@ test("POST /api/users?action=xp otorga monedas y sigue devolviendo todo lo de an
   assert.equal(resp.monedas.saldoNuevo, SALDO_INICIAL + resp.monedas.monto);
   assert.equal(resp.monedas.razon, null);
 
-  // El segundo pulso (un minuto después) suma XP pero no monedas.
+  // El segundo pulso (un minuto después) suma XP pero no monedas. El
+  // minuto se simula: el servidor no cuenta dos en menos de 55 segundos
+  // (migración 024).
+  await db.query("UPDATE users SET ultimo_minuto_jugado = now() - interval '1 minute' WHERE username = $1", ["pulso_jugando"]);
   const resp2 = await llamar(usersHandler, "POST", { action: "xp" }, {
     username: "pulso_jugando",
     cantidad: 10,

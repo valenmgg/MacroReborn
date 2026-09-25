@@ -566,6 +566,18 @@ async function heartbeat(req, res) {
   return res.status(200).json({ success: true, last_login: actualizado[0].last_login });
 }
 
+// Lo que vale un minuto de juego, y el tope de cualquier otra recompensa
+// que pase por aquí (hoy, Macro Snake al acabar una partida, que da como
+// mucho 40). Lo decide el servidor: hasta el 25/09/2026 sumaba lo que
+// dijera el navegador, y bastaba con pedir 1.000.000.
+const XP_POR_MINUTO = 10;
+const XP_MAXIMO_RECOMPENSA = 40;
+
+// Lo que tiene que pasar entre dos minutos contados (migración 024). 55 y
+// no 60, para no perder minutos de verdad cuando la red retrasa un pulso
+// y adelanta el siguiente.
+const SEGUNDOS_ENTRE_MINUTOS = 55;
+
 async function sumarXp(req, res) {
   const auth = requerirAuth(req, res);
   if (!auth) return;
@@ -573,17 +585,43 @@ async function sumarXp(req, res) {
   if (String(auth.username).toLowerCase() !== String(username || '').toLowerCase()) {
     return res.status(403).json({ success: false, error: "Sesión no corresponde al usuario" });
   }
-  const monto = Number(cantidad) || 0;
+  const pedido = Number(cantidad) || 0;
 
-  if (!username || monto <= 0) {
+  if (!username || pedido <= 0) {
     return res.status(200).json({ success: false, error: "Datos inválidos" });
   }
 
-  const filas = await sql`SELECT id, level, xp FROM users WHERE username = ${username};`;
+  // Quién es lo dice la sesión, no el nombre del cuerpo.
+  const filas = await sql`SELECT id, level, xp FROM users WHERE id = ${auth.sub};`;
 
   if (filas.length === 0) {
     return res.status(404).json({ success: false, error: "Usuario no encontrado" });
   }
+
+  // Un minuto de juego viaja con su juego (gameId); una recompensa, sin él.
+  const esMinuto = gameId !== undefined && gameId !== null && gameId !== "";
+
+  // UN MINUTO POR MINUTO. Cada pestaña del juego manda su pulso, y cada
+  // pulso contaba: con tres pestañas, tres minutos por minuto, y había
+  // conexiones con 536 pulsos en un minuto. Ahora el minuto solo cuenta si
+  // han pasado SEGUNDOS_ENTRE_MINUTOS desde el último contado, y en una
+  // sola instrucción: de dos pulsos a la vez pasa uno. Da igual cuántas
+  // pestañas, navegadores o dispositivos haya. Lo que no cuenta se
+  // contesta sin éxito, y js/motor/xp.js lo ignora en silencio.
+  if (esMinuto) {
+    const cuenta = await sql`
+      UPDATE users SET ultimo_minuto_jugado = now()
+      WHERE id = ${auth.sub}
+        AND (ultimo_minuto_jugado IS NULL
+             OR ultimo_minuto_jugado <= now() - (${SEGUNDOS_ENTRE_MINUTOS}::int * INTERVAL '1 second'))
+      RETURNING id;
+    `;
+    if (!cuenta.length) {
+      return res.status(200).json({ success: false, contado: false, error: "Este minuto ya se contó" });
+    }
+  }
+
+  const monto = esMinuto ? XP_POR_MINUTO : Math.min(pedido, XP_MAXIMO_RECOMPENSA);
 
   let { id, level, xp } = filas[0];
   level = level || 1;

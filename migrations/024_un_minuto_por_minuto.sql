@@ -1,0 +1,21 @@
+-- ============================================
+-- MacroReborn — Migración 024: un minuto por minuto
+-- ============================================
+-- Decidido el 25/09/2026, a raíz de un reporte: "cuando alguien abre
+-- varias pestañas, se multiplica el contador: 2 ventanas, x2; 3, x3".
+--
+-- Mientras se juega, el navegador manda un pulso por minuto
+-- (js/motor/xp.js), y el servidor sumaba 10 de XP y un minuto de juego
+-- por cada pulso que le llegara, sin mirar cuántos le llegaban. Cada
+-- pestaña manda el suyo. Y no solo pestañas: en los registros de nginx
+-- había conexiones con 536 pulsos en un minuto, y una cuenta llevaba
+-- 89.104 minutos en dos días activos, que tienen 2.880.
+--
+-- Esta columna es la hora del último minuto contado de cada persona. El
+-- pulso solo cuenta si han pasado 55 segundos desde entonces
+-- (api/users.js, sumarXp): uno por minuto, con las pestañas, navegadores,
+-- dispositivos o scripts que sean. 55 y no 60, para no perder minutos
+-- de verdad cuando la red retrasa un pulso y adelanta el siguiente.
+-- ============================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ultimo_minuto_jugado TIMESTAMPTZ;
