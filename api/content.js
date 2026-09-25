@@ -486,6 +486,105 @@ async function avatarEstadoPrenda(req, res) {
 }
 
 // ==============================
+// POST /api/content?action=avatar-editar-prenda
+// ==============================
+// Cambiar el nombre o el precio de una prenda ya subida:
+// { id, nombre?, precio? }. Hasta el 24/09/2026 no se podía desde la
+// web: lo que se ponía al subir quedaba fijo.
+//
+// Quién puede, decidido ese día:
+//   - el precio, cualquiera del equipo de arte, en cualquier prenda
+//     ("confío en ellos");
+//   - el nombre, como publicar y retirar: quien la subió o un
+//     administrador.
+//
+// El personaje y la ranura no se cambian: el dibujo está hecho para
+// ellos, y de ahí sale el identificador (tora_pelo8) que la gente lleva
+// guardado en su avatar. Para eso se sube otra y se retira esta.
+//
+// Las compras hechas guardan lo que costaron (precio_pagado), así que
+// cambiar un precio no toca a nadie que ya la tenga. Cada cambio queda
+// en el registro del servidor: quién, qué prenda, de qué a qué.
+async function avatarEditarPrenda(req, res) {
+  const permiso = await rolesDeArte(req, res);
+  if (!permiso) return;
+
+  const cuerpo = req.body || {};
+  const id = Number(cuerpo.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ success: false, error: "Falta la prenda" });
+  }
+
+  const cambiaNombre = cuerpo.nombre !== undefined;
+  const cambiaPrecio = cuerpo.precio !== undefined;
+  if (!cambiaNombre && !cambiaPrecio) {
+    return res.status(400).json({ success: false, error: "No hay nada que cambiar" });
+  }
+
+  const nombre = cambiaNombre ? String(cuerpo.nombre).trim() : null;
+  if (cambiaNombre && (nombre.length < 1 || nombre.length > 60)) {
+    return res.status(400).json({ success: false, error: "El nombre tiene que tener entre 1 y 60 caracteres" });
+  }
+  if (cambiaPrecio && !precioValido(cuerpo.precio)) {
+    return res.status(400).json({ success: false, error: "El precio tiene que ser un número entero entre 1 y 100.000" });
+  }
+  const precio = cambiaPrecio ? Number(cuerpo.precio) : null;
+
+  const filas = await sql`
+    SELECT p.id, p.valor, p.modelo, p.capa, p.nombre, p.autor_id, s.precio
+    FROM avatar_prendas p
+    LEFT JOIN avatar_shop_items s ON s.valor_capa = p.valor
+    WHERE p.id = ${id} LIMIT 1;
+  `;
+  if (!filas.length) {
+    return res.status(404).json({ success: false, error: "Esa prenda no existe" });
+  }
+  const prenda = filas[0];
+
+  if (prenda.capa === "modelo") {
+    return res.status(400).json({ success: false, error: "Los personajes no se editan desde el panel" });
+  }
+
+  if (cambiaNombre) {
+    const esMia = prenda.autor_id !== null && Number(prenda.autor_id) === Number(permiso.auth.sub);
+    if (!esMia && !permiso.esAdmin) {
+      return res.status(403).json({ success: false, error: "El nombre solo lo cambia quien subió la prenda o un administrador" });
+    }
+  }
+
+  // El nombre vive en dos sitios, la prenda (lo que ve el editor) y su
+  // fila de la tienda: cambian juntos, para que no digan cosas distintas.
+  // Una prenda sin fila en la tienda la estrena al recibir precio.
+  const nombreFinal = cambiaNombre ? nombre : prenda.nombre;
+  await sql.transaccion(async (tx) => {
+    if (cambiaNombre) {
+      await tx`UPDATE avatar_prendas SET nombre = ${nombreFinal} WHERE id = ${id};`;
+      await tx`UPDATE avatar_shop_items SET nombre = ${nombreFinal} WHERE valor_capa = ${prenda.valor};`;
+    }
+    if (cambiaPrecio) {
+      await tx`
+        INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
+        VALUES (${prenda.capa}, ${prenda.modelo}, ${prenda.valor}, ${nombreFinal}, ${precio})
+        ON CONFLICT (valor_capa) DO UPDATE SET precio = EXCLUDED.precio;
+      `;
+    }
+  });
+
+  await subirVersionCatalogo();
+
+  const precioAntes = prenda.precio === null || prenda.precio === undefined ? null : Number(prenda.precio);
+  const precioFinal = cambiaPrecio ? precio : precioAntes;
+  const cambios = [];
+  if (nombreFinal !== prenda.nombre) cambios.push("nombre " + JSON.stringify(prenda.nombre) + " -> " + JSON.stringify(nombreFinal));
+  if (precioFinal !== precioAntes) cambios.push("precio " + (precioAntes === null ? "ninguno" : precioAntes) + " -> " + precioFinal);
+  if (cambios.length) {
+    console.log("[arte] " + permiso.auth.username + " cambió " + prenda.valor + ": " + cambios.join(", "));
+  }
+
+  return res.status(200).json({ success: true, prenda: { id, nombre: nombreFinal, precio: precioFinal } });
+}
+
+// ==============================
 // GET /api/content?action=avatar-catalogo-completo
 // ==============================
 // Todo lo que el editor de avatares necesita para construirse solo:
@@ -2613,6 +2712,7 @@ module.exports = async function handler(req, res) {
     if (action === "avatar-panel") return await avatarPanel(req, res);
     if (action === "avatar-subir-prendas") return await avatarSubirPrendas(req, res);
     if (action === "avatar-estado-prenda") return await avatarEstadoPrenda(req, res);
+    if (action === "avatar-editar-prenda") return await avatarEditarPrenda(req, res);
 
     return res.status(400).json({ success: false, error: "Acción inválida" });
 
