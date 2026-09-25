@@ -4,6 +4,7 @@ const { obtenerSql } = require("./_db");
 const { PasswordService } = require("./_password");
 const { requerirAuth } = require("./_auth");
 const { MonedasService } = require("./_monedas");
+const { registrarMinutoJugado } = require("./_racha");
 const { crearNotificacionServidor } = require("./_notifications");
 const { validarAvatar } = require("./_avatar-catalogo");
 const avatarCompuesto = require("./_avatar-compuesto");
@@ -113,6 +114,10 @@ function xpNecesaria(nivel) {
 //     cada juego (para medir diversidad: si siempre son los mismos
 //     juegos, el ranking semanal lo penaliza — ver api/system.js).
 //
+// Y además, desde la migración 023, el minuto de hoy y la racha
+// (api/_racha.js): lo que miden las misiones diarias de minutos, y un
+// día más de racha por cada día en que se juega.
+//
 // Si falla (por lo que sea), no debe romper el XP en sí: se llama
 // siempre dentro de un try/catch, igual que ya se hacía con el aviso
 // en vivo de heartbeat().
@@ -151,6 +156,8 @@ async function registrarTickTiempoJugado(userId, gameId) {
     ON CONFLICT (user_id, semana, game_id) DO UPDATE SET
       minutos = ranking_juegos_semanales.minutos + 1;
   `;
+
+  await registrarMinutoJugado(sql, userId);
 
 }
 
