@@ -2321,8 +2321,6 @@ async function communityFeed(req, res) {
 //   vale el de la sesión: antes cualquiera veía el saldo y las compras
 //   de cualquiera con solo cambiar el nombre.
 //
-// GET  /api/content?action=avatar-shop-buy&username=X&itemId=Y
-//   (se resuelve como POST más abajo)
 // POST /api/content?action=avatar-shop-buy { itemId }, con sesión
 //   -> apunta la compra y descuenta el precio del saldo (users.monedas)
 //   a través del banco (api/_monedas.js), las dos cosas o ninguna.
