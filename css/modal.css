@@ -108,3 +108,29 @@ html.mr-modal-open{
 @supports not (background: color-mix(in srgb, red 50%, transparent)){
   .mr-modal-action{box-shadow:0 8px 18px rgba(0,0,0,.18)}
 }
+
+/* Varios botones (options.actions en js/modal.js): el principal con el
+   color de acento y los demás discretos. */
+.mr-modal-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+}
+
+.mr-modal-action--secondary{
+  background:var(--chip-bg, rgba(127,127,127,.14));
+  color:var(--text-main, inherit);
+  box-shadow:none;
+}
+
+/* Una imagen en lugar del icono (options.image). Las previsualizaciones
+   de la tienda miden 96 px y traen su fondo: se enseñan a su tamaño. */
+.mr-modal-image{
+  display:block;
+  width:96px;
+  height:96px;
+  object-fit:cover;
+  margin:4px auto 14px;
+  border-radius:14px;
+}
