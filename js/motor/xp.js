@@ -28,6 +28,12 @@ function iniciarXP(idJuego){
 
     intervaloXP = setInterval(()=>{
 
+        // Con la pestaña oculta (minimizada o en segundo plano) no se
+        // cuenta: decidido el 25/09/2026. Dejar el juego abierto toda la
+        // noche no es jugar. Y aunque haya varias pestañas a la vista, el
+        // servidor cuenta un minuto por minuto (sumarXp, en api/users.js).
+        if(document.visibilityState === "hidden") return;
+
         ganarXP(10);
 
     },60000); // 1 minuto
@@ -84,9 +90,13 @@ async function ganarXP(cantidad){
         // El servidor ya calcula el saldo nuevo de monedas en el mismo
         // pulso de XP. Lo reflejamos en la sesión global sin hacer otra
         // petición a Neon. Esto mantiene navbar/perfil sincronizados.
-        if (datos.monedas && Number.isFinite(Number(datos.monedas.saldoNuevo))) {
-            usuario.monedas = Number(datos.monedas.saldoNuevo);
-        } else if (datos.user && Number.isFinite(Number(datos.user.monedas))) {
+        // saldoNuevo llega null cuando el reparto de monedas falla, y
+        // Number(null) es 0: sin mirar el null, la barra enseñaba 0
+        // monedas hasta recargar.
+        const saldoNuevo = datos.monedas ? datos.monedas.saldoNuevo : null;
+        if (saldoNuevo !== null && saldoNuevo !== undefined && Number.isFinite(Number(saldoNuevo))) {
+            usuario.monedas = Number(saldoNuevo);
+        } else if (datos.user && datos.user.monedas != null && Number.isFinite(Number(datos.user.monedas))) {
             usuario.monedas = Number(datos.user.monedas);
         }
 
