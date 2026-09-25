@@ -28,35 +28,55 @@
     status.style.animation='none';
     void status.offsetWidth;
     status.style.animation='';
-    if(ok){
-      const streakCard=document.querySelector('.md-streak');
-      if(streakCard){
-        streakCard.classList.remove('md-flash');
-        void streakCard.offsetWidth;
-        streakCard.classList.add('md-flash');
-        setTimeout(()=>streakCard.classList.remove('md-flash'),1600);
-      }
-    }
   }
   function hide(){status.hidden=true;}
   async function json(url,opts){const options=opts||{};const mergedHeaders={...authHeaders(),...(options.headers||{})};const r=await fetch(url,{...options,headers:mergedHeaders,cache:'no-store'});const d=await r.json();if(!r.ok||d.success===false)throw new Error(d.error||'No se pudo cargar');return d;}
 
   if(!usuarioActual() || !usuarioActual().nombre){show('Iniciá sesión para activar tu racha, misiones, notificaciones y actividad de amigos.');return;}
 
+  // Lo último que dijo el servidor: de ahí sale qué misión se cobra.
+  let ultimo=null;
+
+  // El botón de cobrar de una misión: solo se puede pulsar si está cumplida
+  // y todavía no se cobró. Antes esta página enseñaba la misión cumplida
+  // sin forma de cobrarla (solo se podía en Progreso), y parecía que no se
+  // había validado.
+  function pintarCobro(b,m){
+    if(!b) return;
+    b.disabled=!m.completed||!!m.claimed;
+    b.textContent=m.claimed?'Reclamada ✓':(m.completed?'Reclamar recompensa':'Completá la misión');
+  }
+
   async function loadProgress(){
     const d=await json('/api/progreso?action=status');
-    const s=d.streak||{}; $('streakCurrent').textContent=Number(s.current_streak||0)+' días'; $('streakBest').textContent='Mejor racha: '+Number(s.best_streak||0);
-    $('checkinState').textContent=s.last_checkin_date?'Último registro: '+String(s.last_checkin_date).slice(0,10):'Aún sin registro';
+    ultimo=d;
+    // La racha se cuenta sola al jugar (api/_racha.js): aquí solo se dice
+    // cómo va. Antes había un botón "Registrar mi día".
+    const s=d.streak||{}; const racha=Number(s.current_streak||0);
+    $('streakCurrent').textContent=racha+' días'; $('streakBest').textContent='Mejor racha: '+Number(s.best_streak||0);
+    $('checkinState').textContent=s.hoy_cuenta?'Hoy ya cuenta ✓':(racha>0?'Jugá hoy para no perderla':'Jugá un minuto para empezarla');
     const dm=d.today?.mission||{}; $('dailyTitle').textContent=dm.title||'Misión diaria'; $('dailyDesc').textContent=dm.description||''; $('dailyValue').textContent=(dm.value||0)+'/'+(dm.target||0); $('dailyReward').textContent='+'+(dm.xp||0)+' XP · '+money(dm.coins); $('dailyPeriod').textContent=dm.periodKey||''; $('dailyBar').style.width=pct(dm.value,dm.target)+'%';
     const wm=d.week?.mission||{}; $('weeklyTitle').textContent=wm.title||'Misión semanal'; $('weeklyDesc').textContent=wm.description||''; $('weeklyValue').textContent=(wm.value||0)+'/'+(wm.target||0); $('weeklyReward').textContent='+'+(wm.xp||0)+' XP · '+money(wm.coins); $('weeklyPeriod').textContent=wm.periodKey?'Desde '+wm.periodKey:''; $('weeklyBar').style.width=pct(wm.value,wm.target)+'%';
     const g=d.global||{}; $('globalValue').textContent=Number(g.value||0).toLocaleString('es-ES'); $('globalTarget').textContent='/ '+Number(g.target||0).toLocaleString('es-ES')+' minutos'; $('globalBar').style.width=pct(g.value,g.target)+'%'; $('globalReward').textContent='+'+(g.rewardXp||0)+' XP · '+money(g.rewardCoins); if(g.endsAt){$('globalEnd').textContent='Hasta '+new Date(g.endsAt).toLocaleDateString('es-ES');}
+    pintarCobro($('dailyClaim'),dm);
+    pintarCobro($('weeklyClaim'),wm);
   }
 
-  async function checkin(){
-    const b=$('checkinBtn'); b.disabled=true;
-    try{const d=await json('/api/progreso?action=checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}); show(d.alreadyChecked?'Tu día ya estaba registrado.':'🔥 Día registrado. Racha actual: '+Number(d.streak?.current_streak||0)+' días.',true); await loadProgress();}
-    catch(e){show(e.message);}
-    finally{b.disabled=false;}
+  // Cobrar una misión cumplida, igual que en Progreso (js/macro-progreso.js).
+  async function reclamar(tipo){
+    const m=tipo==='weekly'?ultimo?.week?.mission:ultimo?.today?.mission;
+    if(!m||!m.completed||m.claimed) return;
+    const b=$(tipo==='weekly'?'weeklyClaim':'dailyClaim'); b.disabled=true;
+    try{
+      const d=await json('/api/progreso?action=claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({missionKey:m.key,periodKey:m.periodKey,tipo})});
+      show(d.alreadyClaimed?'Esa recompensa ya estaba cobrada.':'🎉 Recompensa cobrada: +'+d.reward.xp+' XP · '+money(d.reward.coins)+'.',true);
+      // El saldo nuevo, también en la barra de navegación y en la sesión.
+      if(d.user&&d.user.monedas!=null){
+        const barra=document.getElementById('navMonedas'); if(barra) barra.textContent=money(d.user.monedas);
+        if(window.MRSession&&typeof window.MRSession.update==='function') window.MRSession.update({monedas:Number(d.user.monedas)});
+      }
+      await loadProgress();
+    }catch(e){show(e.message); b.disabled=false;}
   }
 
   async function loadNotifications(){
@@ -82,7 +102,8 @@
   }
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  $('checkinBtn').addEventListener('click',checkin);
+  $('dailyClaim').addEventListener('click',()=>reclamar('daily'));
+  $('weeklyClaim').addEventListener('click',()=>reclamar('weekly'));
   Promise.all([loadProgress(),loadNotifications(),loadFriends()]).catch(e=>show(e.message));
   setInterval(()=>{loadProgress().catch(()=>{});loadNotifications().catch(()=>{});loadFriends().catch(()=>{});},30000);
 })();

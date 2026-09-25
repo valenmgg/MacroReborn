@@ -44,7 +44,7 @@
       <h1>Haz tu sesión de hoy.</h1>
       <p class="md-sub">Una sola pantalla para ver tu racha, avanzar misiones, revisar actividad y volver a jugar.</p>
     </div>
-    <div class="md-actions"><a class="md-btn md-primary" href="/explorar.html">🎮 Encontrar un juego</a><button id="checkinBtn" class="md-btn">🔥 Registrar mi día</button></div>
+    <div class="md-actions"><a class="md-btn md-primary" href="/explorar.html">🎮 Encontrar un juego</a></div>
   </section>
 
   <div id="status" class="md-status" hidden></div>
@@ -54,6 +54,7 @@
       <div class="md-card-head"><span>🔥 Racha</span><span id="checkinState">—</span></div>
       <div class="md-big" id="streakCurrent">0 días</div>
       <p id="streakBest">Mejor racha: 0</p>
+      <p class="md-muted">Suma un día por cada día en que jugás al menos un minuto.</p>
     </article>
 
     <article class="md-card">
@@ -61,7 +62,8 @@
       <h2 id="dailyTitle">Cargando…</h2><p id="dailyDesc"></p>
       <div class="md-progress"><span id="dailyBar"></span></div>
       <div class="md-row"><strong id="dailyValue">0/0</strong><span id="dailyReward">—</span></div>
-      <a class="md-btn md-small" href="/progreso.html">Ver progreso</a>
+      <p class="md-muted">Se renueva a las 00:00, hora de Argentina.</p>
+      <button id="dailyClaim" class="md-btn md-small" disabled>Completá la misión</button>
     </article>
 
     <article class="md-card">
@@ -69,7 +71,7 @@
       <h2 id="weeklyTitle">Cargando…</h2><p id="weeklyDesc"></p>
       <div class="md-progress"><span id="weeklyBar"></span></div>
       <div class="md-row"><strong id="weeklyValue">0/0</strong><span id="weeklyReward">—</span></div>
-      <a class="md-btn md-small" href="/progreso.html">Completar</a>
+      <button id="weeklyClaim" class="md-btn md-small" disabled>Completá la misión</button>
     </article>
 
     <article class="md-card md-global">
