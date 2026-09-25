@@ -29,13 +29,58 @@ function firmar(payload) {
   return `${encoded}.${sign(encoded)}`;
 }
 
+// "inicio" es cuándo se inició sesión de verdad, y viaja de pase en pase
+// al renovarlo (ver renovarSiToca, abajo).
 function crearToken(usuario) {
+  const ahora = Date.now();
   return firmar({
     sub: Number(usuario.id),
     username: usuario.username,
-    iat: Date.now(),
-    exp: Date.now() + TOKEN_TTL_MS
+    iat: ahora,
+    exp: ahora + TOKEN_TTL_MS,
+    inicio: ahora
   });
+}
+
+// ==============================
+// RENOVAR LA SESIÓN MIENTRAS SE USA
+// ==============================
+// El pase dura 7 días desde que se firma, y hasta el 25/09/2026 solo se
+// firmaba al iniciar sesión: a los 7 días de entrar, todo lo que escribe
+// -el XP de jugar, el chat, los comentarios- fallaba en silencio, aunque
+// la página siguiera enseñando a la persona como conectada. Lo reportó la
+// comunidad, y en los registros eran de 150 a 330 escrituras rechazadas
+// al día.
+//
+// Ahora, a quien usa el sitio se le renueva: si el pase que trae se firmó
+// hace más de un día, la respuesta lleva uno nuevo en la cabecera
+// X-Sesion-Nueva, y js/core.js lo guarda en lugar del viejo. Así solo
+// caduca tras 7 días sin entrar.
+//
+// Con un tope de 30 días desde "inicio". Sin él, un pase robado se podría
+// mantener vivo para siempre usándolo una vez por semana, y hoy cerrar
+// sesión no lo invalida (punto 12 de docs/AUDITORIA.md). Una vez al mes,
+// iniciar sesión otra vez; js/core.js avisa cuando toca.
+const RENOVAR_TRAS_MS = 24 * 60 * 60 * 1000;
+const SESION_MAXIMA_MS = 30 * 24 * 60 * 60 * 1000;
+
+function renovarSiToca(payload, res) {
+  if (!res || typeof res.setHeader !== 'function') return;
+  const ahora = Date.now();
+  if (ahora - Number(payload.iat || 0) < RENOVAR_TRAS_MS) return;
+
+  // Los pases de antes no traen "inicio": se cuenta desde que se firmaron.
+  const inicio = Number(payload.inicio || payload.iat) || ahora;
+  const exp = Math.min(ahora + TOKEN_TTL_MS, inicio + SESION_MAXIMA_MS);
+  if (exp <= Number(payload.exp)) return;   // llegó al tope: ya no se alarga
+
+  res.setHeader('X-Sesion-Nueva', firmar({
+    sub: Number(payload.sub),
+    username: payload.username,
+    iat: ahora,
+    exp,
+    inicio
+  }));
 }
 
 // Lee un valor firmado y devuelve su carga si la firma es buena, no ha
@@ -125,11 +170,13 @@ function requerirAuth(req, res) {
     res.status(401).json({ success: false, error: 'Sesión no válida o expirada' });
     return null;
   }
+  renovarSiToca(auth, res);
   return auth;
 }
 
 module.exports = {
-  TOKEN_TTL_MS, PASE_TTL_MS,
+  TOKEN_TTL_MS, PASE_TTL_MS, RENOVAR_TRAS_MS, SESION_MAXIMA_MS,
+  firmar,
   crearToken, verificarToken,
   crearPase, verificarPase,
   extraerBearer, obtenerAuth, requerirAuth
