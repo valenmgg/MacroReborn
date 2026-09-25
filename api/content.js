@@ -2475,6 +2475,28 @@ async function avatarShopBuy(req, res) {
 // se deshaga, y avatarShopBuy la convierte en la respuesta de siempre.
 class CompraRechazada extends Error {}
 
+// ==============================
+// /api/content?action=mis-monedas
+// ==============================
+// GET, con sesión: solo el saldo, { success, monedas }. Es lo que pide
+// la barra de navegación en cada página (js/navbar.js). Antes pedía el
+// catálogo entero de la tienda para leer este número, y desde que se
+// vende todo el catálogo (migración 022) son más de 700 prendas.
+async function misMonedas(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ success: false, error: "Método no permitido" });
+  }
+  const auth = requerirAuth(req, res);
+  if (!auth) return;
+
+  const monedas = await monedasService.consultarSaldo(Number(auth.sub));
+  if (monedas === null) {
+    return res.status(404).json({ success: false, error: "Usuario no encontrado" });
+  }
+  res.setHeader("Cache-Control", "private, no-store");
+  return res.status(200).json({ success: true, monedas });
+}
+
 
 // ==============================
 // EL PASE PARA /api/avisos
@@ -2558,6 +2580,7 @@ module.exports = async function handler(req, res) {
     if (action === "community-feed") return await communityFeed(req, res);
     if (action === "avatar-shop") return await avatarShop(req, res);
     if (action === "avatar-shop-buy") return await avatarShopBuy(req, res);
+    if (action === "mis-monedas") return await misMonedas(req, res);
     if (action === "avatar-prenda") return await avatarPrenda(req, res);
     if (action === "avatar-catalogo-completo") return await avatarCatalogoCompleto(req, res);
     if (action === "avatar-panel") return await avatarPanel(req, res);

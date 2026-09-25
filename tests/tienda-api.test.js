@@ -4,8 +4,9 @@
 // GET /api/content?action=avatar-shop, el catálogo: qué se vende, cuánto
 // se ha vendido cada cosa y a quién se le enseña el saldo. Y POST
 // ?action=avatar-shop-buy, la compra: a quién se le cobra, que cobrar y
-// apuntar vayan juntos, y los clics dobles. Contra el handler de verdad
-// y una base PGlite local.
+// apuntar vayan juntos, y los clics dobles. Y GET ?action=mis-monedas,
+// el saldo suelto que pide la barra de navegación. Contra el handler de
+// verdad y una base PGlite local.
 //
 // Correr:  npm test
 
@@ -260,6 +261,27 @@ describe("la compra", () => {
       const { codigo } = await comprar(sesion(id, "despistada"), { itemId });
       assert.equal(codigo, 400, "itemId = " + itemId);
     }
+  });
+
+});
+
+describe("el saldo suelto (mis-monedas)", () => {
+
+  const pedir = (headers) => llamar("GET", { action: "mis-monedas" }, null, headers);
+
+  test("devuelve solo el saldo de quien tiene la sesión", async () => {
+    const id = await persona("barra", 1234);
+    const { cuerpo, cabeceras } = await pedir(sesion(id, "barra"));
+    assert.deepStrictEqual(cuerpo, { success: true, monedas: 1234 });
+    assert.equal(cabeceras["cache-control"], "private, no-store");
+  });
+
+  test("sin sesión, 401", async () => {
+    assert.equal((await pedir(null)).codigo, 401);
+  });
+
+  test("si la cuenta ya no existe, 404", async () => {
+    assert.equal((await pedir(sesion(987654, "borrada"))).codigo, 404);
   });
 
 });
