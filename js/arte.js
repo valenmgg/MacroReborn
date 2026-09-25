@@ -814,22 +814,124 @@
     caja.appendChild(meta);
 
     const etiquetas = elem("div");
-    if (p.precio) etiquetas.appendChild(elem("span", "arte-etiqueta precio", "🪙 " + p.precio));
+    // Todo lo publicado tiene precio; "Sin precio" solo puede verse en
+    // un borrador retirado, y avisa de que al publicarlo tendrá el de su
+    // ranura.
+    etiquetas.appendChild(p.precio
+      ? elem("span", "arte-etiqueta precio", "🪙 " + p.precio)
+      : elem("span", "arte-etiqueta apagada", "Sin precio"));
     if (!p.publicada) etiquetas.appendChild(elem("span", "arte-etiqueta apagada", "Retirada"));
     caja.appendChild(etiquetas);
+
+    const acciones = elem("div", "arte-tarjeta-acciones");
+
+    // Editar lo ve todo el equipo: el precio lo puede cambiar cualquiera.
+    const editar = elem("button", "arte-editar", "Editar");
+    editar.type = "button";
+    editar.addEventListener("click", () => abrirEdicion(caja, p, acciones));
+    acciones.appendChild(editar);
 
     // Solo el autor y los administradores pueden cambiar el estado. El
     // botón se esconde en vez de dar un error al pulsarlo; el servidor lo
     // comprueba igual, esto es solo para no ofrecer lo que no se puede.
     const puedo = DATOS.esAdmin || (p.autor && p.autor === DATOS.yo);
     if (puedo) {
-      const boton = elem("button", null, p.publicada ? "Retirar" : "Publicar");
+      const boton = elem("button", "arte-estado", p.publicada ? "Retirar" : "Publicar");
       boton.type = "button";
       boton.addEventListener("click", () => cambiarEstado(p, boton));
-      caja.appendChild(boton);
+      acciones.appendChild(boton);
     }
 
+    caja.appendChild(acciones);
     return caja;
+  }
+
+  // ==============================
+  // EDITAR UNA PRENDA YA SUBIDA
+  // ==============================
+  // El nombre y el precio (avatarEditarPrenda, en api/content.js).
+  // Decidido el 24/09/2026: el precio lo cambia cualquiera del equipo, en
+  // cualquier prenda; el nombre, quien la subió o un administrador. A
+  // quien no le toca el nombre no se le ofrece; el servidor lo
+  // comprobaría igual. Personaje y ranura no se editan: para eso se sube
+  // otra y se retira esta.
+  function abrirEdicion(caja, p, acciones) {
+    if (caja.querySelector(".arte-edicion")) return;
+    const puedoNombre = DATOS.esAdmin || (!!p.autor && p.autor === DATOS.yo);
+
+    const form = elem("div", "arte-edicion");
+
+    let nombre = null;
+    if (puedoNombre) {
+      nombre = document.createElement("input");
+      nombre.type = "text";
+      nombre.maxLength = 60;
+      nombre.value = p.nombre;
+      form.appendChild(envoltorio("Nombre", nombre));
+    }
+
+    const precio = document.createElement("input");
+    precio.type = "number";
+    precio.min = "1";
+    precio.max = "100000";
+    precio.step = "10";
+    precio.value = String(p.precio || precioDeRanura(p.capa));
+    form.appendChild(envoltorio("Precio", precio));
+
+    const error = elem("p", "arte-edicion-error");
+    error.hidden = true;
+    form.appendChild(error);
+
+    const botones = elem("div", "arte-tarjeta-acciones");
+    const guardar = elem("button", "primario", "Guardar");
+    guardar.type = "button";
+    const cancelar = elem("button", null, "Cancelar");
+    cancelar.type = "button";
+    botones.appendChild(guardar);
+    botones.appendChild(cancelar);
+    form.appendChild(botones);
+
+    const cerrar = () => { form.remove(); acciones.hidden = false; };
+    cancelar.addEventListener("click", cerrar);
+
+    guardar.addEventListener("click", async () => {
+      // Solo viaja lo que cambió.
+      const cambios = { id: p.id };
+      if (nombre && nombre.value.trim() !== p.nombre) cambios.nombre = nombre.value.trim();
+      if (Number(precio.value) !== p.precio) cambios.precio = Number(precio.value);
+      if (Object.keys(cambios).length === 1) { cerrar(); return; }
+
+      guardar.disabled = true;
+      error.hidden = true;
+      try {
+        const r = await fetch("/api/content?action=avatar-editar-prenda", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cambios)
+        });
+        const datos = await r.json().catch(() => null);
+
+        if (!r.ok || !datos || !datos.success) {
+          error.textContent = (datos && datos.error) || "No se pudo guardar.";
+          error.hidden = false;
+          guardar.disabled = false;
+          return;
+        }
+
+        p.nombre = datos.prenda.nombre;
+        p.precio = datos.prenda.precio;
+        pintarCatalogo();
+        decir("Guardado: «" + p.nombre + "», " + p.precio + " monedas.");
+      } catch (_) {
+        error.textContent = "Se cortó la conexión. Probá de nuevo.";
+        error.hidden = false;
+        guardar.disabled = false;
+      }
+    });
+
+    acciones.hidden = true;
+    caja.appendChild(form);
+    (nombre || precio).focus();
   }
 
   async function cambiarEstado(prenda, boton) {

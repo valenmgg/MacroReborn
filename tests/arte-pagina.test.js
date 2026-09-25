@@ -230,15 +230,15 @@ describe("quién puede retirar qué", () => {
     const ajena = tarjetas.find(t => /Pelo largo/.test(t.textContent));
     const sinAutor = tarjetas.find(t => /Boca recuperada/.test(t.textContent));
 
-    assert.ok(mia.querySelector("button"), "debería poder retirar lo suyo");
-    assert.equal(ajena.querySelector("button"), null, "lo ajeno no");
-    assert.equal(sinAutor.querySelector("button"), null, "lo del catálogo original tampoco");
+    assert.ok(mia.querySelector("button.arte-estado"), "debería poder retirar lo suyo");
+    assert.equal(ajena.querySelector("button.arte-estado"), null, "lo ajeno no");
+    assert.equal(sinAutor.querySelector("button.arte-estado"), null, "lo del catálogo original tampoco");
   });
 
   test("un administrador ve el botón en todas", async () => {
     const { doc } = await montar(servidorOk(panelDePrueba({ esAdmin: true })));
 
-    const conBoton = [...doc.querySelectorAll(".arte-tarjeta")].filter(t => t.querySelector("button"));
+    const conBoton = [...doc.querySelectorAll(".arte-tarjeta")].filter(t => t.querySelector("button.arte-estado"));
     assert.equal(conBoton.length, 3);
   });
 
@@ -250,7 +250,7 @@ describe("quién puede retirar qué", () => {
 
     const mia = [...doc.querySelectorAll(".arte-tarjeta")]
       .find(t => /Botas de combate/.test(t.textContent));
-    mia.querySelector("button").click();
+    mia.querySelector("button.arte-estado").click();
 
     await new Promise(r => setTimeout(r, 0));
     await new Promise(r => setTimeout(r, 0));
@@ -263,7 +263,7 @@ describe("quién puede retirar qué", () => {
     const despues = [...doc.querySelectorAll(".arte-tarjeta")]
       .find(t => /Botas de combate/.test(t.textContent));
     assert.ok(despues.classList.contains("retirada"));
-    assert.match(despues.querySelector("button").textContent, /Publicar/);
+    assert.match(despues.querySelector("button.arte-estado").textContent, /Publicar/);
   });
 });
 
@@ -445,5 +445,96 @@ describe("el precio al subir", () => {
     const subida = t.llamadas.find(l => l.url.includes("avatar-subir-prendas"));
     assert.ok(subida, "no se subió nada");
     assert.equal(JSON.parse(subida.opciones.body).prendas[0].precio, 120);
+  });
+});
+
+describe("editar una prenda del catálogo", () => {
+  // El precio lo cambia cualquiera del equipo, en cualquier prenda; el
+  // nombre, quien la subió o un administrador (decidido el 24/09/2026).
+  const tarjetaDe = (doc, texto) => [...doc.querySelectorAll(".arte-tarjeta")]
+    .find(t => new RegExp(texto).test(t.textContent));
+  const esperar = async () => { for (let i = 0; i < 6; i++) await new Promise(r => setTimeout(r, 0)); };
+
+  test("todas las tarjetas ofrecen Editar", async () => {
+    const { doc } = await montar(servidorOk(panelDePrueba()));
+    const tarjetas = [...doc.querySelectorAll(".arte-tarjeta")];
+    assert.equal(tarjetas.length, 3);
+    assert.ok(tarjetas.every(t => t.querySelector("button.arte-editar")));
+  });
+
+  test("el nombre solo se ofrece en lo propio; el precio, en todo", async () => {
+    const { doc } = await montar(servidorOk(panelDePrueba()));
+    const mia = tarjetaDe(doc, "Botas de combate");
+    const ajena = tarjetaDe(doc, "Pelo largo");
+
+    mia.querySelector("button.arte-editar").click();
+    ajena.querySelector("button.arte-editar").click();
+
+    assert.equal(mia.querySelector(".arte-edicion input[type=text]").value, "Botas de combate");
+    assert.equal(mia.querySelector(".arte-edicion input[type=number]").value, "140");
+    assert.equal(ajena.querySelector(".arte-edicion input[type=text]"), null);
+    // Sin precio todavía: se propone el de su ranura.
+    assert.equal(ajena.querySelector(".arte-edicion input[type=number]").value, "120");
+    assert.match(ajena.textContent, /Sin precio/);
+  });
+
+  test("un administrador puede cambiar el nombre de todas", async () => {
+    const { doc } = await montar(servidorOk(panelDePrueba({ esAdmin: true })));
+    const original = tarjetaDe(doc, "Boca recuperada");
+    original.querySelector("button.arte-editar").click();
+    assert.ok(original.querySelector(".arte-edicion input[type=text]"));
+  });
+
+  test("guardar manda solo lo que cambió, y la tarjeta se repinta", async () => {
+    const { doc, llamadas } = await montar((url) => url.includes("avatar-editar-prenda")
+      ? respuestaJson(200, { success: true, prenda: { id: 11, nombre: "Pelo largo", precio: 300 } })
+      : respuestaJson(200, panelDePrueba()));
+
+    const ajena = tarjetaDe(doc, "Pelo largo");
+    ajena.querySelector("button.arte-editar").click();
+    ajena.querySelector(".arte-edicion input[type=number]").value = "300";
+    ajena.querySelector(".arte-edicion button.primario").click();
+    await esperar();
+
+    const envio = llamadas.find(l => l.url.includes("avatar-editar-prenda"));
+    assert.ok(envio, "debería haber llamado al servidor");
+    assert.equal(envio.opciones.method, "POST");
+    assert.deepStrictEqual(JSON.parse(envio.opciones.body), { id: 11, precio: 300 });
+
+    const despues = tarjetaDe(doc, "Pelo largo");
+    assert.equal(despues.querySelector(".arte-edicion"), null, "el formulario debería cerrarse");
+    assert.match(despues.textContent, /300/);
+  });
+
+  test("si el servidor dice que no, se cuenta en la tarjeta y el formulario sigue", async () => {
+    const { doc } = await montar((url) => url.includes("avatar-editar-prenda")
+      ? respuestaJson(400, { success: false, error: "El precio tiene que ser un número entero entre 1 y 100.000" })
+      : respuestaJson(200, panelDePrueba()));
+
+    const mia = tarjetaDe(doc, "Botas de combate");
+    mia.querySelector("button.arte-editar").click();
+    mia.querySelector(".arte-edicion input[type=number]").value = "0";
+    mia.querySelector(".arte-edicion button.primario").click();
+    await esperar();
+
+    const error = mia.querySelector(".arte-edicion-error");
+    assert.equal(error.hidden, false);
+    assert.match(error.textContent, /precio/i);
+    assert.ok(mia.querySelector(".arte-edicion"), "el formulario tiene que seguir abierto");
+  });
+
+  test("Cancelar, o guardar sin cambiar nada, cierra sin llamar a nadie", async () => {
+    const { doc, llamadas } = await montar(servidorOk(panelDePrueba()));
+    const mia = tarjetaDe(doc, "Botas de combate");
+
+    mia.querySelector("button.arte-editar").click();
+    [...mia.querySelectorAll(".arte-edicion button")].find(b => b.textContent === "Cancelar").click();
+    assert.equal(mia.querySelector(".arte-edicion"), null);
+
+    mia.querySelector("button.arte-editar").click();
+    mia.querySelector(".arte-edicion button.primario").click();
+    await esperar();
+    assert.equal(mia.querySelector(".arte-edicion"), null);
+    assert.ok(!llamadas.some(l => l.url.includes("avatar-editar-prenda")));
   });
 });
