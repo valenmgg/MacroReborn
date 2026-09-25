@@ -111,6 +111,13 @@ function crearSqlPGlite(db) {
     return resultado.rows;
   };
 
+  // La misma sql.transaccion(fn) que api/_pg.js, con la de PGlite: si
+  // fn lanza, se deshace todo. Dentro de una transacción no se anida
+  // otra, así que la etiqueta que recibe fn no la trae.
+  if (typeof db.transaction === "function") {
+    sql.transaccion = (fn) => db.transaction((tx) => fn(crearSqlPGlite(tx)));
+  }
+
   return sql;
 }
 

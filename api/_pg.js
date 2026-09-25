@@ -68,9 +68,11 @@ function compilar(plantilla, valores) {
   return { texto, params };
 }
 
-// Crea la función sql`...` conectada a un Pool de "pg".
-// Devuelve un array de filas, igual que el driver de Neon.
-function crearSqlPg(pool) {
+// La etiqueta sql`...` sobre cualquier cosa que tenga .query(texto,
+// parametros): el Pool, o una conexión suelta del Pool dentro de una
+// transacción (ver crearSqlPg). Devuelve un array de filas, igual que
+// el driver de Neon.
+function crearEtiqueta(ejecutor) {
 
   function sql(plantilla, ...valores) {
     const { texto, params } = compilar(plantilla, valores);
@@ -83,7 +85,7 @@ function crearSqlPg(pool) {
       texto,
       params,
       then(resolve, reject) {
-        return pool.query(texto, params).then(
+        return ejecutor.query(texto, params).then(
           (resultado) => resolve(resultado.rows),
           reject
         );
@@ -94,8 +96,45 @@ function crearSqlPg(pool) {
   // api/content.js usa sql.query(texto, parametros) en el registro de
   // moderación; se expone también por compatibilidad.
   sql.query = async (texto, valores) => {
-    const resultado = await pool.query(texto, valores || []);
+    const resultado = await ejecutor.query(texto, valores || []);
     return resultado.rows;
+  };
+
+  return sql;
+}
+
+// Crea la función sql`...` conectada a un Pool de "pg".
+function crearSqlPg(pool) {
+  const sql = crearEtiqueta(pool);
+
+  // TRANSACCIONES. Cada sql`...` suelto va a la conexión del Pool que
+  // esté libre, así que un BEGIN y un COMMIT mandados por separado
+  // podrían caer en conexiones distintas y no envolver nada. Esto
+  // reserva UNA conexión, abre la transacción y le pasa a fn una
+  // etiqueta sql`...` atada a esa conexión:
+  //
+  //     await sql.transaccion(async tx => {
+  //       await tx`INSERT ...`;
+  //       await tx`UPDATE ...`;   // si algo lanza, se deshace todo
+  //     });
+  //
+  // Si fn termina, COMMIT y se devuelve lo que devolvió. Si lanza,
+  // ROLLBACK y se relanza el mismo error. La conexión vuelve al Pool
+  // siempre. Nació para la tienda: cobrar y apuntar la compra van
+  // juntos o no va ninguno (ver avatarShopBuy en api/content.js).
+  sql.transaccion = async (fn) => {
+    const cliente = await pool.connect();
+    try {
+      await cliente.query("BEGIN");
+      const resultado = await fn(crearEtiqueta(cliente));
+      await cliente.query("COMMIT");
+      return resultado;
+    } catch (error) {
+      try { await cliente.query("ROLLBACK"); } catch (_) { /* ya se relanza el primero */ }
+      throw error;
+    } finally {
+      cliente.release();
+    }
   };
 
   return sql;
