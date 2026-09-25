@@ -73,6 +73,8 @@ test("cobrar una misión sigue funcionando", async () => {
   for (let i = 0; i < 8; i++) await new Promise(r => setTimeout(r, 0));
   const cobro = p.pedidas.find(x => x.url.includes("action=claim"));
   assert.deepStrictEqual(JSON.parse(cobro.init.body), { missionKey: "daily_2_games", periodKey: "2026-09-25", tipo: "daily" });
+  // Sin copia propia del pase: lo pone js/core.js, el vigente.
+  assert.ok(p.pedidas.every(x => !("Authorization" in (x.init.headers || {}))), "la página manda su propia copia del pase");
   assert.match(p.$("progressError").textContent, /\+30 XP/);
   p.w.close();
 });

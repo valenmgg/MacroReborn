@@ -1,15 +1,18 @@
 (function(){
   "use strict";
 
-  const token = localStorage.getItem("macroSessionToken");
   const errorBox = document.getElementById("progressError");
-  if(!token){
+  if(!localStorage.getItem("macroSessionToken")){
     errorBox.hidden = false;
     errorBox.textContent = "Iniciá sesión para ver y guardar tu progreso.";
     return;
   }
 
-  const headers = {"Content-Type":"application/json","Authorization":"Bearer " + token};
+  // Sin copia propia del pase: js/core.js pone el vigente en cada petición
+  // a la API, y lo cambia por el renovado cuando el servidor lo renueva.
+  // Con una copia leída al cargar, esta página seguía usando el pase viejo
+  // después de volver a entrar en otra pestaña.
+  const headers = {"Content-Type":"application/json"};
   let estado = null;
 
   function $(id){ return document.getElementById(id); }
