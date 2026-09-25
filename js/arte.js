@@ -108,6 +108,22 @@
            capas[0];
   }
 
+  // El precio que se propone para una ranura. La tabla la manda el
+  // servidor (api/_precios.js), la misma con la que se puso precio al
+  // catálogo original: todo lo que se publica se vende en la tienda.
+  function precioDeRanura(capa) {
+    const tabla = (DATOS && DATOS.preciosPorCapa) || {};
+    return Number.isInteger(tabla[capa]) ? tabla[capa] : 100;
+  }
+
+  // Cambiar la ranura de una prenda preparada. Su precio sigue al de la
+  // ranura mientras el artista no lo haya tocado a mano: el que se puso a
+  // propósito no se pisa.
+  function ponerRanura(item, capa) {
+    item.capa = capa;
+    if (!item.precioTocado) item.precio = precioDeRanura(capa);
+  }
+
   // Y el personaje, si el archivo lo trae delante: "tora_botas3.png".
   //
   // Existe porque el desplegable venia con el primero de la lista, que
@@ -255,7 +271,8 @@
         repintarLista: pintarLista,
         urlDelModelo,
         modelosDisponibles,
-        conMayuscula
+        conMayuscula,
+        ponerRanura
       });
       T().llenarCapas();
     }
@@ -300,6 +317,7 @@
       const leido = await leerArchivo(file);
       if (!leido) continue;
 
+      const capa = capaDesdeArchivo(file.name, DATOS.capas);
       ARCHIVOS.push({
         clave: file.name + ":" + file.size + ":" + Math.random().toString(36).slice(2, 8),
         archivo: file.name,
@@ -319,9 +337,10 @@
         modelo: modeloDesdeArchivo(file.name, modelosDisponibles()) ||
           (V() && V().estado ? V().estado().modelo : null) ||
           ($("arteTodosModelo") ? $("arteTodosModelo").value : modelosDisponibles()[0]),
-        capa: capaDesdeArchivo(file.name, DATOS.capas),
+        capa,
         nombre: nombreDesdeArchivo(file.name),
-        precio: 0,
+        precio: precioDeRanura(capa),
+        precioTocado: false,
         // Mientras sea null, el artista no movió nada y el PNG se sube
         // byte a byte. Un solo campo, no dos: ver vestHayQueHornear.
         ajuste: null
@@ -344,12 +363,17 @@
     if (!HAY_PANEL()) return;
     const modelo = $("arteTodosModelo").value;
     const capa = $("arteTodosCapa").value;
-    const precio = Math.max(0, Math.trunc(Number($("arteTodosPrecio").value) || 0));
+    // Vacío, cada una se queda con el precio de su ranura, o con el que
+    // se le puso a mano.
+    const crudo = $("arteTodosPrecio").value.trim();
 
     ARCHIVOS.forEach(a => {
       a.modelo = modelo;
-      a.capa = capa;
-      a.precio = precio;
+      ponerRanura(a, capa);
+      if (crudo !== "") {
+        a.precio = Math.max(0, Math.trunc(Number(crudo) || 0));
+        a.precioTocado = true;
+      }
     });
     pintarLista();
   }
@@ -460,15 +484,17 @@
       }));
 
       datos.appendChild(campoSelect("Ranura", DATOS.capas, item.capa, conMayuscula, v => {
-        item.capa = v;
+        ponerRanura(item, v);
+        pintarLista();   // el precio propuesto y el destino cambian con ella
       }));
 
       datos.appendChild(campoTexto("Nombre visible", item.nombre, 60, v => {
         item.nombre = v;
       }));
 
-      datos.appendChild(campoNumero("Precio (0 = gratis)", item.precio, v => {
+      datos.appendChild(campoNumero("Precio", item.precio, v => {
         item.precio = v;
+        item.precioTocado = true;
       }));
 
       fila.appendChild(datos);
@@ -510,7 +536,7 @@
   function campoNumero(etiqueta, actual, alCambiar) {
     const input = document.createElement("input");
     input.type = "number";
-    input.min = "0";
+    input.min = "1";
     input.step = "10";
     input.value = String(actual);
     input.addEventListener("input", () => {

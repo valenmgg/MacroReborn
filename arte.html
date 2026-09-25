@@ -69,8 +69,10 @@
     <p class="arte-ayuda">
       Elegí uno o varios PNG. Para cada uno decidís a qué personaje y a qué
       ranura pertenece, cómo se va a llamar en el editor y cuánto cuesta.
-      Dejá el precio en 0 si querés que sea gratis, que es como está la
-      mayoría del catálogo. El identificador interno lo pone el servidor.
+      Todo lo que se publica se vende en la tienda: el precio se propone
+      según la ranura (pelo 120, mascota 220…) y lo podés cambiar ahora o
+      después, desde el catálogo. El identificador interno lo pone el
+      servidor.
     </p>
 
     <div class="arte-campo" style="max-width:420px">
@@ -91,7 +93,7 @@
       </div>
       <div class="arte-campo">
         <label for="arteTodosPrecio">Precio (para todas)</label>
-        <input type="number" id="arteTodosPrecio" min="0" step="10" value="0">
+        <input type="number" id="arteTodosPrecio" min="1" step="10" value="" placeholder="El de cada ranura">
       </div>
       <div class="arte-campo">
         <label>&nbsp;</label>

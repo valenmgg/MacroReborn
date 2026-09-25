@@ -49,6 +49,9 @@ function panelDePrueba() {
       { id: 10, valor: "tora_pelo1", modelo: "tora", capa: "pelo", nombre: "Pelo 1", url: "/p/c.png", medidas: "327x504", peso: 1, publicada: true, autor: null, precio: null },
       { id: 11, valor: "tora_accesorio1", modelo: "tora", capa: "accesorio", nombre: "Accesorio 1", url: "/p/d.png", medidas: "327x504", peso: 1, publicada: true, autor: null, precio: null }
     ],
+    // La de api/_precios.js, que es la que manda el servidor.
+    preciosPorCapa: { boca: 50, cara: 50, accesorio: 60, guantes: 70, ojos: 80, piel: 80, botas: 90,
+                      pantalon: 100, remera: 100, pelo: 120, fondo: 130, borde: 150, espalda: 150, mascota: 220 },
     esAdmin: true,
     yo: "soydegurime"
   };
@@ -593,5 +596,36 @@ describe("mover la prenda sólo se puede en el paso de colocar", () => {
     tecla(win, doc, "b");
 
     assert.notStrictEqual($(doc, "vestLienzo").className, antes);
+  });
+});
+
+describe("el precio en el taller", () => {
+  // Todo lo que se publica se vende en la tienda (docs/TIENDA.md): se
+  // propone el precio de la ranura, que la sigue mientras nadie lo toque.
+  test("se propone el de la ranura, y la sigue mientras no se toque a mano", async () => {
+    const { win, doc } = await montar();
+    await abrir(doc);
+    $(doc, "tallerSeguir").click();
+    await traer(win, doc, "tora_pelo5.png", 327, 504);
+    $(doc, "tallerSeguir").click();
+    doc.querySelector(".taller-ficha").click();
+
+    const precio = () => doc.querySelector("#tallerFichas input[type=number]");
+    const cambiarRanura = (capa) => {
+      const ranura = doc.querySelector("#tallerFichas select");
+      ranura.value = capa;
+      ranura.dispatchEvent(new win.Event("change", { bubbles: true }));
+    };
+
+    assert.equal(precio().value, "120");
+    assert.equal(precio().min, "1");
+    cambiarRanura("mascota");
+    assert.equal(precio().value, "220");
+
+    precio().value = "999";
+    precio().dispatchEvent(new win.Event("input", { bubbles: true }));
+    cambiarRanura("fondo");
+    assert.equal(precio().value, "999", "pisó el precio puesto a mano");
+    assert.ok(!/gratis/i.test($(doc, "tallerFichas").textContent));
   });
 });

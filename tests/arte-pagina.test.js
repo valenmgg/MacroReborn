@@ -43,6 +43,9 @@ function panelDePrueba(extra) {
       { id: 11, valor: "tora_pelo1", modelo: "tora", capa: "pelo", nombre: "Pelo largo", url: "/prendas/ddd.png", medidas: "327x504", peso: 9000, publicada: true, autor: "otra", precio: null },
       { id: 12, valor: "cereza_boca9", modelo: "cereza", capa: "boca", nombre: "Boca recuperada", url: "/prendas/eee.png", medidas: "332x512", peso: 4000, publicada: false, autor: null, precio: null }
     ],
+    // La de api/_precios.js, que es la que manda el servidor.
+    preciosPorCapa: { boca: 50, cara: 50, accesorio: 60, guantes: 70, ojos: 80, piel: 80, botas: 90,
+                      pantalon: 100, remera: 100, pelo: 120, fondo: 130, borde: 150, espalda: 150, mascota: 220 },
     esAdmin: false,
     yo: "dibujante"
   }, extra || {});
@@ -374,5 +377,73 @@ describe("a qué personaje va a parar cada archivo", () => {
     assert.ok(medidas.classList.contains("ojo"), "debería quedar resaltada");
     // Y aun así se puede subir: exigir el lienzo quedó para más adelante.
     assert.equal(doc.getElementById("arteAcciones").hidden, false);
+  });
+});
+
+describe("el precio al subir", () => {
+  // Todo lo que se publica se vende en la tienda (docs/TIENDA.md): se
+  // propone el precio de la ranura, que la sigue mientras nadie lo toque.
+  const fila = doc => doc.querySelector(".arte-fila");
+  const precio = doc => fila(doc).querySelector("input[type=number]");
+  const ranura = doc => fila(doc).querySelectorAll("select")[1];
+
+  async function conUnArchivo(nombre) {
+    const t = await montar(servidorOk(panelDePrueba()));
+    prepararEleccionDeArchivos(t.dom, 327, 504);
+    await elegir(t.dom, t.doc, [nombre]);
+    return t;
+  }
+
+  test("propone el de la ranura, y el campo ya no habla de gratis", async () => {
+    const { doc } = await conUnArchivo("tora_pelo9.png");
+    assert.equal(precio(doc).value, "120");
+    assert.equal(precio(doc).min, "1");
+    assert.ok(!/gratis/i.test(fila(doc).textContent));
+    assert.ok(!/gratis/i.test(doc.getElementById("arteSubir").textContent));
+  });
+
+  test("cambiar la ranura cambia el precio propuesto, y el destino", async () => {
+    const { dom, doc } = await conUnArchivo("tora_pelo9.png");
+    ranura(doc).value = "mascota";
+    ranura(doc).dispatchEvent(new dom.window.Event("change"));
+    assert.equal(precio(doc).value, "220");
+    assert.match(doc.querySelector(".arte-destino").textContent, /Mascota/);
+  });
+
+  test("pero no pisa el que se puso a mano", async () => {
+    const { dom, doc } = await conUnArchivo("tora_pelo9.png");
+    precio(doc).value = "500";
+    precio(doc).dispatchEvent(new dom.window.Event("input"));
+    ranura(doc).value = "mascota";
+    ranura(doc).dispatchEvent(new dom.window.Event("change"));
+    assert.equal(precio(doc).value, "500");
+  });
+
+  test("Aplicar a todas: sin precio, el de cada ranura; con precio, ese", async () => {
+    const { doc } = await conUnArchivo("tora_pelo9.png");
+    doc.getElementById("arteTodosCapa").value = "fondo";
+    doc.getElementById("arteTodosPrecio").value = "";
+    doc.getElementById("arteAplicarTodas").click();
+    assert.equal(precio(doc).value, "130");
+
+    doc.getElementById("arteTodosPrecio").value = "77";
+    doc.getElementById("arteAplicarTodas").click();
+    assert.equal(precio(doc).value, "77");
+  });
+
+  test("lo que se sube lleva ese precio", async () => {
+    const t = await montar((url) => url.includes("avatar-subir-prendas")
+      ? respuestaJson(200, { success: true, entraron: 1, fallaron: 0,
+          resultados: [{ archivo: "tora_pelo9.png", ok: true, id: 99, valor: "tora_pelo10", precio: 120 }] })
+      : respuestaJson(200, panelDePrueba()));
+    prepararEleccionDeArchivos(t.dom, 327, 504);
+    await elegir(t.dom, t.doc, ["tora_pelo9.png"]);
+
+    t.doc.getElementById("arteSubirBtn").click();
+    for (let i = 0; i < 12; i++) await new Promise(r => setTimeout(r, 0));
+
+    const subida = t.llamadas.find(l => l.url.includes("avatar-subir-prendas"));
+    assert.ok(subida, "no se subió nada");
+    assert.equal(JSON.parse(subida.opciones.body).prendas[0].precio, 120);
   });
 });
