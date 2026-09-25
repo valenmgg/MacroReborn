@@ -129,27 +129,254 @@ function tiempoRelativo(fechaOTimestamp, porDefecto) {
 // que devuelve /api/auth. Así el backend puede comprobar quién está
 // haciendo realmente una modificación y no confiar en un username
 // enviado por el cliente.
+//
+// Y cada respuesta de la API pasa por MRSesionServidor (abajo): guarda el
+// pase renovado que mande el servidor, y avisa si el servidor ya no
+// acepta la sesión que el navegador cree tener.
 (function instalarInterceptorApi() {
   if (window.__macroRebornFetchProtegido) return;
   window.__macroRebornFetchProtegido = true;
 
   const fetchOriginal = window.fetch.bind(window);
   window.fetch = function(url, options = {}) {
+    let enviado = null;   // el pase con el que sale esta petición, si lleva uno
+    let ruta = '';
     try {
       const destino = new URL(url, window.location.href);
       const esApi = destino.origin === window.location.origin && destino.pathname.startsWith('/api/');
       if (esApi) {
+        ruta = destino.pathname;
         const token = localStorage.getItem('macroSessionToken');
-        if (token) {
-          const headers = new Headers(options.headers || {});
-          if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token);
+        const headers = new Headers(options.headers || {});
+        if (token && !headers.has('Authorization')) {
+          headers.set('Authorization', 'Bearer ' + token);
           options = { ...options, headers };
         }
+        const cabecera = headers.get('Authorization') || '';
+        if (cabecera.startsWith('Bearer ')) enviado = cabecera.slice(7).trim();
       }
     } catch (_) {}
-    return fetchOriginal(url, options);
+    const peticion = fetchOriginal(url, options);
+    if (!enviado) return peticion;
+    return peticion.then((respuesta) => {
+      try { MRSesionServidor.revisar(respuesta, enviado, ruta); } catch (_) {}
+      return respuesta;
+    });
   };
 })();
+
+// ==============================
+// LA SESIÓN, SEGÚN EL SERVIDOR
+// ==============================
+// El navegador guarda por separado quién eres (usuarioActivo: el nombre,
+// el avatar, las monedas que se ven) y el pase que acepta el servidor
+// (macroSessionToken). Nada comprobaba que siguieran de acuerdo, y cuando
+// no lo estaban el sitio parecía funcionar -se podía jugar y leer- pero
+// no guardaba nada: ni el XP de jugar, ni el chat, ni los comentarios.
+// Reporte de la comunidad del 25/09/2026. Se llega ahí de varias formas:
+//
+//   - el pase caducó (7 días sin entrar; api/_auth.js lo renueva a quien
+//     entra), o la clave con que se firman cambió: el servidor contesta
+//     401 "Sesión no válida o expirada";
+//   - hay usuario guardado pero no pase;
+//   - el pase es de otra cuenta: se inició sesión con otra en otra
+//     pestaña. El servidor contesta 403 "Sesión no corresponde...".
+//
+// Aquí se detectan todas, al cargar la página y en cada respuesta, y se
+// dice con una franja arriba. La barra pide el saldo con la sesión en
+// cada página (mis-monedas), así que el aviso sale al abrirla, antes de
+// intentar escribir nada, y lo decide el servidor, no el reloj de quien
+// mira.
+const MRSesionServidor = (function () {
+  const CLAVE_USUARIO = 'usuarioActivo';
+  const CLAVE_PASE = 'macroSessionToken';
+  let avisado = false;
+
+  function leer(clave) {
+    try { return localStorage.getItem(clave); } catch (_) { return null; }
+  }
+
+  // El nombre que lleva dentro un pase. No se comprueba la firma, que es
+  // cosa del servidor: aquí solo se compara con el usuario de la página.
+  // Va en UTF-8, y hay nombres con tildes, runas o corazones.
+  function nombreDelPase(pase) {
+    try {
+      const b64 = String(pase).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+      const carga = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      return carga && carga.username ? String(carga.username) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function nombreGuardado() {
+    try {
+      const usuario = JSON.parse(leer(CLAVE_USUARIO) || 'null');
+      const nombre = usuario && (usuario.nombre || usuario.username);
+      return nombre ? String(nombre) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  const mismo = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+
+  // Con quién se abrió esta página: lo que tiene en memoria.
+  const nombreAlCargar = nombreGuardado();
+
+  // En el login y el registro no se avisa: ahí se está entrando.
+  function enLaEntrada() {
+    return /(^|\/)(login|registro)\.html$/.test(window.location.pathname);
+  }
+
+  // Dentro de un marco (el de Macro Snake también carga core.js) no se
+  // avisa ni se cierra nada: eso lo hace la página que lo contiene, con
+  // sus propias peticiones. Aquí solo se guarda el pase renovado.
+  const enMarco = (() => {
+    try { return window.self !== window.top; } catch (_) { return true; }
+  })();
+
+  function rutaActual() {
+    const ruta = window.location.pathname.replace(/^\//, '') || 'index.html';
+    return ruta + window.location.search;
+  }
+
+  // La franja: arriba, encima de todo, con su botón. Con createElement y
+  // textContent, porque puede llevar el nombre de una cuenta.
+  function avisar(texto, boton) {
+    const pintar = () => {
+      document.getElementById('mrAvisoSesion')?.remove();
+      const franja = document.createElement('div');
+      franja.id = 'mrAvisoSesion';
+      franja.setAttribute('role', 'alert');
+      franja.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483000;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:10px 44px 10px 16px;background:var(--bg-panel,#241145);color:var(--text-main,#f4f1fb);border-bottom:2px solid var(--gold,#f0b429);box-shadow:0 6px 18px rgba(0,0,0,.35);font:600 14px/1.4 system-ui,sans-serif;text-align:center';
+
+      const mensaje = document.createElement('span');
+      mensaje.textContent = texto;
+      franja.appendChild(mensaje);
+
+      if (boton) {
+        const accion = document.createElement(boton.href ? 'a' : 'button');
+        accion.textContent = boton.texto;
+        if (boton.href) {
+          accion.href = boton.href;
+        } else {
+          accion.type = 'button';
+          accion.addEventListener('click', boton.alPulsar);
+        }
+        accion.style.cssText = 'padding:6px 14px;border-radius:8px;border:0;background:var(--gold,#f0b429);color:var(--text-on-accent,#241804);font:800 14px system-ui,sans-serif;text-decoration:none;cursor:pointer';
+        franja.appendChild(accion);
+      }
+
+      const cerrar = document.createElement('button');
+      cerrar.type = 'button';
+      cerrar.setAttribute('aria-label', 'Cerrar aviso');
+      cerrar.textContent = '×';
+      cerrar.style.cssText = 'position:absolute;right:12px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:inherit;font-size:22px;line-height:1;cursor:pointer';
+      cerrar.addEventListener('click', () => franja.remove());
+      franja.appendChild(cerrar);
+
+      document.body.appendChild(franja);
+    };
+    if (document.body) pintar();
+    else document.addEventListener('DOMContentLoaded', pintar);
+  }
+
+  function cerrarSesionLocal() {
+    if (window.MRSession && typeof window.MRSession.clear === 'function') {
+      window.MRSession.clear();
+      return;
+    }
+    try {
+      localStorage.removeItem(CLAVE_USUARIO);
+      localStorage.removeItem(CLAVE_PASE);
+    } catch (_) {}
+  }
+
+  // El servidor ya no acepta esta sesión: se cierra también aquí, que es
+  // la verdad, y se ofrece volver a entrar y volver a esta misma página.
+  function sesionPerdida(texto) {
+    if (avisado || enLaEntrada() || enMarco) return;
+    avisado = true;
+    cerrarSesionLocal();
+    avisar(texto, { texto: 'Iniciar sesión', href: 'login.html?volver=' + encodeURIComponent(rutaActual()) });
+  }
+
+  const caducada = () => sesionPerdida('Tu sesión caducó. Volvé a iniciarla para seguir sumando XP y poder escribir.');
+
+  // Otra pestaña cambió la sesión. El almacenamiento ya tiene la buena;
+  // lo viejo es lo que esta página tiene en memoria: basta con recargar.
+  function cambioFuera(texto) {
+    if (avisado || enLaEntrada() || enMarco) return;
+    avisado = true;
+    avisar(texto, { texto: 'Recargar', alPulsar: () => window.location.reload() });
+  }
+
+  // Cada respuesta de la API que salió con pase (la llama el interceptor).
+  function revisar(respuesta, enviado, ruta) {
+    // /api/auth (entrar, registrarse, borrar la cuenta) tiene sus propias
+    // respuestas y pantallas.
+    if (ruta === '/api/auth') return;
+
+    // Solo decide la petición que salió con el pase que sigue guardado.
+    // Una que salió con otro (una copia vieja, o de antes de que otra
+    // pestaña cambiara la sesión) no dice nada de la sesión de ahora.
+    const actual = leer(CLAVE_PASE);
+    if (enviado !== actual) return;
+
+    const nuevo = respuesta.headers && respuesta.headers.get('X-Sesion-Nueva');
+    if (nuevo) {
+      try { localStorage.setItem(CLAVE_PASE, nuevo); } catch (_) {}
+    }
+
+    if (respuesta.status !== 401 && respuesta.status !== 403) return;
+    respuesta.clone().json().then((datos) => {
+      const error = String((datos && datos.error) || '');
+      if (respuesta.status === 401 && /^Sesión no válida/.test(error)) {
+        caducada();
+      } else if (respuesta.status === 403 && /^Sesión no corresponde/.test(error)) {
+        const delPase = nombreDelPase(actual);
+        if (delPase && !mismo(delPase, nombreAlCargar)) {
+          cambioFuera('Iniciaste sesión como ' + delPase + ' en otra pestaña. Recargá esta página para seguir con esa cuenta.');
+        }
+      }
+    }).catch(() => {});
+  }
+
+  // Al abrir la página: lo que se puede ver sin preguntar a nadie.
+  function revisarAlCargar() {
+    if (!nombreAlCargar) return;
+    const pase = leer(CLAVE_PASE);
+    if (!pase) {
+      caducada();
+      return;
+    }
+    const delPase = nombreDelPase(pase);
+    if (delPase && !mismo(delPase, nombreAlCargar)) {
+      sesionPerdida('Tu sesión quedó mezclada entre dos cuentas. Volvé a iniciarla con la que quieras usar.');
+    }
+  }
+
+  // Si otra pestaña cambia la sesión mientras esta está abierta.
+  window.addEventListener('storage', (evento) => {
+    if (evento.key !== null && evento.key !== CLAVE_PASE && evento.key !== CLAVE_USUARIO) return;
+    if (!nombreAlCargar) return;
+    const pase = leer(CLAVE_PASE);
+    if (!pase && !nombreGuardado()) {
+      cambioFuera('Cerraste sesión en otra pestaña. Recargá esta página.');
+      return;
+    }
+    const delPase = pase ? nombreDelPase(pase) : null;
+    if (delPase && !mismo(delPase, nombreAlCargar)) {
+      cambioFuera('Iniciaste sesión como ' + delPase + ' en otra pestaña. Recargá esta página para seguir con esa cuenta.');
+    }
+  });
+
+  revisarAlCargar();
+
+  return { revisar };
+})();
+// FIN: LA SESIÓN, SEGÚN EL SERVIDOR
 
 // ==============================
 // PRESENCIA (usuarios "conectados ahora")
