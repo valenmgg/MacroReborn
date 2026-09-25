@@ -35,10 +35,11 @@ function trozo(desde, hasta) {
   return FUENTE.slice(i, j);
 }
 
-// En el orden del archivo: catálogo y estado del editor; tienda;
-// pestañas y abrir el editor; clic en una prenda, ponerse lo comprado y
-// el arranque.
+// En el orden del archivo: las pestañas del perfil; catálogo y estado
+// del editor; tienda; categorías y abrir el editor; clic en una prenda,
+// ponerse lo comprado y el arranque.
 const TROZOS = [
+  trozo("// ---------- PESTAÑAS ----------", "// ---------- PERFIL ----------"),
   trozo("let CATALOGO = null;", "// ---------- AVATAR (Neon: users.avatar) ----------"),
   trozo("// ---------- CENTRO DE AVATARES (tienda) ----------", "// ---------- PREVIEW EDITOR ----------"),
   trozo("// ---------- FILTRAR OPCIONES SEGÚN EL MODELO ELEGIDO ----------", "// ---------- GUARDAR AVATAR ----------"),
@@ -91,7 +92,8 @@ async function montar(opciones) {
 
   const contexto = {
     document: dom.window.document,
-    window: { location: direccion, MRModal: dom.window.MRModal },
+    window: { location: direccion, MRModal: dom.window.MRModal, addEventListener() {} },
+    location: direccion,
     MRModal: dom.window.MRModal,
     history: { replaceState: (_estado, _titulo, url) => reemplazos.push(url) },
     URLSearchParams,
@@ -119,6 +121,7 @@ async function montar(opciones) {
     reemplazos,
     capas: () => vm.runInContext("({ ...editorCapas })", contexto),
     editorAbierto: () => d.getElementById("editorAvatar").style.display === "block",
+    pestanaDelPerfil: () => d.querySelector(".tab.activa").dataset.tab,
     opcion: (valor) => d.querySelector(`.opcion-item[data-valor="${valor}"]`),
     pestana: () => d.querySelector(".cat-btn.activa-cat").dataset.cat,
     tituloModal: () => (d.getElementById("mrModalTitle") || {}).textContent || null,
@@ -131,6 +134,8 @@ describe("perfil.html?ponerse=<valor>", () => {
   test("una prenda suya de su personaje: abre el editor con ella puesta, en su pestaña", async () => {
     const p = await montar({ search: "?ponerse=tora_pelo1" });
     assert.ok(p.editorAbierto());
+    assert.equal(p.pestanaDelPerfil(), "avatares", "el editor se abrió en una pestaña que no se ve");
+    assert.ok(p.d.getElementById("avatares").classList.contains("activo"));
     assert.equal(p.capas().pelo, "tora_pelo1");
     assert.equal(p.capas().botas, "tora_botas1", "se quitó lo que llevaba puesto");
     assert.equal(p.pestana(), "pelo");
@@ -159,6 +164,7 @@ describe("perfil.html?ponerse=<valor>", () => {
   test("sin ?ponerse no abre nada", async () => {
     const p = await montar();
     assert.ok(!p.editorAbierto());
+    assert.equal(p.pestanaDelPerfil(), "inicio");
     assert.deepStrictEqual(p.reemplazos, []);
   });
 

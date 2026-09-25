@@ -1180,7 +1180,11 @@ function ponerseLoDeLaTienda(){
   const capa = opcion.dataset.capa;
   const modeloDeLaPrenda = opcion.dataset.modelo;
 
-  // Abre el editor con el avatar guardado, como el botón de siempre.
+  // El editor vive en una pestaña del perfil (la del avatar), que no es
+  // la que se ve al entrar: se enseña esa. Luego se abre el editor con
+  // el avatar guardado, como el botón de siempre.
+  const pestana = document.getElementById("editorAvatar")?.closest(".contenido-tab");
+  if(pestana) document.querySelector('.tab[data-tab="' + pestana.id + '"]')?.click();
   document.getElementById("botonCrearAvatar")?.click();
 
   // Si no es suya (una dirección escrita a mano), lo de siempre: el
