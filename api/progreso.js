@@ -11,11 +11,6 @@ function fechaLocalAR(d = new Date()) {
     year: "numeric", month: "2-digit", day: "2-digit"
   }).format(d);
 }
-function addDays(dateText, days) {
-  const d = new Date(`${dateText}T12:00:00-03:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 function semanaActual(d = new Date()) {
   const base = new Date(`${fechaLocalAR(d)}T12:00:00-03:00`);
   const weekday = base.getDay() || 7;
@@ -80,17 +75,26 @@ async function asegurarDesafioGlobal() {
   return relectura[0];
 }
 
+// Lo que miden las misiones. Toda misión tiene que medir algo que esté
+// aquí: las de "Jugá N minutos hoy" pedían minutes_today y no estaba,
+// así que valían siempre 0 (tests/progreso.test.js lo vigila ahora).
 async function obtenerMetricas(userId) {
   const hoy = fechaLocalAR();
   const semana = semanaActual();
 
-  const [hoyJugados, semanaJugados, semanaTiempo, checkins, perfil] = await Promise.all([
+  const [hoyJugados, semanaJugados, semanaTiempo, hoyTiempo, checkins, perfil] = await Promise.all([
+    // Los juegos de hoy: de las 00:00 a las 00:00 de Argentina. El
+    // ::timestamp va ANTES del AT TIME ZONE. Sin él, Postgres convierte
+    // la fecha a timestamptz con la zona de la sesión (UTC) y el AT TIME
+    // ZONE la devuelve como hora de Argentina: la ventana quedaba de
+    // 21:00 a 21:00 UTC, seis horas antes, y lo jugado desde las 18:00 de
+    // Argentina -la hora punta- no contaba para la misión de hoy.
     sql`
       SELECT COUNT(*)::int AS cantidad
       FROM game_history gh
       WHERE gh.user_id = ${userId}
-        AND gh.played_at >= (${hoy}::date AT TIME ZONE 'America/Argentina/Buenos_Aires')
-        AND gh.played_at <  ((${hoy}::date + 1) AT TIME ZONE 'America/Argentina/Buenos_Aires');
+        AND gh.played_at >= (${hoy}::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires')
+        AND gh.played_at <  ((${hoy}::date + 1)::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires');
     `,
     sql`
       SELECT COUNT(*)::int AS cantidad
@@ -103,8 +107,22 @@ async function obtenerMetricas(userId) {
       WHERE user_id = ${userId} AND semana = ${semana}::date
       LIMIT 1;
     `,
+    // Los minutos de hoy (migración 023), que suma el pulso de cada
+    // minuto de juego (api/_racha.js).
     sql`
-      SELECT current_streak, best_streak, last_checkin_date
+      SELECT minutos FROM actividad_diaria
+      WHERE user_id = ${userId} AND dia = ${hoy}::date
+      LIMIT 1;
+    `,
+    // La racha tal como se ve: si ni hoy ni ayer se jugó, ya está rota
+    // aunque la fila guarde la última cifra, y se enseña 0. La fecha
+    // sale como texto desde la base: un Date pasado a texto en el
+    // servidor era justo lo que rompía la racha.
+    sql`
+      SELECT CASE WHEN last_checkin_date >= ${hoy}::date - 1 THEN current_streak ELSE 0 END AS current_streak,
+             best_streak,
+             to_char(last_checkin_date, 'YYYY-MM-DD') AS last_checkin_date,
+             (last_checkin_date = ${hoy}::date) AS hoy_cuenta
       FROM player_streaks WHERE user_id = ${userId} LIMIT 1;
     `,
     sql`
@@ -118,8 +136,9 @@ async function obtenerMetricas(userId) {
     semana,
     games_today: hoyJugados[0]?.cantidad || 0,
     games_week: semanaJugados[0]?.cantidad || 0,
+    minutes_today: Number(hoyTiempo[0]?.minutos) || 0,
     minutes_week: semanaTiempo[0]?.minutos || 0,
-    streak: checkins[0] || { current_streak: 0, best_streak: 0, last_checkin_date: null },
+    streak: checkins[0] || { current_streak: 0, best_streak: 0, last_checkin_date: null, hoy_cuenta: false },
     user: perfil[0] || null
   };
 }
@@ -174,34 +193,8 @@ async function estado(req, res, auth) {
   });
 }
 
-async function checkin(req, res, auth) {
-  const hoy = fechaLocalAR();
-  const fila = await sql`SELECT current_streak, best_streak, last_checkin_date FROM player_streaks WHERE user_id = ${auth.sub} LIMIT 1;`;
-  const actual = fila[0] || { current_streak: 0, best_streak: 0, last_checkin_date: null };
-
-  if (actual.last_checkin_date && String(actual.last_checkin_date).slice(0, 10) === hoy) {
-    return res.status(200).json({ success: true, alreadyChecked: true, streak: actual });
-  }
-
-  const ayer = addDays(hoy, -1);
-  const siguiente = String(actual.last_checkin_date || "").slice(0, 10) === ayer
-    ? Number(actual.current_streak || 0) + 1
-    : 1;
-  const mejor = Math.max(Number(actual.best_streak || 0), siguiente);
-
-  const guardado = await sql`
-    INSERT INTO player_streaks (user_id, current_streak, best_streak, last_checkin_date, updated_at)
-    VALUES (${auth.sub}, ${siguiente}, ${mejor}, ${hoy}::date, now())
-    ON CONFLICT (user_id) DO UPDATE SET
-      current_streak = EXCLUDED.current_streak,
-      best_streak = EXCLUDED.best_streak,
-      last_checkin_date = EXCLUDED.last_checkin_date,
-      updated_at = now()
-    RETURNING current_streak, best_streak, last_checkin_date;
-  `;
-
-  return res.status(200).json({ success: true, alreadyChecked: false, streak: guardado[0] });
-}
+// Aquí vivía checkin(), el botón "Registrar mi día". Desde el 25/09/2026
+// la racha se cuenta sola al jugar (api/_racha.js), y el botón se quitó.
 
 async function reclamar(req, res, auth) {
   const body = req.body || {};
@@ -223,62 +216,67 @@ async function reclamar(req, res, auth) {
     return res.status(400).json({ success: false, error: "Todavía no completaste la misión" });
   }
 
-  const usuarioActual = await sql`
-    SELECT id, username, level, xp, monedas, rank_actual, ranking_puntuacion
-    FROM users
-    WHERE id = ${auth.sub}
-    LIMIT 1;
-  `;
-
-  if (!usuarioActual.length) {
+  const existe = await sql`SELECT 1 FROM users WHERE id = ${auth.sub} LIMIT 1;`;
+  if (!existe.length) {
     return res.status(404).json({ success: false, error: "Usuario no encontrado" });
   }
 
-  const creada = await sql`
-    INSERT INTO player_mission_claims (user_id, mission_key, period_key, reward_xp, reward_coins)
-    VALUES (${auth.sub}, ${mission.key}, ${esperado}, ${mission.xp}, ${mission.coins})
-    ON CONFLICT (user_id, mission_key, period_key) DO NOTHING
-    RETURNING id;
-  `;
+  // Apuntar el cobro y pagarlo van juntos o no va ninguno
+  // (sql.transaccion, en api/_pg.js). Eran dos pasos sueltos: si el pago
+  // fallaba, la misión quedaba cobrada y sin recompensa. El FOR UPDATE
+  // hace que el nivel y el XP que se leen no cambien por debajo hasta
+  // que se escriben.
+  const pago = await sql.transaccion(async (tx) => {
+    const creada = await tx`
+      INSERT INTO player_mission_claims (user_id, mission_key, period_key, reward_xp, reward_coins)
+      VALUES (${auth.sub}, ${mission.key}, ${esperado}, ${mission.xp}, ${mission.coins})
+      ON CONFLICT (user_id, mission_key, period_key) DO NOTHING
+      RETURNING id;
+    `;
+    if (!creada.length) return null;   // ya estaba cobrada
 
-  if (!creada.length) {
+    const filas = await tx`SELECT level, xp FROM users WHERE id = ${auth.sub} FOR UPDATE;`;
+
+    // Aplicamos XP + monedas en la misma actualización lógica.
+    // El cálculo de nivel sigue la misma idea que /api/users?action=xp,
+    // pero en bucle: las recompensas de misión (hasta 400 XP de una
+    // sola vez) pueden superar de sobra el umbral de más de un nivel,
+    // algo que no pasa con el pulso normal (siempre +10). Si se subiera
+    // un solo nivel y se descartara el resto como hacía el pulso normal,
+    // el sobrante de XP se perdería en vez de acreditarse. Acá se sube
+    // de a un nivel por vez, restando el umbral en lugar de resetear a
+    // 0, hasta que el XP que queda ya no alcance para el siguiente nivel.
+    let level = Math.max(1, Number(filas[0].level) || 1);
+    let xp = Math.max(0, Number(filas[0].xp) || 0) + Number(mission.xp);
+    let subioNivel = false;
+
+    while (xp >= xpNecesaria(level)) {
+      xp -= xpNecesaria(level);
+      level += 1;
+      subioNivel = true;
+    }
+
+    const actualizado = await tx`
+      UPDATE users
+      SET level = ${level},
+          xp = ${xp},
+          monedas = COALESCE(monedas, 0) + ${mission.coins}
+      WHERE id = ${auth.sub}
+      RETURNING username, level, xp, monedas, rank_actual, ranking_puntuacion;
+    `;
+    return { subioNivel, user: actualizado[0] || null };
+  });
+
+  if (!pago) {
     return res.status(200).json({ success: true, alreadyClaimed: true });
   }
-
-  // Aplicamos XP + monedas en la misma actualización lógica.
-  // El cálculo de nivel sigue la misma idea que /api/users?action=xp,
-  // pero en bucle: las recompensas de misión (hasta 400 XP de una
-  // sola vez) pueden superar de sobra el umbral de más de un nivel,
-  // algo que no pasa con el pulso normal (siempre +10). Si se subiera
-  // un solo nivel y se descartara el resto como hacía el pulso normal,
-  // el sobrante de XP se perdería en vez de acreditarse. Acá se sube
-  // de a un nivel por vez, restando el umbral en lugar de resetear a
-  // 0, hasta que el XP que queda ya no alcance para el siguiente nivel.
-  let level = Math.max(1, Number(usuarioActual[0].level) || 1);
-  let xp = Math.max(0, Number(usuarioActual[0].xp) || 0) + Number(mission.xp);
-  let subioNivel = false;
-
-  while (xp >= xpNecesaria(level)) {
-    xp -= xpNecesaria(level);
-    level += 1;
-    subioNivel = true;
-  }
-
-  const actualizado = await sql`
-    UPDATE users
-    SET level = ${level},
-        xp = ${xp},
-        monedas = COALESCE(monedas, 0) + ${mission.coins}
-    WHERE id = ${auth.sub}
-    RETURNING username, level, xp, monedas, rank_actual, ranking_puntuacion;
-  `;
 
   return res.status(200).json({
     success: true,
     alreadyClaimed: false,
     reward: { xp: mission.xp, coins: mission.coins },
-    subioNivel,
-    user: actualizado[0] || null
+    subioNivel: pago.subioNivel,
+    user: pago.user
   });
 }
 
@@ -290,11 +288,16 @@ module.exports = async function handler(req, res) {
     if (!auth) return;
     const action = String(req.query.action || "status");
     if (req.method === "GET" && action === "status") return await estado(req, res, auth);
-    if (req.method === "POST" && action === "checkin") return await checkin(req, res, auth);
     if (req.method === "POST" && action === "claim") return await reclamar(req, res, auth);
     return res.status(400).json({ success: false, error: "Acción no válida" });
   } catch (error) {
     console.error("/api/progreso", error);
     return res.status(500).json({ success: false, error: "No se pudo cargar el progreso" });
   }
+};
+
+// Para tests/progreso.test.js: qué mide cada misión y qué misión toca
+// cada día, sin depender de la fecha en que corran las pruebas.
+module.exports.paraPruebas = {
+  MISIONES_DIARIAS, MISIONES_SEMANALES, pickDaily, pickWeekly, obtenerMetricas, fechaLocalAR
 };
