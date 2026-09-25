@@ -8,6 +8,17 @@ const mensajeLogin = document.getElementById("mensajeLogin");
 const cardLogin = document.getElementById("cardLogin");
 
 
+// A dónde ir al entrar. Si se llega desde el aviso de sesión caducada
+// (MRSesionServidor, en js/core.js), login.html?volver=jugar.html?id=5
+// devuelve a la página donde se estaba. Solo una página del propio sitio:
+// una dirección de fuera convertiría el login en un trampolín a cualquier
+// web.
+function paginaTrasEntrar(busqueda){
+    const volver = new URLSearchParams(busqueda || "").get("volver");
+    return volver && /^[a-z0-9-]+\.html(\?[^#\s]*)?$/i.test(volver) ? volver : "perfil.html";
+}
+
+
 function mostrarMensajeLogin(texto, tipo){
     if(!mensajeLogin){
         alert(texto);
@@ -123,7 +134,7 @@ formulario.addEventListener("submit", async function(e){
 
             setTimeout(function(){
 
-                window.location.href="perfil.html";
+                window.location.href = paginaTrasEntrar(window.location.search);
 
             },700);
 
