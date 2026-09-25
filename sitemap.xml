@@ -19,6 +19,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.macroreborn.com/tienda.html</loc>
+    <lastmod>2026-09-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.macroreborn.com/noticias.html</loc>
     <lastmod>2026-08-18</lastmod>
     <changefreq>weekly</changefreq>
