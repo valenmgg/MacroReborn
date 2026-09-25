@@ -42,6 +42,11 @@ con el borde.
 Los del equipo de arte van de 1.500 a 50.000 (mediana, 2.900). Los
 personajes base no se venden.
 
+La tabla vive en `api/_precios.js`, y es la que se usa desde entonces
+para que ninguna prenda vuelva a quedar gratis sin querer (sección 5).
+La migración lleva su propia copia en SQL, porque no puede leer el
+módulo; `tests/precios.test.js` vigila que digan lo mismo.
+
 **Lo que da de sí el saldo.** Una cuenta nueva empieza con 500 monedas
 y no tiene nada puesto aparte del personaje: le alcanza para ojos,
 boca, pelo, remera y pantalón (450). Las monedas se ganan jugando: entre
@@ -115,12 +120,44 @@ arte del equipo y `/prendas/` está cerrado a los demás
 
 ---
 
-## 5. Lo que queda
+## 5. El equipo de arte y los precios
+
+Decidido el 24/09/2026, el mismo día de la tienda. Todo lo que se
+publica se vende, entre 1 y 100.000 monedas:
+
+- **Al subir** (`arte.html` y `taller.html`), cada prenda llega con el
+  precio de su ranura, y lo sigue al cambiar de ranura mientras nadie
+  lo toque a mano. El 0, que antes era gratis, ya no vale.
+- **Al publicar** una prenda que no tenía precio (un borrador subido
+  gratis antes de la tienda, o una del catálogo original que estaba
+  retirada cuando la migración 022), se le pone el de su ranura.
+- **Después de subirla**, el botón "Editar" de cada prenda del catálogo
+  del panel (`avatarEditarPrenda`, en `api/content.js`):
+  - el **precio** lo cambia cualquiera del equipo, en cualquier prenda
+    ("confío en ellos");
+  - el **nombre**, quien la subió o un administrador, igual que publicar
+    y retirar;
+  - **descripción** no hay: se decidió no tenerla;
+  - el **personaje y la ranura** no se cambian: el dibujo está hecho
+    para ellos, y de ahí sale el identificador (`tora_pelo8`) que la
+    gente lleva guardado en su avatar. Para eso se sube otra y se
+    retira esta.
+
+Lo ya pagado no se toca: cada compra guarda lo que costó
+(`precio_pagado`). Cada cambio queda en el registro del servidor, con
+quién lo hizo y de qué a qué:
+
+```bash
+journalctl -u macroreborn | grep "\[arte\]"
+# [arte] dibujante cambió tora_pelo8: precio 120 -> 150
+```
+
+---
+
+## 6. Lo que queda
 
 - **Probador.** Descartado por ahora (arriba). Si vuelve, que dibuje
   sobre el avatar de quien mira y con marca de agua, no la prenda sola.
-- **Cambiar un precio.** El equipo de arte solo puede ponerlo al subir
-  la prenda. Rebajas y cambios, hoy, a mano en la base.
 - **Quien llevaba una prenda de la tienda sin haberla comprado** (de
   antes de que se vendiera, anterior a la 022) la conserva, pero el
   editor se la enseña con candado.
@@ -129,11 +166,15 @@ arte del equipo y `/prendas/` está cerrado a los demás
 
 ---
 
-## 6. Las pruebas
+## 7. Las pruebas
 
 | Archivo | Qué sujeta |
 |---|---|
 | `tests/tienda-catalogo-migracion.test.js` | La migración 022: precios, fechas, regalos, que se pueda aplicar dos veces |
+| `tests/precios.test.js` | Que la tabla de `api/_precios.js` sea la de la migración |
+| `tests/arte-editar.test.js` | Editar nombre y precio: quién puede, qué cambia, qué se rechaza |
+| `tests/avatar-panel.test.js` | Subir con precio y publicar poniendo el de la ranura |
+| `tests/arte-pagina.test.js`, `tests/taller.test.js` | El precio propuesto al subir y el botón Editar |
 | `tests/tienda-api.test.js` | Catálogo, privacidad, compra, clics dobles y `mis-monedas` |
 | `tests/transaccion.test.js` | `sql.transaccion` en los dos adaptadores |
 | `tests/tienda-pagina.test.js` | La página entera, con la compra y los enlaces |
