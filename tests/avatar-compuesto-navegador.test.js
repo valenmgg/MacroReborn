@@ -434,7 +434,10 @@ describe("la tienda de la comunidad", () => {
     // faltara, la caja se queda vacía.
     const i = COMUNIDAD.indexOf("async function crCargarTienda");
     assert.ok(i !== -1, "no está crCargarTienda");
-    const cuerpo = COMUNIDAD.slice(i, COMUNIDAD.indexOf("\nasync function", i + 10));
+    // Llevar a la tienda con la prenda en la dirección sí puede
+    // (tienda.html?prenda=...): es su nombre, no su dibujo.
+    const cuerpo = COMUNIDAD.slice(i, COMUNIDAD.indexOf("\nasync function", i + 10))
+      .replace(/encodeURIComponent\(item\.valorCapa\)/g, "");
     assert.match(cuerpo, /item\.previsualizacion/);
     for (const prohibido of ["rkRutaCapa", "rutaCapaAvatar", "valorCapa)", "/prendas/"]) {
       assert.ok(!cuerpo.includes(prohibido), "la tienda todavía usa " + prohibido);
