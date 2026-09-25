@@ -59,8 +59,9 @@
         });
       }
 
-      // nav-categorias contiene las 9 entradas finales de la navbar,
-      // después de que navbar.js haya movido ahí las primeras.
+      // nav-categorias contiene las entradas finales de la navbar,
+      // después de que navbar.js haya movido ahí las primeras y añadido
+      // la tienda.
       agregarDesde(categorias);
 
       const separador = document.createElement('div');

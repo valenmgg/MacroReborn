@@ -108,6 +108,16 @@ if(navbar && nav){
             navCategorias.insertBefore(todos, navCategorias.firstChild);
         }
 
+        // La tienda, detrás de Juegos. Se pone aquí y no en el HTML de
+        // cada página, que son veinticinco con la misma barra copiada.
+        if(!navCategorias.querySelector('a[href="tienda.html"]')){
+            const tienda = document.createElement("a");
+            tienda.href = "tienda.html";
+            tienda.textContent = "🛍️ Tienda";
+            const juegos = navCategorias.querySelector('a[href="juegos.html"]:not(.nav-retro-todos)');
+            navCategorias.insertBefore(tienda, juegos ? juegos.nextSibling : null);
+        }
+
         navbar.dataset.retroPreparada = "1";
     }
 
