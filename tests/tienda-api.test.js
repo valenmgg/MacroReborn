@@ -2,8 +2,10 @@
 // LA API DE LA TIENDA — tests/tienda-api.test.js
 // ==============================
 // GET /api/content?action=avatar-shop, el catálogo: qué se vende, cuánto
-// se ha vendido cada cosa y a quién se le enseña el saldo. Contra el
-// handler de verdad y una base PGlite local.
+// se ha vendido cada cosa y a quién se le enseña el saldo. Y POST
+// ?action=avatar-shop-buy, la compra: a quién se le cobra, que cobrar y
+// apuntar vayan juntos, y los clics dobles. Contra el handler de verdad
+// y una base PGlite local.
 //
 // Correr:  npm test
 
@@ -143,6 +145,121 @@ describe("el catálogo", () => {
     const mayuscula = await persona("Jader", 222);
     const { cuerpo } = await catalogo(sesion(mayuscula, "Jader"), { username: "jader" });
     assert.equal(cuerpo.monedas, 222);
+  });
+
+});
+
+describe("la compra", () => {
+
+  const comprar = (headers, cuerpo) => llamar("POST", { action: "avatar-shop-buy" }, cuerpo, headers);
+  const saldo = async (id) => (await db.query("SELECT monedas FROM users WHERE id = $1", [id])).rows[0].monedas;
+  const comprasDe = async (id) => (await db.query(
+    "SELECT item_id, precio_pagado FROM avatar_shop_purchases WHERE user_id = $1 ORDER BY item_id", [id])).rows;
+
+  test("cobra, apunta lo pagado y devuelve la prenda para ponérsela", async () => {
+    const id = await persona("compradora", 500);
+    const item = await enVenta("tora_pelo930", { precio: 120 });
+
+    const { cuerpo } = await comprar(sesion(id, "compradora"), { itemId: item });
+    assert.equal(cuerpo.success, true);
+    assert.equal(cuerpo.monedas, 380);
+    assert.equal(cuerpo.itemComprado, "Prenda tora_pelo930");
+    assert.deepStrictEqual(cuerpo.prenda, { id: item, valorCapa: "tora_pelo930", modelo: "tora", categoria: "pelo" });
+    assert.equal(await saldo(id), 380);
+    assert.deepStrictEqual(await comprasDe(id), [{ item_id: item, precio_pagado: 120 }]);
+  });
+
+  test("compra quien tiene la sesión, aunque el nombre solo cambie en mayúsculas", async () => {
+    const minuscula = await persona("rosa", 500);
+    const mayuscula = await persona("Rosa", 500);
+    const item = await enVenta("tora_pelo931", { precio: 100 });
+
+    const { cuerpo } = await comprar(sesion(mayuscula, "Rosa"), { username: "rosa", itemId: item });
+    assert.equal(cuerpo.success, true);
+    assert.equal(await saldo(mayuscula), 400);
+    assert.equal(await saldo(minuscula), 500, "se le cobró a la otra cuenta");
+    assert.deepStrictEqual(await comprasDe(minuscula), []);
+  });
+
+  test("sin sesión no se compra, ni con el nombre de otra persona", async () => {
+    const id = await persona("sin_permiso", 500);
+    await persona("victima", 500);
+    const item = await enVenta("tora_pelo932");
+
+    assert.equal((await comprar(null, { username: "sin_permiso", itemId: item })).codigo, 401);
+    assert.equal((await comprar(sesion(id, "sin_permiso"), { username: "victima", itemId: item })).codigo, 403);
+    assert.equal(await saldo(id), 500);
+  });
+
+  test("una prenda retirada no se compra", async () => {
+    const id = await persona("tarde", 500);
+    const item = await enVenta("tora_pelo933", { publicada: false });
+
+    const { codigo, cuerpo } = await comprar(sesion(id, "tarde"), { itemId: item });
+    assert.equal(codigo, 404);
+    assert.equal(cuerpo.error, "Esa prenda ya no está a la venta");
+    assert.equal(await saldo(id), 500);
+    assert.deepStrictEqual(await comprasDe(id), []);
+  });
+
+  test("si no alcanza, ni se cobra ni se apunta nada", async () => {
+    const id = await persona("corta", 50);
+    const item = await enVenta("tora_pelo934", { precio: 100 });
+
+    const { cuerpo } = await comprar(sesion(id, "corta"), { itemId: item });
+    assert.equal(cuerpo.success, false);
+    assert.equal(cuerpo.error, "No te alcanzan las monedas");
+    assert.equal(await saldo(id), 50);
+    assert.deepStrictEqual(await comprasDe(id), [], "la compra quedó apuntada sin pagarla");
+  });
+
+  test("lo que ya se tiene no se cobra otra vez", async () => {
+    const id = await persona("repite", 500);
+    const item = await enVenta("tora_pelo935", { precio: 100 });
+
+    await comprar(sesion(id, "repite"), { itemId: item });
+    const { cuerpo } = await comprar(sesion(id, "repite"), { itemId: item });
+    assert.equal(cuerpo.success, false);
+    assert.equal(cuerpo.error, "Ya tenés esta prenda");
+    assert.equal(await saldo(id), 400);
+  });
+
+  test("dos clics a la vez: una compra y un solo cobro", async () => {
+    const id = await persona("impaciente", 500);
+    const item = await enVenta("tora_pelo936", { precio: 100 });
+
+    const respuestas = await Promise.all([
+      comprar(sesion(id, "impaciente"), { itemId: item }),
+      comprar(sesion(id, "impaciente"), { itemId: item })
+    ]);
+    const bien = respuestas.filter(r => r.cuerpo.success);
+    assert.equal(bien.length, 1);
+    assert.equal(respuestas.find(r => !r.cuerpo.success).cuerpo.error, "Ya tenés esta prenda");
+    assert.equal(await saldo(id), 400);
+    assert.equal((await comprasDe(id)).length, 1);
+  });
+
+  test("dos prendas a la vez con saldo para una: se queda una", async () => {
+    const id = await persona("justa", 150);
+    const a = await enVenta("tora_pelo937", { precio: 100 });
+    const b = await enVenta("tora_pelo938", { precio: 100 });
+
+    const respuestas = await Promise.all([
+      comprar(sesion(id, "justa"), { itemId: a }),
+      comprar(sesion(id, "justa"), { itemId: b })
+    ]);
+    assert.equal(respuestas.filter(r => r.cuerpo.success).length, 1);
+    assert.equal(respuestas.find(r => !r.cuerpo.success).cuerpo.error, "No te alcanzan las monedas");
+    assert.equal(await saldo(id), 50);
+    assert.equal((await comprasDe(id)).length, 1, "quedó apuntada la que no se pagó");
+  });
+
+  test("sin una prenda válida que comprar, 400", async () => {
+    const id = await persona("despistada", 500);
+    for (const itemId of [undefined, "abc", 0, -3, 1.5]) {
+      const { codigo } = await comprar(sesion(id, "despistada"), { itemId });
+      assert.equal(codigo, 400, "itemId = " + itemId);
+    }
   });
 
 });

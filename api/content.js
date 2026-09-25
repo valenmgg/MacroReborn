@@ -2323,10 +2323,11 @@ async function communityFeed(req, res) {
 //
 // GET  /api/content?action=avatar-shop-buy&username=X&itemId=Y
 //   (se resuelve como POST más abajo)
-// POST /api/content?action=avatar-shop-buy { username, itemId }
-//   -> descuenta el precio del saldo (users.monedas) a través del banco
-//   (api/_monedas.js) e inserta la compra. Falla si ya la tiene o si no
-//   le alcanzan las monedas.
+// POST /api/content?action=avatar-shop-buy { itemId }, con sesión
+//   -> apunta la compra y descuenta el precio del saldo (users.monedas)
+//   a través del banco (api/_monedas.js), las dos cosas o ninguna.
+//   Falla si ya la tiene, si no le alcanzan las monedas o si la prenda
+//   ya no está a la venta. Devuelve la prenda, para poder ponérsela.
 //
 // El saldo se LEE y se GASTA por api/_monedas.js, no con SQL suelto acá:
 // ese módulo es también el que otorga monedas por jugar, así que las dos
@@ -2405,48 +2406,74 @@ async function avatarShopBuy(req, res) {
     return res.status(405).json({ success: false, error: "Método no permitido" });
   }
 
-  const { username, itemId } = req.body || {};
-  if (!username || !itemId) {
+  // Quién compra lo dice la sesión, no el cuerpo: el handler ya comprobó
+  // que, si viene username, es el de la sesión. Antes se buscaba por
+  // nombre y sin mayúsculas, y de dos cuentas como jader y Jader podía
+  // salir la otra.
+  const userId = Number(req.auth.sub);
+  const itemId = Number((req.body || {}).itemId);
+  if (!Number.isInteger(itemId) || itemId <= 0) {
     return res.status(400).json({ success: false, error: "Datos incompletos" });
   }
 
-  const userId = await getUserId(username);
-  if (!userId) {
-    return res.status(404).json({ success: false, error: "Usuario no encontrado" });
-  }
-
-  const filasItem = await sql`SELECT id, nombre, precio FROM avatar_shop_items WHERE id = ${itemId};`;
+  // Lo mismo que enseña el catálogo (avatarShop): una prenda retirada
+  // ya no se vende.
+  const filasItem = await sql`
+    SELECT s.id, s.nombre, s.precio, s.valor_capa AS "valorCapa", s.modelo, s.categoria
+    FROM avatar_shop_items s
+    JOIN avatar_prendas p ON p.valor = s.valor_capa AND p.publicada
+    WHERE s.id = ${itemId};
+  `;
   if (!filasItem.length) {
-    return res.status(404).json({ success: false, error: "La prenda no existe" });
+    return res.status(404).json({ success: false, error: "Esa prenda ya no está a la venta" });
   }
   const item = filasItem[0];
 
-  const yaLaTiene = await sql`
-    SELECT 1 FROM avatar_shop_purchases WHERE user_id = ${userId} AND item_id = ${itemId};
-  `;
-  if (yaLaTiene.length) {
-    return res.status(200).json({ success: false, error: "Ya tenés esta prenda" });
+  // Apuntar la compra y cobrarla van juntas o no va ninguna
+  // (sql.transaccion, en api/_pg.js). Antes eran tres pasos sueltos
+  // -mirar si ya la tenía, cobrar, apuntar- y dos clics a la vez podían
+  // cobrarla dos veces.
+  //
+  // Primero se apunta. La clave única (user_id, item_id) hace el resto:
+  // de dos clics a la vez solo entra uno, y el otro espera a que el
+  // primero termine y se encuentra con que ya la tiene. Después cobra el
+  // banco, que lo hace en una sola instrucción condicionada, así que el
+  // saldo nunca queda en negativo; si no alcanza, se lanza y la compra
+  // apuntada se deshace.
+  let saldoNuevo;
+  try {
+    saldoNuevo = await sql.transaccion(async (tx) => {
+      const apuntada = await tx`
+        INSERT INTO avatar_shop_purchases (user_id, item_id, precio_pagado)
+        VALUES (${userId}, ${item.id}, ${item.precio})
+        ON CONFLICT (user_id, item_id) DO NOTHING
+        RETURNING id;
+      `;
+      if (!apuntada.length) throw new CompraRechazada("Ya tenés esta prenda");
+
+      const gasto = await new MonedasService(tx).gastar(userId, item.precio);
+      if (!gasto.ok) throw new CompraRechazada(gasto.error);
+      return gasto.saldoNuevo;
+    });
+  } catch (error) {
+    if (error instanceof CompraRechazada) {
+      return res.status(200).json({ success: false, error: error.message });
+    }
+    throw error;
   }
-
-  // El descuento del saldo lo hace el banco (api/_monedas.js), no este
-  // handler: antes acá había un SELECT del saldo, la comparación y un
-  // UPDATE escritos a mano. El servicio lo hace en una sola instrucción
-  // condicionada, así que dos clics simultáneos no pueden dejar el saldo
-  // en negativo. El mensaje de error es el mismo que veía el usuario.
-  const gasto = await monedasService.gastar(userId, item.precio);
-
-  if (!gasto.ok) {
-    return res.status(200).json({ success: false, error: gasto.error });
-  }
-
-  await sql`INSERT INTO avatar_shop_purchases (user_id, item_id) VALUES (${userId}, ${itemId});`;
 
   return res.status(200).json({
     success: true,
     itemComprado: item.nombre,
-    monedas: gasto.saldoNuevo
+    monedas: saldoNuevo,
+    prenda: { id: item.id, valorCapa: item.valorCapa, modelo: item.modelo, categoria: item.categoria }
   });
 }
+
+// Una compra que no se hace por algo que la persona tiene que saber (ya
+// la tiene, no le alcanza). Se lanza dentro de la transacción para que
+// se deshaga, y avatarShopBuy la convierte en la respuesta de siempre.
+class CompraRechazada extends Error {}
 
 
 // ==============================
