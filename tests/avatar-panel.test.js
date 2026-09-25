@@ -9,11 +9,13 @@
 //   - Una tanda con un fichero malo no tumba a los buenos.
 //   - Lo que se rechaza al subir: lo que no es un PNG de verdad, lo que
 //     pesa de más, la ranura inventada, el personaje inexistente, el
-//     nombre vacío y el precio negativo.
+//     nombre vacío y el precio fuera de 1 a 100.000.
 //   - El identificador lo genera el servidor, nunca el artista.
 //   - Dos prendas con el mismo dibujo comparten fichero.
-//   - Precio 0 es gratis; con precio entra en la tienda.
+//   - Toda prenda entra en la tienda con su precio: desde la migración
+//     022, 0 ya no es gratis, no vale (docs/TIENDA.md).
 //   - Retirar no borra, y solo puede el autor o un administrador.
+//   - Publicar una prenda que no tenía precio le pone el de su ranura.
 //   - Cada cambio sube la versión del catálogo, que es lo que hace que
 //     los dos procesos del cluster se enteren.
 //
@@ -129,7 +131,7 @@ function prendaDePrueba(extra) {
     modelo: "tora",
     capa: "remera",
     nombre: "Remera nueva",
-    precio: 0,
+    precio: 100,
     png: comoDataUrl(PNG_A)
   }, extra || {});
 }
@@ -181,6 +183,9 @@ describe("quién entra al panel", () => {
     assert.equal(r.codigo, 200);
     assert.equal(r.cuerpo.esAdmin, false);
     assert.equal(r.cuerpo.yo, "dibujante");
+    // Para proponer el precio al subir (api/_precios.js).
+    assert.equal(r.cuerpo.preciosPorCapa.pelo, 120);
+    assert.equal(r.cuerpo.preciosPorCapa.mascota, 220);
   });
 
   test("un administrador también", async () => {
@@ -274,19 +279,17 @@ describe("subir prendas", () => {
     assert.ok(prendas.rows[0].n >= 2, "pero varias prendas pueden apuntarlo");
   });
 
-  test("con precio entra en la tienda; con 0 es gratis", async () => {
+  test("entra en la tienda con su precio, y 0 ya no es gratis: no vale", async () => {
     const r = await subir([
       prendaDePrueba({ capa: "guantes", nombre: "Guantes caros", precio: 250, png: comoDataUrl(PNG_B) }),
       prendaDePrueba({ capa: "guantes", nombre: "Guantes gratis", precio: 0 })
     ], ARTISTA());
 
-    assert.equal(r.cuerpo.entraron, 2);
+    assert.equal(r.cuerpo.entraron, 1);
     const caros = r.cuerpo.resultados[0].valor;
-    const gratis = r.cuerpo.resultados[1].valor;
+    assert.match(r.cuerpo.resultados[1].error, /precio/i);
 
-    const tienda = await db.query("SELECT valor_capa, precio FROM avatar_shop_items WHERE valor_capa IN ($1,$2)", [caros, gratis]);
-    assert.equal(tienda.rows.length, 1);
-    assert.equal(tienda.rows[0].valor_capa, caros);
+    const tienda = await db.query("SELECT precio FROM avatar_shop_items WHERE valor_capa = $1", [caros]);
     assert.equal(Number(tienda.rows[0].precio), 250);
   });
 
@@ -350,7 +353,9 @@ describe("subir prendas", () => {
       [{ nombre: "   " }, /nombre/i],
       [{ nombre: "x".repeat(61) }, /nombre/i],
       [{ precio: -5 }, /precio/i],
+      [{ precio: 0 }, /precio/i],
       [{ precio: 1.5 }, /precio/i],
+      [{ precio: 100001 }, /precio/i],
       [{ png: "no soy una imagen" }, /PNG/i],
       // Un JPEG renombrado: la firma de los bytes lo delata.
       [{ png: "data:image/png;base64," + Buffer.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0]).toString("base64") }, /PNG de verdad/i]
@@ -432,6 +437,28 @@ describe("publicar y retirar", () => {
 
   test("una prenda que no existe da 404", async () => {
     assert.equal((await estado(999999, false, ADMIN())).codigo, 404);
+  });
+
+  test("publicar una prenda que no tenía precio le pone el de su ranura", async () => {
+    // Un borrador subido gratis antes de la tienda: sin fila en ella.
+    const archivo = await db.query("SELECT archivo_id FROM avatar_prendas WHERE id = $1", [idPropia]);
+    const borrador = await db.query(
+      `INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, publicada)
+       VALUES ('tora_mascota77', 'tora', 'mascota', 'Borrador', $1, false) RETURNING id`,
+      [archivo.rows[0].archivo_id]);
+
+    const r = await estado(Number(borrador.rows[0].id), true, ADMIN());
+    assert.equal(r.codigo, 200);
+    const tienda = await db.query("SELECT precio, nombre FROM avatar_shop_items WHERE valor_capa = 'tora_mascota77'");
+    assert.deepStrictEqual(tienda.rows, [{ precio: 220, nombre: "Borrador" }]);
+  });
+
+  test("y a la que ya lo tenía no se lo cambia", async () => {
+    const fila = await db.query("SELECT valor FROM avatar_prendas WHERE id = $1", [idPropia]);
+    await estado(idPropia, false, ARTISTA());
+    await estado(idPropia, true, ARTISTA());
+    const tienda = await db.query("SELECT precio FROM avatar_shop_items WHERE valor_capa = $1", [fila.rows[0].valor]);
+    assert.equal(Number(tienda.rows[0].precio), 100, "el precio que se puso al subirla");
   });
 
   test("lo retirado sigue saliendo en el panel, pero no en el catálogo del editor", async () => {

@@ -4,6 +4,7 @@ const { requerirAuth, obtenerAuth, crearPase, PASE_TTL_MS } = require("./_auth")
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
+const { PRECIO_POR_CAPA, precioDeCapa, precioValido } = require("./_precios");
 const avatarCompuesto = require("./_avatar-compuesto");
 const previsualizaciones = require("./_previsualizaciones");
 // CAPAS es la lista de las 15 capas en su orden de dibujo. Es la del
@@ -120,6 +121,8 @@ async function avatarPanel(req, res) {
     capas: CAPAS_AVATAR.filter(c => c !== "modelo"),
     modelos,
     prendas,
+    // El precio que se propone al subir, según la ranura (api/_precios.js).
+    preciosPorCapa: PRECIO_POR_CAPA,
     esAdmin: permiso.esAdmin,
     yo: permiso.auth.username
   });
@@ -217,11 +220,15 @@ function leerPngSubido(texto) {
 // artista nunca escribe el identificador: es lo que hace imposible que
 // se repita el caso de "Boca 1.png", ocho dibujos que nunca funcionaron
 // porque su nombre llevaba mayúscula y espacio.
-async function siguienteValor(modelo, capa) {
+//
+// "consulta" es la conexión con la que mirar: la de la transacción de
+// la subida. Con otra, PGlite (pruebas y servidor local) esperaría a que
+// esa transacción terminara, y ella a esto.
+async function siguienteValor(modelo, capa, consulta) {
   const prefijo = modelo + "_" + capa;
   const usados = new Set();
 
-  const delCatalogo = await sql`
+  const delCatalogo = await consulta`
     SELECT valor FROM avatar_prendas WHERE modelo = ${modelo} AND capa = ${capa};
   `;
   for (const f of delCatalogo) {
@@ -242,7 +249,7 @@ async function siguienteValor(modelo, capa) {
   // No es un caso hipotético. Es el único valor colgando del sitio, y
   // apuntaba exactamente al próximo número a repartir. Saltárselo
   // cuesta una consulta por prenda subida, y se suben de a pocas.
-  const enAvatares = await sql`
+  const enAvatares = await consulta`
     SELECT avatar::text AS t FROM users
       WHERE avatar IS NOT NULL AND avatar::text LIKE ${"%" + prefijo + "%"}
     UNION ALL
@@ -309,10 +316,12 @@ async function avatarSubirPrendas(req, res) {
       continue;
     }
 
-    // 0 es gratis, que es como está el 94% del catálogo.
+    // Todo lo publicado tiene precio (docs/TIENDA.md). Hasta la migración
+    // 022, 0 era gratis, como la mayoría del catálogo; ya no se acepta.
+    // El panel propone el de la ranura (api/_precios.js).
     const precio = Number(item.precio);
-    if (!Number.isInteger(precio) || precio < 0 || precio > 100000) {
-      resultados.push({ archivo: etiqueta, ok: false, error: "El precio tiene que ser un número entero de 0 en adelante" });
+    if (!precioValido(precio)) {
+      resultados.push({ archivo: etiqueta, ok: false, error: "El precio tiene que ser un número entero entre 1 y 100.000" });
       continue;
     }
 
@@ -341,32 +350,37 @@ async function avatarSubirPrendas(req, res) {
         archivoId = ins[0].id;
       }
 
+      // La prenda y su precio en la tienda entran juntos o no entra
+      // ninguno (sql.transaccion, en api/_pg.js): una prenda publicada
+      // sin su fila de la tienda sería gratis para todo el mundo.
+      //
       // Dos artistas subiendo a la vez pueden calcular el mismo número.
       // La restricción UNIQUE de "valor" lo impide, así que se reintenta
       // con el siguiente hueco en vez de fallar.
-      let guardada = null;
-      for (let intento = 0; intento < 5 && !guardada; intento++) {
-        const valor = await siguienteValor(modelo, capa);
-        const filas = await sql`
-          INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, autor_id, publicada)
-          VALUES (${valor}, ${modelo}, ${capa}, ${nombre}, ${archivoId}, ${permiso.auth.sub}, true)
-          ON CONFLICT (valor) DO NOTHING
-          RETURNING id, valor;
-        `;
-        if (filas.length) guardada = filas[0];
-      }
+      const guardada = await sql.transaccion(async (tx) => {
+        for (let intento = 0; intento < 5; intento++) {
+          const valor = await siguienteValor(modelo, capa, tx);
+          const filas = await tx`
+            INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id, autor_id, publicada)
+            VALUES (${valor}, ${modelo}, ${capa}, ${nombre}, ${archivoId}, ${permiso.auth.sub}, true)
+            ON CONFLICT (valor) DO NOTHING
+            RETURNING id, valor;
+          `;
+          if (!filas.length) continue;
+
+          await tx`
+            INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
+            VALUES (${capa}, ${modelo}, ${filas[0].valor}, ${nombre}, ${precio})
+            ON CONFLICT (valor_capa) DO UPDATE SET precio = EXCLUDED.precio;
+          `;
+          return filas[0];
+        }
+        return null;
+      });
 
       if (!guardada) {
         resultados.push({ archivo: etiqueta, ok: false, error: "No se pudo reservar un nombre libre, probá de nuevo" });
         continue;
-      }
-
-      if (precio > 0) {
-        await sql`
-          INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
-          VALUES (${capa}, ${modelo}, ${guardada.valor}, ${nombre}, ${precio})
-          ON CONFLICT (valor_capa) DO UPDATE SET precio = EXCLUDED.precio;
-        `;
       }
 
       entraronAlgunas = true;
@@ -444,12 +458,27 @@ async function avatarEstadoPrenda(req, res) {
     return res.status(403).json({ success: false, error: "Esa prenda no es tuya" });
   }
 
-  await sql`
-    UPDATE avatar_prendas
-    SET publicada = ${publicada},
-        retirada_at = ${publicada ? null : new Date()}
-    WHERE id = ${id};
-  `;
+  // Todo lo publicado tiene precio (docs/TIENDA.md). Si esta no lo
+  // tenía -un borrador que se subió gratis antes de la tienda, o una del
+  // catálogo original que estaba retirada cuando la migración 022 puso
+  // los precios-, se le pone el de su ranura (api/_precios.js), en la
+  // misma transacción: publicada y sin precio sería gratis para todos.
+  await sql.transaccion(async (tx) => {
+    await tx`
+      UPDATE avatar_prendas
+      SET publicada = ${publicada},
+          retirada_at = ${publicada ? null : new Date()}
+      WHERE id = ${id};
+    `;
+    if (publicada) {
+      await tx`
+        INSERT INTO avatar_shop_items (categoria, modelo, valor_capa, nombre, precio)
+        SELECT capa, modelo, valor, nombre, ${precioDeCapa(filas[0].capa)}
+        FROM avatar_prendas WHERE id = ${id}
+        ON CONFLICT (valor_capa) DO NOTHING;
+      `;
+    }
+  });
 
   await subirVersionCatalogo();
 
