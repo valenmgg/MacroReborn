@@ -126,7 +126,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 
 | # | Estado | Categoría | Qué pasa | Dónde | Esfuerzo |
 |---|---|---|---|---|---|
-| 15 | - | Función rota | Las rachas diarias nunca han subido. Las 17 personas con racha tienen racha 1. Son dos mitades: arreglar solo la primera no basta | `api/progreso.js:182` y `:187` | 30 min |
+| 15 | 2026-09-25 | Función rota | Las rachas diarias nunca han subido. Las 17 personas con racha tienen racha 1. Son dos mitades: arreglar solo la primera no basta. Arreglado, y la racha pasa a contarse sola al jugar (nota al pie) | `api/_racha.js`, `api/progreso.js` | 30 min |
 | 16 | - | Moderación | Las advertencias no llegan a nadie. 4 registradas, 0 entregadas. El panel afirma que sí se enviaron | `js/admin.js:102` | 1 h |
 | 17 | - | Moderación | Suspender no hace nada: el servidor nunca consulta `suspendido`, ni siquiera al iniciar sesión | `api/_auth.js:70` | 2 h |
 | 18 | - | Economía | El XP y los minutos se conceden por número de peticiones, no por tiempo verificado. Los tres primeros del ranking tienen minutos imposibles | `api/users.js:542` | 1 día |
@@ -136,8 +136,8 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 22 | - | Contenido | Un juego roto por una errata de un carácter: `fairytail` frente a `fairytale` | `js/datos-juegos.js:894` | 1 min |
 | 23 | 2026-09-24 | Función rota | La tienda muestra 12 cajas vacías con precio. 130 de 152 artículos no tienen dibujo en el índice público. Arreglado con las previsualizaciones: 162 de 162 artículos con imagen (docs/AVATARES-SERVIDOR.md 12) | `js/comunidad-ranking.js:617` | 2 h |
 | 24 | 2026-09-24 | Función rota | Se puede comprar una prenda retirada y no poder ponérsela nunca. Arreglado con la tienda nueva: el catálogo y la compra solo aceptan prendas publicadas (nota al pie) | `api/content.js`, `avatarShop` y `avatarShopBuy` | 1 h |
-| 25 | - | Economía | 3 de 7 misiones diarias piden `minutes_today`, métrica que el servidor nunca calcula. 14 días de cada 31 son incompletables | `api/progreso.js:28` | 3 h |
-| 26 | - | Economía | El reto global anuncia 500 XP y 250 monedas que ningún código reparte | `api/progreso.js:60` | 2 h |
+| 25 | 2026-09-25 | Economía | 3 de 7 misiones diarias piden `minutes_today`, métrica que el servidor nunca calcula. 14 días de cada 31 son incompletables. Arreglado con `actividad_diaria` (migración 023; nota al pie) | `api/progreso.js`, `obtenerMetricas` | 3 h |
+| 26 | - | Economía | El reto global anuncia 500 XP y 250 monedas que ningún código reparte. El 25/09/2026 se decidió dejarlo para después (nota al pie) | `api/progreso.js:60` | 2 h |
 | 27 | - | Función rota | No hay botón para rechazar ni cancelar una solicitud de amistad. El backend existe desde la fase 1 | `js/amigos.js:237` | 2 h |
 | 28 | - | Función rota | El panel "Tus amigos jugaron esto" nunca aparece: lee un global que solo define la copia duplicada de la raíz | `portal-growth.js:106` | 15 min |
 | 29 | - | Función rota | El chat anunciado "en tiempo real" no se actualiza solo: nadie emite evento de mensaje nuevo | `js/chat.js:411` | 3 h |
@@ -150,6 +150,8 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 36 | - | Economía | Más de dos tercios del ranking se baraja al azar cada lunes: el `SELECT` no lleva `ORDER BY` y el desempate no rompe los ceros | `api/system.js:262` | 30 min |
 | 76 | 2026-09-21 | Función rota | Las menciones en comentarios de perfil llegan por duplicado: el navegador (`js/menciones.js`, desde el 11/08) y el servidor (`notificarMencionesServidor`, desde el 19/08) crean la misma notificación, y la del servidor termina en dos puntos porque el contexto ya trae uno. En chat y reseñas solo existe el camino del navegador, que es falsificable | `js/perfil.js:1892`, `api/content.js:995` | 30 min |
 | 78 | 2026-09-24 | Economía | Dos clics a la vez en "Comprar" cobraban la prenda dos veces: mirar si ya la tenía, cobrar y apuntar eran tres pasos sueltos, sin transacción. Y se le cobraba a quien dijera el nombre, buscado sin mayúsculas: con `jader` y `Jader` (punto 31) podía pagar la otra cuenta | `api/content.js`, `avatarShopBuy` | 1 h |
+| 80 | 2026-09-25 | Función rota | Para las misiones de juegos, "hoy" iba de 21:00 a 21:00 UTC en vez de medianoche a medianoche de Argentina: `fecha AT TIME ZONE` convierte la fecha con la zona de la sesión. Lo jugado desde las 18:00 de Argentina, la hora punta, no contaba para la misión de hoy | `api/progreso.js`, `obtenerMetricas` | 15 min |
+| 81 | 2026-09-25 | Función rota | "Mi día" enseñaba la misión cumplida sin forma de cobrarla: el botón solo estaba en "Progreso", y parecía que no se había validado | `js/mi-dia.js` | 30 min |
 
 **Nota al 24 y al 78.** Hechos el 24/09/2026 con la tienda nueva
 (`tienda.html`, ver `docs/TIENDA.md`). El catálogo (`avatarShop`) y la
@@ -161,6 +163,41 @@ conserva. La compra va en una transacción (`sql.transaccion`, en
 deja entrar un solo clic; después cobra `api/_monedas.js`, y si no
 alcanza se deshace todo. Quién compra lo dice la sesión, no el nombre.
 Lo sujetan `tests/tienda-api.test.js` y `tests/transaccion.test.js`.
+
+**Nota al 15, 25, 80 y 81.** Hechos el 25/09/2026 a raíz de un reporte
+de la comunidad: "la racha no rachea y las misiones diarias, aunque las
+cumplas, no se validan". Eran cuatro fallos distintos:
+
+- **La racha (15).** El servidor pasaba a texto la fecha del último
+  registro, que la base devuelve como `Date`: salía "Thu Sep 24", nunca
+  igual a "2026-09-24", así que ni era "ayer" ni se detectaba el segundo
+  registro del día, y cada registro la devolvía a 1. En dos semanas hubo
+  82 registros y las 20 rachas seguían en 1. Se decidió además que se
+  cuente sola: un día más por cada día (de Argentina) en que se juega al
+  menos un minuto, con el mismo pulso de cada minuto de juego
+  (`api/_racha.js`), y las fechas se comparan en la base. Se quitaron el
+  botón "Registrar mi día" y su ruta.
+- **Las misiones de minutos (25).** Salen de `actividad_diaria`, los
+  minutos de cada persona y día (migración 023), que suma ese mismo
+  pulso. Empieza vacía: antes no se guardaban por día.
+- **La ventana de "hoy" (80).** `'2026-09-25'::date AT TIME ZONE
+  'America/Argentina/Buenos_Aires'` convierte primero la fecha a
+  `timestamptz` con la zona de la sesión (UTC) y la devuelve como hora de
+  Argentina: 21:00 del día anterior. Con `::timestamp` delante, la
+  ventana va de 03:00 a 03:00 UTC, que es la medianoche de Argentina.
+- **Cobrar desde "Mi día" (81).** Tiene su botón, en la diaria y en la
+  semanal. Y cobrar apunta y paga en una transacción.
+
+Lo sujetan `tests/progreso.test.js` (que además vigila que toda misión
+mida algo que el servidor calcule), `tests/mi-dia.test.js` y
+`tests/progreso-pagina.test.js`.
+
+**Nota al 26.** El 25/09/2026 se decidió dejar el reto global para
+después. Los minutos están inflados (punto 18: se cuentan por
+peticiones, no por tiempo de verdad), así que la meta se cumple todas las
+semanas con creces (una sumó 435.795 minutos entre 53 personas): pagarlo
+ahora sería regalar 250 monedas semanales a cualquiera. Se retoma junto
+con el 18.
 
 ---
 
