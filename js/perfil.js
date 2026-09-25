@@ -745,11 +745,12 @@ insigniasPerfilPropioListas.then(lista=>{
 
 
 // ---------- CENTRO DE AVATARES (tienda) ----------
-// Integración con la tienda de comunidad-ranking.html: las prendas que
-// están en el catálogo (avatar_shop_items) y el usuario TODAVÍA no
-// compró quedan bloqueadas acá (🔒), en vez de estar libres como el
-// resto del guardarropa. Si no hay conexión o la tienda está vacía,
-// simplemente no se bloquea nada (se comporta como antes).
+// Integración con la tienda (tienda.html): las prendas que están en el
+// catálogo de la tienda (avatar_shop_items) y el usuario TODAVÍA no
+// compró quedan bloqueadas acá (🔒). Desde la migración 022 son todas
+// las publicadas. Si no hay conexión, o el servidor no reconoce la
+// sesión (no devuelve saldo), no se bloquea nada: guardar lo comprueba
+// igual en el servidor.
 
 let _tiendaPremiumPrecio = new Map(); // valorCapa -> precio
 let _tiendaComprados = new Set();     // valorCapa ya comprado por este usuario
@@ -757,9 +758,10 @@ let _tiendaComprados = new Set();     // valorCapa ya comprado por este usuario
 async function cargarEstadoTiendaAvatares(){
   try{
 
-    const resp = await fetch("/api/content?action=avatar-shop&username=" + encodeURIComponent(datosUsuario.nombre));
+    // Quién es lo dice la sesión, que core.js cuelga de cada petición.
+    const resp = await fetch("/api/content?action=avatar-shop");
     const datos = await resp.json();
-    if(!datos || !datos.success) return;
+    if(!datos || !datos.success || datos.monedas == null) return;
 
     const comprados = new Set(datos.comprados || []);
     _tiendaPremiumPrecio = new Map();
@@ -802,7 +804,9 @@ function aplicarBloqueosTienda(){
   });
 }
 
-cargarEstadoTiendaAvatares();
+// Se guarda la promesa: ponerse lo recién comprado (más abajo) la
+// espera, para que la prenda no salga con candado.
+const _estadoTiendaListo = cargarEstadoTiendaAvatares();
 
 
 // ---------- PREVIEW EDITOR ----------
@@ -1101,11 +1105,21 @@ document.getElementById("editorAvatar")?.addEventListener("click", (evento)=>{
     // la deja desequipar con normalidad más abajo, no se la trabamos).
     if(opcion.classList.contains("cr-bloqueada") && editorCapas[capa] !== valor){
       const precio = _tiendaPremiumPrecio.get(valor) || 0;
-      const irATienda = confirm(
-        "Esta prenda cuesta 🪙 " + precio + " y todavía no la compraste.\n" +
-        "¿Querés ir al Centro de avatares para comprarla?"
-      );
-      if(irATienda) window.location.href = "comunidad-ranking.html";
+      // A la tienda, con esa prenda a la vista y la compra preguntada.
+      const irATienda = ()=>{ window.location.href = "tienda.html?prenda=" + encodeURIComponent(valor); };
+      if(window.MRModal){
+        MRModal.show({
+          icon: "🔒",
+          title: "Todavía no es tuya",
+          message: "Esta prenda cuesta " + precio.toLocaleString("es-ES") + " monedas. Podés comprarla en la tienda.",
+          actions: [
+            { text: "Ahora no" },
+            { text: "Verla en la tienda", primary: true, onClick: irATienda }
+          ]
+        });
+      } else if(confirm("Esta prenda cuesta 🪙 " + precio + " y todavía no la compraste.\n¿Querés verla en la tienda?")){
+        irATienda();
+      }
       return;
     }
 
@@ -1144,6 +1158,68 @@ document.getElementById("editorAvatar")?.addEventListener("click", (evento)=>{
 });
 
 
+// ---------- PONERSE LO QUE SE ACABA DE COMPRAR ----------
+// La tienda (js/tienda.js) manda aquí con perfil.html?ponerse=<valor>
+// a quien pulsa "Ponérmela ahora" o "Ponértela": se abre el editor con
+// esa prenda puesta. Guardar sigue siendo cosa de cada cual.
+//
+// Si la prenda es de otro personaje, se cambia de personaje, igual que
+// al elegir otro modelo en el editor: la ropa del anterior no le sirve
+// al nuevo y se quita. Se avisa, porque no es lo que se esperaba.
+
+function ponerseLoDeLaTienda(){
+  let valor = null;
+  try{ valor = new URLSearchParams(window.location.search).get("ponerse"); }catch(_){}
+  if(!valor) return;
+  // Fuera de la dirección: recargar la página no vuelve a hacerlo.
+  try{ history.replaceState(null, "", window.location.pathname + window.location.hash); }catch(_){}
+
+  const opcion = [...document.querySelectorAll(".opcion-item[data-capa]")]
+    .find(o => o.dataset.valor === valor && o.dataset.capa !== "modelo");
+  if(!opcion) return;
+  const capa = opcion.dataset.capa;
+  const modeloDeLaPrenda = opcion.dataset.modelo;
+
+  // Abre el editor con el avatar guardado, como el botón de siempre.
+  document.getElementById("botonCrearAvatar")?.click();
+
+  // Si no es suya (una dirección escrita a mano), lo de siempre: el
+  // candado, que ofrece ir a comprarla.
+  if(opcion.classList.contains("cr-bloqueada")){
+    opcion.click();
+    return;
+  }
+
+  const cambiaDePersonaje = !!modeloDeLaPrenda && modeloDeLaPrenda !== editorCapas.modelo;
+  if(cambiaDePersonaje){
+    editorCapas.modelo = modeloDeLaPrenda;
+    ORDEN_CAPAS.forEach(tipo=>{
+      if(tipo !== "modelo") editorCapas[tipo] = "ninguno";
+    });
+  }
+  editorCapas[capa] = valor;
+
+  // Su pestaña, con la prenda marcada.
+  [...catBotones].find(b => b.dataset.cat === capa)?.click();
+  sincronizarSeleccionadas();
+  filtrarTodosLosGrupos();
+  actualizarPreview();
+  const editor = document.getElementById("editorAvatar");
+  if(editor && typeof editor.scrollIntoView === "function"){
+    editor.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  if(cambiaDePersonaje && window.MRModal){
+    const personaje = modeloDeLaPrenda.charAt(0).toUpperCase() + modeloDeLaPrenda.slice(1);
+    MRModal.show({
+      icon: "🔄",
+      title: "Es de " + personaje,
+      message: "El editor pasó a " + personaje + " y quitó la ropa del personaje anterior. No cambia nada hasta que guardes."
+    });
+  }
+}
+
+
 // ---------- ARRANQUE DEL EDITOR ----------
 // El catálogo llega por red, así que todo lo que necesita que los divs
 // existan tiene que esperarlo. Antes esto no hacía falta porque los 622
@@ -1163,6 +1239,9 @@ cargarCatalogo().then(()=>{
   sincronizarSeleccionadas();
   actualizarPreview();
   actualizarAvatarPrincipal();
+
+  // Lo recién comprado en la tienda (perfil.html?ponerse=...).
+  _estadoTiendaListo.then(ponerseLoDeLaTienda);
 });
 
 
