@@ -119,6 +119,7 @@ html.mr-modal-open{
 }
 
 .mr-modal-action--secondary{
+  border:1px solid var(--line-hover, rgba(127,127,127,.35));
   background:var(--chip-bg, rgba(127,127,127,.14));
   color:var(--text-main, inherit);
   box-shadow:none;
