@@ -129,7 +129,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 15 | 2026-09-25 | Función rota | Las rachas diarias nunca han subido. Las 17 personas con racha tienen racha 1. Son dos mitades: arreglar solo la primera no basta. Arreglado, y la racha pasa a contarse sola al jugar (nota al pie) | `api/_racha.js`, `api/progreso.js` | 30 min |
 | 16 | - | Moderación | Las advertencias no llegan a nadie. 4 registradas, 0 entregadas. El panel afirma que sí se enviaron | `js/admin.js:102` | 1 h |
 | 17 | - | Moderación | Suspender no hace nada: el servidor nunca consulta `suspendido`, ni siquiera al iniciar sesión | `api/_auth.js:70` | 2 h |
-| 18 | - | Economía | El XP y los minutos se conceden por número de peticiones, no por tiempo verificado. Los tres primeros del ranking tienen minutos imposibles | `api/users.js:542` | 1 día |
+| 18 | 2026-09-25 | Economía | El XP y los minutos se conceden por número de peticiones, no por tiempo verificado. Los tres primeros del ranking tienen minutos imposibles. Arreglado: un minuto por minuto y por persona, lo cuente quien lo cuente (nota al pie) | `api/users.js`, `sumarXp` | 1 día |
 | 19 | - | Economía | Macro Snake paga XP por muerte. Una cuenta generó 265.605 de las 271.626 partidas | `html/juegos/macro-snake.js:17` | 2 h |
 | 20 | - | Función rota | `explorar.html` está vacía para todos: lee `window.juegos` y `datos-juegos.js` declara un `const`, que no cuelga de `window` | `js/explorar.js:14` | 10 min |
 | 21 | - | Contenido | 15 de 113 juegos no cargan. El usuario ve una pantalla negra sin mensaje | `js/datos-juegos.js` | 2 h |
@@ -152,6 +152,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 78 | 2026-09-24 | Economía | Dos clics a la vez en "Comprar" cobraban la prenda dos veces: mirar si ya la tenía, cobrar y apuntar eran tres pasos sueltos, sin transacción. Y se le cobraba a quien dijera el nombre, buscado sin mayúsculas: con `jader` y `Jader` (punto 31) podía pagar la otra cuenta | `api/content.js`, `avatarShopBuy` | 1 h |
 | 80 | 2026-09-25 | Función rota | Para las misiones de juegos, "hoy" iba de 21:00 a 21:00 UTC en vez de medianoche a medianoche de Argentina: `fecha AT TIME ZONE` convierte la fecha con la zona de la sesión. Lo jugado desde las 18:00 de Argentina, la hora punta, no contaba para la misión de hoy | `api/progreso.js`, `obtenerMetricas` | 15 min |
 | 81 | 2026-09-25 | Función rota | "Mi día" enseñaba la misión cumplida sin forma de cobrarla: el botón solo estaba en "Progreso", y parecía que no se había validado | `js/mi-dia.js` | 30 min |
+| 82 | 2026-09-25 | Economía | El XP de cada pulso lo decidía el navegador: `cantidad` no tenía tope, y bastaba con pedir 1.000.000 | `api/users.js`, `sumarXp` | 15 min |
 
 **Nota al 24 y al 78.** Hechos el 24/09/2026 con la tienda nueva
 (`tienda.html`, ver `docs/TIENDA.md`). El catálogo (`avatarShop`) y la
@@ -198,6 +199,36 @@ peticiones, no por tiempo de verdad), así que la meta se cumple todas las
 semanas con creces (una sumó 435.795 minutos entre 53 personas): pagarlo
 ahora sería regalar 250 monedas semanales a cualquiera. Se retoma junto
 con el 18.
+
+**Nota al 18 y al 82.** Hechos el 25/09/2026, a raíz de un reporte:
+"cuando alguien abre varias pestañas se multiplica el contador; 2
+ventanas, x2; 3, x3". Cada pestaña del juego manda su pulso por minuto
+(`js/motor/xp.js`), y el servidor sumaba 10 de XP y un minuto por cada
+pulso que le llegara. No eran solo pestañas: en los registros de nginx
+de cuatro días había conexiones con 214, 333 y hasta 536 pulsos en un
+minuto, y esa semana una cuenta llevaba 89.104 minutos en dos días
+activos, que tienen 2.880. Las monedas por tiempo no se multiplicaban:
+ya tenían su freno de 10 minutos en el servidor.
+
+- **Un minuto por minuto.** Un pulso de juego solo cuenta si han pasado
+  55 segundos desde el último minuto contado de esa persona
+  (`users.ultimo_minuto_jugado`, migración 024), en una sola instrucción:
+  de dos a la vez pasa uno, sean de la pestaña, el navegador, el
+  dispositivo o el script que sea. Lo que no cuenta no suma XP, ni
+  minutos, ni misiones, ni racha.
+- **El servidor decide el XP (82):** 10 por minuto, y un tope de 40 para
+  el resto de recompensas (hoy solo Macro Snake, que da eso como mucho).
+- **Con la pestaña oculta no se cuenta**, decidido ese día: el navegador
+  no manda el pulso mientras la pestaña está minimizada o en segundo
+  plano.
+
+Lo que queda abierto, a sabiendas: un script puede seguir mandando un
+pulso por minuto las 24 horas (1.440 minutos al día como mucho, no
+536 por minuto), porque el servidor no puede saber si alguien juega de
+verdad. Los minutos ya inflados de esa semana se dejaron como estaban,
+también decidido ese día: el ranking del lunes 28/09 los recoge, y la
+semana siguiente empieza limpia. El reto global (26) se puede retomar a
+partir de ahí.
 
 ---
 
