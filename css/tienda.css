@@ -1,0 +1,460 @@
+/* ==========================================================================
+   MACRO REBORN — TIENDA DE AVATARES (tienda.html, js/tienda.js)
+   Usa los tokens de css/inicio.css (:root, .navbar, .pie-footer...), así
+   que los temas de Personalización también llegan aquí.
+   ========================================================================== */
+
+.mr-root {
+  background: var(--bg-base);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+.tienda-pagina {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px 90px;
+}
+
+/* ---------- ENCABEZADO ---------- */
+
+.tienda-cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 44px 0 26px;
+}
+
+.tienda-eyebrow {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  background: var(--warning-bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.tienda-titulo {
+  margin: 12px 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.15;
+  color: var(--text-main);
+}
+
+.tienda-subtitulo {
+  margin: 0;
+  max-width: 560px;
+  color: var(--text-secondary);
+}
+
+.tienda-saldo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 14px 20px;
+  border: 1px solid var(--gold-deep);
+  border-radius: 16px;
+  background: var(--bg-panel);
+  box-shadow: var(--sombra-suave);
+}
+
+.tienda-saldo[hidden] {
+  display: none;
+}
+
+.tienda-saldo-etiqueta {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.tienda-saldo-cifra {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--gold-bright);
+}
+
+.tienda-saldo-enlace {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.tienda-saldo-enlace:hover {
+  color: var(--gold-bright);
+}
+
+/* ---------- AVISOS ---------- */
+
+.tienda-aviso {
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--control-bg);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.tienda-aviso[hidden] {
+  display: none;
+}
+
+.tienda-aviso strong {
+  color: var(--text-main);
+}
+
+.tienda-aviso a {
+  color: var(--gold-bright);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tienda-aviso a:hover {
+  text-decoration: underline;
+}
+
+.tienda-aviso--invitado {
+  border-color: var(--gold-deep);
+  background: var(--warning-bg);
+}
+
+/* ---------- FILTROS ---------- */
+
+.tienda-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 22px 0 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-panel);
+}
+
+.tienda-personajes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tienda-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--control-bg);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tienda-chip small {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tienda-chip:hover {
+  border-color: var(--line-hover);
+  background: var(--control-hover);
+}
+
+.tienda-chip[aria-pressed="true"] {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
+  color: var(--text-on-accent);
+}
+
+.tienda-chip[aria-pressed="true"] small {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.tienda-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.tienda-buscar,
+.tienda-select {
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: var(--control-bg);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 14px;
+}
+
+.tienda-buscar {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.tienda-buscar::placeholder {
+  color: var(--text-placeholder);
+}
+
+.tienda-select option {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+.tienda-buscar:focus,
+.tienda-select:focus,
+.tienda-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.tienda-casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tienda-casilla[hidden] {
+  display: none;
+}
+
+/* ---------- CATÁLOGO ---------- */
+
+.tienda-resumen {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.tienda-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.tienda-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-panel);
+  text-align: center;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.tienda-item:hover {
+  border-color: var(--line-hover);
+  transform: translateY(-2px);
+}
+
+.tienda-item--mia {
+  border-color: var(--green);
+}
+
+/* La que llega por tienda.html?prenda=... */
+.tienda-item--destacada {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 3px var(--focus-ring), var(--sombra-suave);
+}
+
+/* La previsualización ya es cuadrada y trae su fondo: llena la caja. */
+.tienda-item-imagen {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tienda-item-imagen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tienda-sin-imagen {
+  font-size: 40px;
+  opacity: 0.5;
+}
+
+.tienda-etiqueta {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tienda-etiqueta--mia {
+  left: auto;
+  right: 6px;
+  background: var(--green);
+  color: #062b19;
+}
+
+.tienda-item-nombre {
+  margin: 0 0 2px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tienda-item-meta {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tienda-item-precio {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gold-bright);
+}
+
+.tienda-boton {
+  display: block;
+  margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 6px;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold) 60%, var(--gold-deep));
+  color: var(--text-on-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tienda-boton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.tienda-boton:disabled {
+  background: var(--bg-panel-alt);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.tienda-boton--mia {
+  background: var(--success-bg);
+  color: var(--green);
+  border: 1px solid var(--green);
+}
+
+.tienda-vacio {
+  grid-column: 1 / -1;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.tienda-mas {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.tienda-boton-secundario {
+  border: 1px solid var(--line-hover);
+  border-radius: 10px;
+  padding: 10px 22px;
+  background: var(--control-bg);
+  color: var(--text-main);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tienda-boton-secundario:hover {
+  background: var(--control-hover);
+}
+
+.tienda-boton-secundario[hidden] {
+  display: none;
+}
+
+/* ---------- MÓVIL ---------- */
+
+@media (max-width: 640px) {
+  .tienda-pagina {
+    padding: 0 16px 70px;
+  }
+
+  .tienda-cabecera {
+    padding-top: 28px;
+  }
+
+  .tienda-saldo {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .tienda-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .tienda-select {
+    flex: 1 1 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tienda-item {
+    transition: none;
+  }
+
+  .tienda-item:hover {
+    transform: none;
+  }
+}
+
+/* "Ver solo esas", dentro del resumen: un enlace, no un botón grande. */
+.tienda-enlace {
+  border: none;
+  padding: 0;
+  background: none;
+  color: var(--gold-bright);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tienda-enlace:hover,
+.tienda-enlace:focus-visible {
+  text-decoration: underline;
+}

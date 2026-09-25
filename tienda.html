@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+<script src="js/tema.js?v=20260918"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tienda de avatares - Prendas para tu avatar | MacroReborn</title>
+
+<!-- SEO -->
+<meta name="description" content="Comprá prendas para tu avatar de MacroReborn con las monedas que ganás jugando: peinados, remeras, fondos, mascotas y mucho más, para los seis personajes.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.macroreborn.com/tienda.html">
+<meta name="theme-color" content="#150a28">
+<link rel="icon" href="imagenes/logo.png" type="image/png">
+<link rel="apple-touch-icon" href="imagenes/logo.png">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MacroReborn">
+<meta property="og:locale" content="es_AR">
+<meta property="og:title" content="Tienda de avatares | MacroReborn">
+<meta property="og:description" content="Comprá prendas para tu avatar con las monedas que ganás jugando: peinados, remeras, fondos, mascotas y mucho más.">
+<meta property="og:url" content="https://www.macroreborn.com/tienda.html">
+<meta property="og:image" content="https://www.macroreborn.com/imagenes/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MacroReborn - Comunidad y catálogo de juegos gratis online">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tienda de avatares | MacroReborn">
+<meta name="twitter:description" content="Comprá prendas para tu avatar con las monedas que ganás jugando: peinados, remeras, fondos, mascotas y mucho más.">
+<meta name="twitter:image" content="https://www.macroreborn.com/imagenes/og-image.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/modal.css?v=20260924">
+<link rel="stylesheet" href="css/inicio.css?v=20260918">
+<link rel="stylesheet" href="css/tienda.css?v=20260924">
+<link rel="stylesheet" href="css/buscador.css?v=20260918">
+    <link rel="stylesheet" href="css/finalizacion.css?v=20260918">
+  <link rel="manifest" href="site.webmanifest">
+<link rel="stylesheet" href="css/theme-canonical.css?v=20260918">
+<link rel="stylesheet" href="css/navbar-macrojuegos.css?v=20260918">
+</head>
+
+<body class="mr-root">
+
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <img src="imagenes/logo.png" alt="MacroReborn">
+    MacroReborn
+  </a>
+  <a href="comunidad-ranking.html" class="nav-boton-comunidad">Comunidad</a>
+  <div class="nav-links">
+    <a href="explorar.html">🧭 Explorar</a>
+    <a href="mi-dia.html">🔥 Mi día</a>
+    <a href="progreso.html">🎯 Progreso</a>
+    <a href="liga-global.html">🏆 Ligas</a>
+  </div>
+  <div class="nav-categorias">
+    <a href="chat.html">💬 Chat</a>
+    <a href="amigos.html">👥 Amigos</a>
+    <a href="juegos.html">🎮 Juegos</a>
+    <a href="noticias.html">📰 Noticias</a>
+  </div>
+</nav>
+
+<main class="tienda-pagina">
+
+  <!-- ENCABEZADO: qué es y cuánto tenés -->
+  <header class="tienda-cabecera">
+    <div class="tienda-cabecera-texto">
+      <span class="tienda-eyebrow">Centro de avatares</span>
+      <h1 class="tienda-titulo">🛍️ Tienda de avatares</h1>
+      <p class="tienda-subtitulo">Prendas para tu avatar, para los seis personajes. Se pagan con las monedas que ganás jugando.</p>
+    </div>
+    <div id="tiendaSaldo" class="tienda-saldo" hidden>
+      <span class="tienda-saldo-etiqueta">Tu saldo</span>
+      <strong id="tiendaMonedas" class="tienda-saldo-cifra">🪙 0</strong>
+      <a href="perfil.html" class="tienda-saldo-enlace">Ir a mi avatar →</a>
+    </div>
+  </header>
+
+  <p class="tienda-aviso tienda-aviso--ganar">
+    <strong>¿Cómo se ganan monedas?</strong>
+    Jugando: entre 10 y 30 por cada 10 minutos de juego, hasta 500 por día.
+    <a href="juegos.html">Ir a jugar →</a>
+  </p>
+
+  <p id="tiendaInvitado" class="tienda-aviso tienda-aviso--invitado" hidden>
+    <span id="tiendaInvitadoTexto">Iniciá sesión para comprar prendas y ver tu saldo.</span>
+    <a href="login.html">Iniciar sesión</a> · <a href="registro.html">Crear cuenta</a>
+  </p>
+
+  <!-- FILTROS -->
+  <section class="tienda-filtros" aria-label="Filtros de la tienda">
+    <div id="tiendaPersonajes" class="tienda-personajes" role="group" aria-label="Personaje"></div>
+
+    <div class="tienda-controles">
+      <input type="search" id="tiendaBuscar" class="tienda-buscar" placeholder="🔍 Buscar prenda..." aria-label="Buscar prenda" maxlength="60" autocomplete="off">
+
+      <select id="tiendaTipo" class="tienda-select" aria-label="Tipo de prenda">
+        <option value="">Todas las prendas</option>
+        <option value="fondo">🌄 Fondo</option>
+        <option value="piel">🎨 Piel</option>
+        <option value="ojos">👀 Ojos</option>
+        <option value="boca">👄 Boca</option>
+        <option value="pelo">💇 Pelo</option>
+        <option value="remera">👕 Remera</option>
+        <option value="pantalon">👖 Pantalón</option>
+        <option value="botas">👢 Botas</option>
+        <option value="guantes">🧤 Guantes</option>
+        <option value="accesorio">💍 Accesorios</option>
+        <option value="espalda">🎒 Espalda</option>
+        <option value="cara">😎 Cara</option>
+        <option value="mascota">🐾 Mascota</option>
+        <option value="borde">⭐ Borde</option>
+      </select>
+
+      <select id="tiendaOrden" class="tienda-select" aria-label="Orden">
+        <option value="novedades">Lo más nuevo</option>
+        <option value="baratas">Más baratas</option>
+        <option value="caras">Más caras</option>
+        <option value="vendidas">Más vendidas</option>
+      </select>
+
+      <label id="tiendaPuedoCaja" class="tienda-casilla" hidden>
+        <input type="checkbox" id="tiendaPuedo"> Solo lo que puedo comprar
+      </label>
+      <label id="tiendaOcultarCaja" class="tienda-casilla" hidden>
+        <input type="checkbox" id="tiendaOcultar"> Ocultar lo que ya tengo
+      </label>
+    </div>
+  </section>
+
+  <!-- CATÁLOGO -->
+  <p id="tiendaResumen" class="tienda-resumen" aria-live="polite"></p>
+  <div id="tiendaGrid" class="tienda-grid">
+    <p class="tienda-vacio">Cargando la tienda…</p>
+  </div>
+  <div class="tienda-mas">
+    <button type="button" id="tiendaVerMas" class="tienda-boton-secundario" hidden>Ver más</button>
+  </div>
+
+</main>
+
+<!-- FOOTER (mismo componente que el resto de MacroReborn) -->
+<footer class="pie-footer">
+  <div class="pie-contenido">
+    <div class="pie-marca">
+      <a href="index.html" class="nav-logo">
+        <img src="imagenes/logo.png" alt="MacroReborn">
+        MacroReborn
+      </a>
+      <p>Una comunidad de juegos con nostalgia de portal clásico y alma moderna.</p>
+      <p class="estado-servidor"><span class="punto"></span> Servidor en línea</p>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Plataforma</h4>
+      <a href="juegos.html">Juegos</a>
+      <a href="comunidad-ranking.html">Ranking</a>
+      <a href="comunidad-ranking.html">Comunidad</a>
+      <a href="noticias.html">Noticias</a>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Cuenta</h4>
+      <a href="login.html">Iniciar sesión</a>
+      <a href="registro.html">Registrarse</a>
+      <a href="perfil.html">Mi perfil</a>
+      <a href="notificaciones.html">Notificaciones</a>
+    </div>
+
+    <div class="pie-columna">
+      <h4>Social</h4>
+      <a href="amigos.html">Amigos</a>
+      <a href="chat.html">Chat</a>
+    </div>
+    <div class="pie-columna">
+      <h4>Legal</h4>
+      <a href="terminos.html">Términos de uso</a>
+      <a href="mailto:macroreborn0@gmail.com">Retirada de contenido</a>
+    </div>
+
+  </div>
+
+  <div class="pie-inferior">
+    <span>© 2026 MacroReborn. Todos los derechos reservados.</span>
+    <span>Hecho con 💛 para la vieja escuela de los juegos web.</span>
+  </div>
+</footer>
+
+<script defer src="js/core.js?v=20260921"></script>
+<script defer src="js/api-client.js?v=20260918"></script>
+<script defer src="js/session.js?v=20260918"></script>
+<script defer src="js/app-shell.js?v=20260918"></script>
+
+<script defer src="js/modal.js?v=20260924"></script>
+<script defer src="js/motor/permisos.js?v=20260918"></script>
+<script defer src="js/tienda.js?v=20260924"></script>
+<script defer src="js/notificaciones.js?v=20260918"></script>
+<script defer src="js/avisos.js?v=20260921"></script>
+<script defer src="js/realtime.js?v=20260918"></script>
+<script defer src="js/navbar.js?v=20260924"></script>
+<script defer src="js/datos-juegos.js?v=20260918"></script>
+<script defer src="js/buscador.js?v=20260918"></script>
+<script defer src="js/nav-toggle.js?v=20260918"></script>
+
+</body>
+</html>
