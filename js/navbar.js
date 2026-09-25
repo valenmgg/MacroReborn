@@ -223,10 +223,12 @@ if(navbar && nav){
 
         }
 
-        // Monedas del usuario (mismo saldo que se gasta en el Centro de
-        // avatares de comunidad-ranking.html). Se reusa ese mismo
-        // endpoint porque ya devuelve el saldo actual; no hace falta
-        // pedir nada nuevo al servidor solo para mostrar el numerito acá.
+        // Monedas del usuario, las mismas que se gastan en la tienda.
+        // Primero el saldo que guardó la sesión, al instante; luego el
+        // de verdad, con ?action=mis-monedas, que devuelve solo ese
+        // número. Antes se pedía el catálogo entero de la tienda para
+        // leerlo, en cada página. Si el servidor no contesta bien (sin
+        // sesión, caída), se queda el que había: un 0 mentiría.
         function cargarMonedasNavbar(nombre){
             if(!nombre) return;
 
@@ -240,15 +242,16 @@ if(navbar && nav){
                 }
             }
 
-            fetch("/api/content?action=avatar-shop&username=" + encodeURIComponent(nombre))
+            fetch("/api/content?action=mis-monedas")
                 .then(resp => resp.json())
                 .then(datos => {
-                    if(!datos || !datos.success) return;
+                    if(!datos || !datos.success || datos.monedas == null) return;
+                    const saldo = Number(datos.monedas);
+                    if(!Number.isFinite(saldo)) return;
                     const span = document.getElementById("navMonedas");
-                    const saldo = datos.monedas != null ? Number(datos.monedas) : 0;
-                    if(span) span.textContent = "🪙 " + (Number.isFinite(saldo) ? saldo.toLocaleString("es-ES") : "0");
+                    if(span) span.textContent = "🪙 " + saldo.toLocaleString("es-ES");
 
-                    if(window.MRSession && Number.isFinite(saldo)){
+                    if(window.MRSession){
                         const actual = MRSession.get() || {};
                         if(Number(actual.monedas) !== saldo) MRSession.update({ monedas: saldo });
                     }
