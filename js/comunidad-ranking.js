@@ -551,25 +551,29 @@ crBuscarConectado?.addEventListener("input", () => {
 
 
 // ==============================
-// CENTRO DE AVATARES (tienda de prendas, se paga con monedas)
+// CENTRO DE AVATARES (las últimas prendas de la tienda)
 // ==============================
+// Un escaparate: las doce últimas prendas y el saldo. Se compra en la
+// tienda (tienda.html), que pregunta antes de cobrar; aquí "Comprar"
+// lleva allí con la prenda a la vista. Antes compraba desde aquí de un
+// solo clic, sin preguntar.
 
 async function crCargarTienda() {
   if (!crGridTienda) return;
 
   try {
-    const url = activoComRk
-      ? "/api/content?action=avatar-shop&username=" + encodeURIComponent(activoComRk.nombre)
-      : "/api/content?action=avatar-shop";
-
-    const resp = await fetch(url);
+    // El saldo y lo comprado llegan con la sesión, que core.js cuelga de
+    // cada petición.
+    const resp = await fetch("/api/content?action=avatar-shop");
     const datos = await resp.json();
     if (!datos || !datos.success) return;
 
     if (crMonedasUsuario) {
-      if (activoComRk) {
+      // Sin saldo en la respuesta, el servidor no reconoce la sesión: un
+      // 0 mentiría.
+      if (activoComRk && datos.monedas != null) {
         crMonedasUsuario.style.display = "";
-        crMonedasUsuario.textContent = "🪙 " + (datos.monedas != null ? datos.monedas : 0) + " monedas";
+        crMonedasUsuario.textContent = "🪙 " + Number(datos.monedas).toLocaleString("es-ES") + " monedas";
       } else {
         crMonedasUsuario.style.display = "none";
       }
@@ -600,7 +604,7 @@ async function crCargarTienda() {
       } else if (yaLaTiene) {
         boton = `<button type="button" class="cr-item-tienda-boton cr-comprada" disabled>✅ La tenés</button>`;
       } else {
-        boton = `<button type="button" class="cr-item-tienda-boton" data-item-id="${item.id}">Comprar</button>`;
+        boton = `<a href="tienda.html?prenda=${MRTexto.escapar(encodeURIComponent(item.valorCapa))}" class="cr-item-tienda-boton" style="display:block;text-decoration:none;box-sizing:border-box;">Comprar</a>`;
       }
 
       return `
@@ -616,48 +620,8 @@ async function crCargarTienda() {
 
     }).join("");
 
-    crGridTienda.querySelectorAll("button[data-item-id]").forEach(boton => {
-      boton.addEventListener("click", () => crComprarPrenda(boton));
-    });
-
   } catch (error) {
     console.warn("MacroReborn: no se pudo cargar el Centro de Avatares.", error);
-  }
-}
-
-async function crComprarPrenda(boton) {
-  if (!activoComRk) return;
-
-  const itemId = boton.dataset.itemId;
-  const textoOriginal = boton.textContent;
-  boton.disabled = true;
-  boton.textContent = "Comprando...";
-
-  try {
-    const resp = await fetch("/api/content?action=avatar-shop-buy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: activoComRk.nombre, itemId })
-    });
-    const datos = await resp.json();
-
-    if (!datos || !datos.success) {
-      alert((datos && datos.error) || "No se pudo comprar la prenda.");
-      boton.disabled = false;
-      boton.textContent = textoOriginal;
-      return;
-    }
-
-    if (crMonedasUsuario) {
-      crMonedasUsuario.textContent = "🪙 " + datos.monedas + " monedas";
-    }
-    boton.textContent = "✅ La tenés";
-    boton.classList.add("cr-comprada");
-
-  } catch (error) {
-    console.warn("MacroReborn: no se pudo completar la compra.", error);
-    boton.disabled = false;
-    boton.textContent = textoOriginal;
   }
 }
 

@@ -811,6 +811,26 @@
   color: #04263a;
 }
 
+/* La tienda y el avatar, uno al lado del otro (o debajo, si no caben). */
+.cr-acciones-avatares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cr-ver-tienda {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold-bright);
+  text-decoration: none;
+}
+
+.cr-ver-tienda:hover {
+  text-decoration: underline;
+}
+
 .cr-grid-tienda {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
