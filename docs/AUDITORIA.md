@@ -153,6 +153,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 80 | 2026-09-25 | Función rota | Para las misiones de juegos, "hoy" iba de 21:00 a 21:00 UTC en vez de medianoche a medianoche de Argentina: `fecha AT TIME ZONE` convierte la fecha con la zona de la sesión. Lo jugado desde las 18:00 de Argentina, la hora punta, no contaba para la misión de hoy | `api/progreso.js`, `obtenerMetricas` | 15 min |
 | 81 | 2026-09-25 | Función rota | "Mi día" enseñaba la misión cumplida sin forma de cobrarla: el botón solo estaba en "Progreso", y parecía que no se había validado | `js/mi-dia.js` | 30 min |
 | 82 | 2026-09-25 | Economía | El XP de cada pulso lo decidía el navegador: `cantidad` no tenía tope, y bastaba con pedir 1.000.000 | `api/users.js`, `sumarXp` | 15 min |
+| 83 | 2026-09-25 | Función rota | A los 7 días de iniciar sesión, todo lo que escribe fallaba en silencio (el XP de jugar, el chat, los comentarios) mientras la página seguía enseñando a la persona como conectada. El pase no se renovaba nunca y el navegador no se enteraba del 401. De 150 a 330 escrituras rechazadas al día | `api/_auth.js`, `js/core.js` | medio día |
 
 **Nota al 24 y al 78.** Hechos el 24/09/2026 con la tienda nueva
 (`tienda.html`, ver `docs/TIENDA.md`). El catálogo (`avatarShop`) y la
@@ -229,6 +230,42 @@ verdad. Los minutos ya inflados de esa semana se dejaron como estaban,
 también decidido ese día: el ranking del lunes 28/09 los recoge, y la
 semana siguiente empieza limpia. El reto global (26) se puede retomar a
 partir de ahí.
+
+**Nota al 83.** Hecho el 25/09/2026, a raíz de un reporte: "podía jugar
+pero no me subía el XP, y no podía escribir en perfiles ni en el chat, ni
+borrar mis mensajes; cerré sesión, volví a entrar y se arregló". El
+navegador guarda por separado quién eres (`usuarioActivo`, lo que se ve)
+y el pase que acepta el servidor (`macroSessionToken`), y nada comprobaba
+que siguieran de acuerdo. Leer no pide sesión, así que se podía jugar y
+leer, pero todo lo que escribe se rechazaba. Formas de llegar ahí, todas
+cubiertas:
+
+- **El pase caducó.** Duraba 7 días desde el login y nunca se renovaba.
+  Ahora `requerirAuth` (`api/_auth.js`) renueva el que se firmó hace más
+  de un día (cabecera `X-Sesion-Nueva`, que guarda `js/core.js`): solo
+  caduca tras 7 días sin entrar. Con un tope de 30 días desde el login
+  (`inicio`), para que un pase robado no viva para siempre mientras
+  cerrar sesión no lo invalide (punto 12).
+- **Usuario guardado sin pase**, o **usuario de una cuenta y pase de
+  otra** en el propio navegador.
+- **Otra pestaña entró con otra cuenta o cerró sesión.** El servidor
+  contesta 403 "Sesión no corresponde...". Desde el 15/09 se habían
+  rechazado así 47 registros de actividad y 2 notificaciones.
+- **Una página con su propia copia del pase** (Progreso), que seguía con
+  el viejo.
+- **Un cambio de la clave de firma**, como el del 2/09: todas las
+  sesiones caducan a la vez.
+
+`MRSesionServidor` (`js/core.js`) lo mira al abrir cada página y en cada
+respuesta de la API, y lo dice con una franja arriba: si la sesión ya no
+vale, la cierra en el navegador y ofrece volver a entrar y volver a la
+misma página (`login.html?volver=`); si la cambió otra pestaña, pide
+recargar. Lo decide el servidor, no el reloj de quien mira: la barra
+pide el saldo con sesión en cada página (`mis-monedas`). No se puede
+recuperar lo que se perdió esos días: los registros no dicen de qué
+cuenta era cada petición rechazada. Lo sujetan
+`tests/sesion-renovar.test.js`, `tests/sesion-navegador.test.js` y
+`tests/login-volver.test.js`.
 
 ---
 
