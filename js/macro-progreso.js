@@ -39,9 +39,14 @@
     const rank = u.rank_actual ? "#" + u.rank_actual : "Sin puesto";
     $("levelCard").innerHTML = `<div><div class="mr-kicker">TU CUENTA</div><strong>Nivel ${level}</strong><div>${xp.toLocaleString("es-AR")} XP · ${money(coins)}<br>Ranking: ${rank}</div></div>`;
 
+    // La racha se cuenta sola al jugar (api/_racha.js): aquí solo se dice
+    // cómo va. Antes había un botón "Registrar hoy".
     const s = d.streak || {};
-    $("streakCurrent").textContent = Number(s.current_streak || 0) + " días";
+    const racha = Number(s.current_streak || 0);
+    $("streakCurrent").textContent = racha + " días";
     $("streakBest").textContent = "Mejor: " + Number(s.best_streak || 0);
+    $("checkinState").textContent = s.hoy_cuenta ? "Hoy ya cuenta ✓"
+      : (racha > 0 ? "Jugá hoy para no perderla" : "Jugá un minuto para empezarla");
 
     pintarMision(d.today.mission,"daily");
     pintarMision(d.week.mission,"weekly");
@@ -64,19 +69,6 @@
     b.textContent = m.claimed ? "Reclamada ✓" : (m.completed ? "Reclamar recompensa" : "Completá la misión");
     $(tipo+"Period").textContent = tipo === "daily" ? m.periodKey : "Desde " + m.periodKey;
   }
-
-  $("btnCheckin").addEventListener("click", async function(){
-    this.disabled = true;
-    try{
-      const d = await post("checkin");
-      $("checkinState").textContent = d.alreadyChecked ? "Ya registraste tu entrada hoy." : "🔥 Racha actualizada: " + d.streak.current_streak + " días.";
-      const fresh = await getEstado();
-      pintar(fresh);
-    }catch(e){
-      $("checkinState").textContent = e.message;
-      this.disabled = false;
-    }
-  });
 
   async function claim(tipo){
     const key = tipo === "weekly" ? "week" : "today";
