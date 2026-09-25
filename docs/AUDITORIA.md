@@ -135,7 +135,7 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 21 | - | Contenido | 15 de 113 juegos no cargan. El usuario ve una pantalla negra sin mensaje | `js/datos-juegos.js` | 2 h |
 | 22 | - | Contenido | Un juego roto por una errata de un carácter: `fairytail` frente a `fairytale` | `js/datos-juegos.js:894` | 1 min |
 | 23 | 2026-09-24 | Función rota | La tienda muestra 12 cajas vacías con precio. 130 de 152 artículos no tienen dibujo en el índice público. Arreglado con las previsualizaciones: 162 de 162 artículos con imagen (docs/AVATARES-SERVIDOR.md 12) | `js/comunidad-ranking.js:617` | 2 h |
-| 24 | - | Función rota | Se puede comprar una prenda retirada y no poder ponérsela nunca | `api/content.js:2367` | 1 h |
+| 24 | 2026-09-24 | Función rota | Se puede comprar una prenda retirada y no poder ponérsela nunca. Arreglado con la tienda nueva: el catálogo y la compra solo aceptan prendas publicadas (nota al pie) | `api/content.js`, `avatarShop` y `avatarShopBuy` | 1 h |
 | 25 | - | Economía | 3 de 7 misiones diarias piden `minutes_today`, métrica que el servidor nunca calcula. 14 días de cada 31 son incompletables | `api/progreso.js:28` | 3 h |
 | 26 | - | Economía | El reto global anuncia 500 XP y 250 monedas que ningún código reparte | `api/progreso.js:60` | 2 h |
 | 27 | - | Función rota | No hay botón para rechazar ni cancelar una solicitud de amistad. El backend existe desde la fase 1 | `js/amigos.js:237` | 2 h |
@@ -149,6 +149,18 @@ cambio visual: son cosas que los usuarios creen que ya tienen.
 | 35 | - | Economía | Nivel 1 más 400 XP da nivel 2 por una puerta y nivel 3 por otra. `xp = 0` descarta el excedente | `api/users.js:526` | 1 h |
 | 36 | - | Economía | Más de dos tercios del ranking se baraja al azar cada lunes: el `SELECT` no lleva `ORDER BY` y el desempate no rompe los ceros | `api/system.js:262` | 30 min |
 | 76 | 2026-09-21 | Función rota | Las menciones en comentarios de perfil llegan por duplicado: el navegador (`js/menciones.js`, desde el 11/08) y el servidor (`notificarMencionesServidor`, desde el 19/08) crean la misma notificación, y la del servidor termina en dos puntos porque el contexto ya trae uno. En chat y reseñas solo existe el camino del navegador, que es falsificable | `js/perfil.js:1892`, `api/content.js:995` | 30 min |
+| 78 | 2026-09-24 | Economía | Dos clics a la vez en "Comprar" cobraban la prenda dos veces: mirar si ya la tenía, cobrar y apuntar eran tres pasos sueltos, sin transacción. Y se le cobraba a quien dijera el nombre, buscado sin mayúsculas: con `jader` y `Jader` (punto 31) podía pagar la otra cuenta | `api/content.js`, `avatarShopBuy` | 1 h |
+
+**Nota al 24 y al 78.** Hechos el 24/09/2026 con la tienda nueva
+(`tienda.html`, ver `docs/TIENDA.md`). El catálogo (`avatarShop`) y la
+compra (`avatarShopBuy`) solo aceptan prendas cuya fila de
+`avatar_prendas` está publicada: las 5 retiradas que seguían a la venta
+ya no salen ni se pueden comprar, y quien las compró (4 compras) las
+conserva. La compra va en una transacción (`sql.transaccion`, en
+`api/_pg.js`): primero se apunta, y la clave única `(user_id, item_id)`
+deja entrar un solo clic; después cobra `api/_monedas.js`, y si no
+alcanza se deshace todo. Quién compra lo dice la sesión, no el nombre.
+Lo sujetan `tests/tienda-api.test.js` y `tests/transaccion.test.js`.
 
 ---
 
@@ -199,6 +211,12 @@ de ser, y los puntos 38, 40, 41 y 42 caen dentro de esa misma tarea.
 | 64 | - | Moderación | Los colaboradores pueden leer y escribir el registro de moderación, aunque `js/motor/permisos.js:81` diga que ese rol no otorga permisos | `api/content.js:2239` | 30 min |
 | 65 | - | Moderación | El registro de moderación lo escribe el navegador después de la acción y se puede falsear. El filtro por rol nunca encuentra nada por una diferencia de mayúsculas | `api/content.js:2277` | 3 h |
 | 66 | - | Moderación | No se puede silenciar temporalmente, ni borrar contenido sin pasar por un reporte, ni deshacer una acción, ni ver la ficha de una persona | `admin.html` | 1 semana |
+| 79 | 2026-09-24 | Privacidad | `avatar-shop?username=X` enseñaba a cualquiera, sin sesión, el saldo y las compras de cualquiera | `api/content.js`, `avatarShop` | 30 min |
+
+**Nota al 79.** Visto el 24/09/2026 al auditar la tienda, y arreglado el
+mismo día: el saldo y las compras solo se devuelven a quien tiene la
+sesión. El saldo de cualquiera sigue saliendo por `/api/users?username=X`:
+eso es el punto 57.
 
 ---
 
