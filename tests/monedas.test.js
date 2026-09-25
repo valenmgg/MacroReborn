@@ -61,6 +61,19 @@ before(async () => {
 
   monedas = new MonedasService(sql);
 
+  // La tienda solo vende lo que tiene prenda publicada, y la base de
+  // las pruebas nace sin prendas: las de la migración 012 se dan de alta
+  // aquí, publicadas, como están en producción.
+  const archivo = await db.query(
+    `INSERT INTO avatar_archivos (sha256, datos, ancho, alto, peso) VALUES ($1, $2, 1, 1, 1) RETURNING id`,
+    ["8".repeat(64), Buffer.from([8])]
+  );
+  await db.query(
+    `INSERT INTO avatar_prendas (valor, modelo, capa, nombre, archivo_id)
+     SELECT valor_capa, modelo, categoria, nombre, $1 FROM avatar_shop_items`,
+    [archivo.rows[0].id]
+  );
+
   // IMPORTANTE: se cargan DESPUÉS de inyectar la base local, porque
   // los handlers resuelven su conexión al cargarse.
   usersHandler = require("../api/users");
@@ -551,10 +564,11 @@ test("comprar en la tienda de avatares descuenta el saldo y rechaza si no alcanz
   assert.equal(compras.rows[0].cantidad, 1, "la compra rechazada no debe registrarse");
 });
 
-test("el catálogo de la tienda devuelve el saldo del usuario que lo pide", async () => {
+test("el catálogo de la tienda devuelve el saldo de quien tiene la sesión", async () => {
   await crearUsuario("mirona_de_vidrieras");
+  const headers = await headersParaUsuario("mirona_de_vidrieras");
 
-  const resp = await llamar(contentHandler, "GET", { action: "avatar-shop", username: "mirona_de_vidrieras" });
+  const resp = await llamar(contentHandler, "GET", { action: "avatar-shop", username: "mirona_de_vidrieras" }, null, headers);
 
   assert.equal(resp.success, true);
   assert.ok(resp.items.length > 0, "el catálogo debe tener prendas");

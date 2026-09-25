@@ -1,6 +1,6 @@
 const { setCors, hayBloqueoEntreUsuarios } = require("./_utils");
 const { avisar, canalNotificaciones } = require("./_avisos");
-const { requerirAuth, crearPase, PASE_TTL_MS } = require("./_auth");
+const { requerirAuth, obtenerAuth, crearPase, PASE_TTL_MS } = require("./_auth");
 const { crearNotificacionServidor, notificarMencionesServidor } = require("./_notifications");
 const { obtenerSql } = require("./_db");
 const { MonedasService } = require("./_monedas");
@@ -2315,8 +2315,11 @@ async function communityFeed(req, res) {
 // "valorCapa" queda listo para guardarse tal cual en el objeto
 // avatar del usuario.
 //
-// GET  /api/content?action=avatar-shop&username=X
-//   -> catálogo completo + cuáles ya compró X (si se manda username)
+// GET  /api/content?action=avatar-shop
+//   -> catálogo completo; con sesión, además el saldo y lo que ya compró
+//   quien la tiene. Se acepta &username=X por compatibilidad, pero solo
+//   vale el de la sesión: antes cualquiera veía el saldo y las compras
+//   de cualquiera con solo cambiar el nombre.
 //
 // GET  /api/content?action=avatar-shop-buy&username=X&itemId=Y
 //   (se resuelve como POST más abajo)
@@ -2337,15 +2340,31 @@ async function avatarShop(req, res) {
 
   const { username } = req.query;
 
+  // Solo lo que se puede llevar: una prenda que el equipo de arte
+  // retiró (publicada = false) deja de venderse, aunque siga en la
+  // tabla (punto 24 de docs/AUDITORIA.md). Quien ya la compró la
+  // conserva.
+  //
   // Con la previsualizacion de cada prenda, que es lo que la tienda
   // enseña. Antes la pagina buscaba el dibujo en el indice publico, que
   // solo trae lo que alguien lleva puesto: lo que nadie llevaba salia
-  // como una caja vacia con precio (punto 23 de docs/AUDITORIA.md).
+  // como una caja vacia con precio (punto 23).
+  //
+  // "vendidas" cuenta las compras pagadas, para ordenar por las más
+  // vendidas: las que regaló la migración 022 (precio_pagado = 0) no
+  // cuentan, y las de antes de ella (NULL, no se apuntaba) sí.
   const filasItems = await sql`
     SELECT s.id, s.categoria, s.modelo, s.valor_capa AS "valorCapa", s.nombre, s.precio,
-           s.created_at AS "creadoEl", p.id AS "prendaId", p.previsualizacion
+           s.created_at AS "creadoEl", p.id AS "prendaId", p.previsualizacion,
+           COALESCE(v.vendidas, 0) AS vendidas
     FROM avatar_shop_items s
-    LEFT JOIN avatar_prendas p ON p.valor = s.valor_capa
+    JOIN avatar_prendas p ON p.valor = s.valor_capa AND p.publicada
+    LEFT JOIN (
+      SELECT item_id, count(*)::int AS vendidas
+      FROM avatar_shop_purchases
+      WHERE precio_pagado IS NULL OR precio_pagado > 0
+      GROUP BY item_id
+    ) v ON v.item_id = s.id
     ORDER BY s.created_at DESC, s.id DESC;
   `;
   const items = filasItems.map(({ prendaId, previsualizacion, ...item }) => ({
@@ -2358,18 +2377,25 @@ async function avatarShop(req, res) {
   let comprados = [];
   let monedas = null;
 
-  if (username) {
-    const userId = await getUserId(username);
-    if (userId) {
-      monedas = await monedasService.consultarSaldo(userId);
+  // El saldo y las compras, solo los de quien tiene la sesión. Un
+  // username que no es el suyo no da error, para no romper nada: se
+  // responde el catálogo sin nada privado.
+  const auth = obtenerAuth(req);
+  const esElDeLaSesion = auth && (!username ||
+    String(username).toLowerCase() === String(auth.username).toLowerCase());
 
-      const filasCompras = await sql`
-        SELECT item_id FROM avatar_shop_purchases WHERE user_id = ${userId};
-      `;
-      comprados = filasCompras.map(f => f.item_id);
-    }
+  if (esElDeLaSesion) {
+    const userId = Number(auth.sub);
+    monedas = await monedasService.consultarSaldo(userId);
+
+    const filasCompras = await sql`
+      SELECT item_id FROM avatar_shop_purchases WHERE user_id = ${userId};
+    `;
+    comprados = filasCompras.map(f => f.item_id);
   }
 
+  // Lleva el saldo de alguien: que no lo guarde nadie por el camino.
+  res.setHeader("Cache-Control", "private, no-store");
   return res.status(200).json({ success: true, items, comprados, monedas });
 }
 
